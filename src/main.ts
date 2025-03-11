@@ -1,7 +1,9 @@
-import { Application, Assets, Container, Graphics, Sprite } from 'pixi.js';
+import { Application, Assets, Container, Graphics, Sprite, TextureStyle } from 'pixi.js';
 
 import { loadSong, NoteManager } from './note';
 import { drawPiano } from './piano';
+
+TextureStyle.defaultOptions.scaleMode = 'nearest';
 
 const app = new Application();
 
