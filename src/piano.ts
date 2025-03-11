@@ -1,6 +1,6 @@
 import { Container, Graphics } from 'pixi.js';
 
-const WHITE_KEY_WIDTH = 34;
+const WHITE_KEY_WIDTH = 35;
 const WHITE_KEY_HEIGHT = 113;
 const BLACK_KEY_WIDTH_FACTOR = 2 / 3;
 const BLACK_KEY_HEIGHT_FACTOR = 2 / 3;
