@@ -4,12 +4,18 @@ import { drawPiano } from './piano';
 
 const app = new Application();
 
+const appContainer = document.getElementById('app');
+
+if (!appContainer) {
+  throw new Error('App container not found');
+}
+
 await app.init({
   backgroundColor: 0x1099bb,
   resizeTo: window,
 });
 
-document.getElementById('app')?.appendChild(app.view);
+appContainer.appendChild(app.canvas);
 
 const graphics = new Graphics();
 graphics.rect(100, 100, 200, 200);
