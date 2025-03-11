@@ -13,8 +13,18 @@
     "fix": "npm run format && npm run lint:fix"
   },
   "devDependencies": {
+    "@eslint/js": "^9.22.0",
     "@types/bun": "latest",
-    "@types/pixi.js": "^5.0.0"
+    "@types/pixi.js": "^5.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.26.1",
+    "@typescript-eslint/parser": "^8.26.1",
+    "eslint": "^9.22.0",
+    "eslint-config-prettier": "^10.1.1",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-prettier": "^5.2.3",
+    "globals": "^16.0.0",
+    "prettier": "^3.5.3",
+    "typescript-eslint": "^8.26.1"
   },
   "peerDependencies": {
     "typescript": "^5.8.2"
