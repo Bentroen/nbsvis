@@ -1,4 +1,4 @@
-import { Application, Assets, Container, Graphics, Sprite, TextureStyle } from 'pixi.js';
+import { Application, Assets, Container, Graphics, Sprite, Text, TextureStyle } from 'pixi.js';
 
 import { loadSong, NoteManager } from './note';
 import { drawPiano } from './piano';
@@ -59,7 +59,21 @@ app.stage.addChild(pianoContainer);
 
 let currentTick = 0;
 
+// Add label showing current FPS
+const fpsLabel = new Text();
+fpsLabel.x = 10;
+fpsLabel.y = 10;
+app.stage.addChild(fpsLabel);
+
+// Add label showing current tick
+const label = new Text();
+label.x = 10;
+label.y = 40;
+app.stage.addChild(label);
+
 app.ticker.add((time) => {
   currentTick += (time.elapsedMS / 1000) * song.tempo;
+  label.text = `Tick: ${currentTick.toFixed(2)}`;
+  fpsLabel.text = `${Math.round(app.ticker.FPS)} FPS`;
   noteManager.update(currentTick, time.deltaTime);
 });
