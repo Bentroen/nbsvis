@@ -1,5 +1,6 @@
 import { Application, Assets, Container, Graphics, Sprite } from 'pixi.js';
 
+import { loadSong, NoteManager } from './note';
 import { drawPiano } from './piano';
 
 const app = new Application();
@@ -41,6 +42,22 @@ app.ticker.add((time) => {
 
 //----------------------------------------------------------------
 
+const song = await loadSong('/song.nbs');
+
 const pianoContainer = new Container();
-drawPiano(pianoContainer);
+const keyPositions = drawPiano(pianoContainer);
+pianoContainer.position.set(0, app.screen.height - pianoContainer.height - 10);
+
+const noteContainer = new Container();
+const noteManager = new NoteManager(song, noteContainer, keyPositions);
+noteContainer.position.set(0, 0);
+app.stage.addChild(noteContainer);
+
 app.stage.addChild(pianoContainer);
+
+let currentTick = 0;
+
+app.ticker.add((time) => {
+  currentTick += (time.elapsedMS / 1000) * song.tempo;
+  noteManager.update(currentTick, time.deltaTime);
+});
