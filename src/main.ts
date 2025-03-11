@@ -1,4 +1,5 @@
-import { Application, Assets, Graphics, Sprite } from 'pixi.js';
+import { Application, Assets, Container, Graphics, Sprite } from 'pixi.js';
+
 import { drawPiano } from './piano';
 
 const app = new Application();
@@ -34,5 +35,6 @@ app.ticker.add((time) => {
 
 //----------------------------------------------------------------
 
-const pianoContainer = drawPiano();
+const pianoContainer = new Container();
+drawPiano(pianoContainer);
 app.stage.addChild(pianoContainer);

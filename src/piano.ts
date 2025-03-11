@@ -11,13 +11,10 @@ function mod(a: number, b: number) {
   return ((a % b) + b) % b;
 }
 
-export function drawPiano(): Container {
+export function drawPiano(container: Container) {
   const blackKeys: Array<Graphics> = [];
   const blackKeyWidth = WHITE_KEY_WIDTH * BLACK_KEY_WIDTH_FACTOR;
   const blackKeyHeight = WHITE_KEY_HEIGHT * BLACK_KEY_HEIGHT_FACTOR;
-
-  const pianoContainer = new Container();
-  pianoContainer.position.set(100, 100);
 
   let x = 0;
 
@@ -33,14 +30,12 @@ export function drawPiano(): Container {
       whiteKey.rect(0, 3, WHITE_KEY_WIDTH, WHITE_KEY_HEIGHT);
       whiteKey.fill(0xffffff);
       whiteKey.position.set(x, 0);
-      pianoContainer.addChild(whiteKey);
+      container.addChild(whiteKey);
       x += WHITE_KEY_WIDTH + 2;
     }
   }
 
   for (const blackKey of blackKeys) {
-    pianoContainer.addChild(blackKey);
+    container.addChild(blackKey);
   }
-
-  return pianoContainer;
 }
