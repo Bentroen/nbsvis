@@ -1,4 +1,4 @@
-import { Application, Assets, Graphics, Sprite } from 'pixi.js';
+import { Application, Assets, Container, Graphics, Sprite } from 'pixi.js';
 
 const app = new Application();
 
@@ -48,6 +48,9 @@ let x = 0;
 const blackKeys: Array<Graphics> = [];
 const blackKeyWidth = WHITE_KEY_WIDTH * BLACK_KEY_WIDTH_FACTOR;
 const blackKeyHeight = WHITE_KEY_HEIGHT * BLACK_KEY_HEIGHT_FACTOR;
+const pianoContainer = new Container();
+pianoContainer.position.set(100, 100);
+app.stage.addChild(pianoContainer);
 for (let i = 0; i <= 87; i++) {
   if (blackKeyPositions.has(mod(i - 3, 12))) {
     console.log(i);
@@ -61,10 +64,10 @@ for (let i = 0; i <= 87; i++) {
     whiteKey.rect(0, 3, WHITE_KEY_WIDTH, WHITE_KEY_HEIGHT);
     whiteKey.fill(0xffffff);
     whiteKey.position.set(x, 0);
-    app.stage.addChild(whiteKey);
+    pianoContainer.addChild(whiteKey);
     x += WHITE_KEY_WIDTH + 2;
   }
 }
 for (const blackKey of blackKeys) {
-  app.stage.addChild(blackKey);
+  pianoContainer.addChild(blackKey);
 }
