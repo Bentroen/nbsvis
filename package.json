@@ -1,0 +1,26 @@
+{
+  "name": "nbsvis",
+  "module": "index.ts",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "NBS visualization tool",
+  "main": "index.ts",
+  "scripts": {
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "fix": "npm run format && npm run lint:fix"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/pixi.js": "^5.0.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "@encode42/nbs.js": "^5.0.2",
+    "pixi.js": "^8.8.1"
+  }
+}
