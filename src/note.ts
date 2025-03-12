@@ -33,6 +33,7 @@ export class NoteManager {
   private currentTick = 0;
   private container: Container;
   private keyPositions: Array<number>;
+  private visibleNotes: Record<number, Array<Sprite>> = {};
 
   constructor(song: Song, container: Container, keyPositions: Array<number>) {
     this.notes = loadNotes(song);
@@ -59,7 +60,24 @@ export class NoteManager {
         const y = -Math.floor(this.currentTick) * BLOCK_SIZE;
         sprite.position.set(x, y);
         this.container.addChild(sprite);
+        if (!(floorTick in this.visibleNotes)) {
+          this.visibleNotes[floorTick] = [];
+        }
+        this.visibleNotes[floorTick].push(sprite);
       }
+    }
+
+    const ticksToRemove = Object.keys(this.visibleNotes)
+      .filter((tick) => {
+        return parseInt(tick) < Math.floor(this.currentTick) - 22;
+      })
+      .map((tick) => parseInt(tick));
+
+    for (const tick of ticksToRemove) {
+      for (const sprite of this.visibleNotes[tick]) {
+        this.container.removeChild(sprite);
+      }
+      delete this.visibleNotes[tick];
     }
 
     this.currentTick = tick;
