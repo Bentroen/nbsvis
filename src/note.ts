@@ -46,32 +46,42 @@ export class NoteManager {
   }
 
   update(tick: number, deltaTime: number) {
-    this.container.y = this.currentTick * BLOCK_SIZE;
+    this.container.y = this.container.height + this.currentTick * BLOCK_SIZE;
 
-    const floorTick = Math.floor(this.currentTick);
-    if (Math.floor(tick) !== floorTick) {
-      //console.log(tick);
-      //console.log(this.getNotesAtTick(floorTick));
-      for (const note of this.getNotesAtTick(floorTick)) {
-        console.log(note);
+    // Check if the tick has changed
+    if (Math.floor(tick) === Math.floor(this.currentTick)) {
+      this.currentTick = tick;
+      return;
+    }
+
+    // Calculate ticks that are currently visible
+    const visibleTicks = new Set<number>(Object.keys(this.visibleNotes).map(Number));
+
+    // Calculate ticks that should be seen after the update
+    //const visibleRange = this.container.height / BLOCK_SIZE;
+    const newTicks = new Set<number>();
+    for (let i = 0; i < 22; i++) {
+      newTicks.add(Math.floor(tick) + i);
+    }
+
+    // Diff to find what needs to be updated
+    const ticksToAdd = newTicks.difference(visibleTicks);
+    const ticksToRemove = visibleTicks.difference(newTicks);
+
+    for (const tick of ticksToAdd) {
+      for (const note of this.getNotesAtTick(tick)) {
         const sprite = new Sprite(noteBlockTexture);
         sprite.scale.set(2.0);
         const x = this.keyPositions[note.key];
-        const y = -Math.floor(this.currentTick) * BLOCK_SIZE;
+        const y = -tick * BLOCK_SIZE;
         sprite.position.set(x, y);
         this.container.addChild(sprite);
-        if (!(floorTick in this.visibleNotes)) {
-          this.visibleNotes[floorTick] = [];
+        if (!(tick in this.visibleNotes)) {
+          this.visibleNotes[tick] = [];
         }
-        this.visibleNotes[floorTick].push(sprite);
+        this.visibleNotes[tick].push(sprite);
       }
     }
-
-    const ticksToRemove = Object.keys(this.visibleNotes)
-      .filter((tick) => {
-        return parseInt(tick) < Math.floor(this.currentTick) - 22;
-      })
-      .map((tick) => parseInt(tick));
 
     for (const tick of ticksToRemove) {
       for (const sprite of this.visibleNotes[tick]) {
