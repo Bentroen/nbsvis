@@ -1,5 +1,6 @@
 import { Application, Assets, Container, Graphics, Sprite, Text, TextureStyle } from 'pixi.js';
 
+import { loadInstruments, playSong } from './audio';
 import { loadSong, NoteManager } from './note';
 import { drawPiano } from './piano';
 
@@ -77,3 +78,13 @@ app.ticker.add((time) => {
   fpsLabel.text = `${Math.round(app.ticker.FPS)} FPS`;
   noteManager.update(currentTick);
 });
+
+//----------------------------------------------------------------
+
+// Audio
+async function main() {
+  await loadInstruments();
+  playSong(song);
+}
+
+(window as any).main = main;
