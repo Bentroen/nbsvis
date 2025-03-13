@@ -30,8 +30,10 @@ type NoteEvent = {
 
 // Define the master audio chain
 const masterGain = new Tone.Gain(1); // Master volume control
-const limiter = new Tone.Limiter(-6); // Prevents audio clipping
-masterGain.connect(limiter);
+const compressor = new Tone.Compressor(-30, 3); // Dynamic range compression
+const limiter = new Tone.Limiter(-3); // Prevents audio clipping
+masterGain.connect(compressor);
+compressor.connect(limiter);
 limiter.toDestination(); // Connects to speakers
 
 // Create a map to store instrument samplers
@@ -66,7 +68,7 @@ function playNote(note: NoteEvent) {
   });
 
   // Create gain node for volume control
-  const gainNode = new Tone.Gain({ gain: Tone.dbToGain(-10) }).toDestination();
+  const gainNode = new Tone.Gain(velocity * 0.5);
 
   // Create panner node for stereo effect
   const pannerNode = new Tone.Panner(panning / 100);
