@@ -62,6 +62,9 @@ function playNote(note: NoteEvent, time: number) {
 
   if (velocity === 0) return;
 
+  const audioBuffer = instrumentBuffers[instrument];
+  if (!audioBuffer) return;
+
   const player = new Tone.ToneBufferSource({
     url: instrumentBuffers[instrument],
     playbackRate: 2 ** ((key - 45) / 12),
