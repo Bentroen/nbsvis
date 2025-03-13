@@ -77,8 +77,14 @@ function playNote(note: NoteEvent) {
   player.chain(gainNode, pannerNode, masterGain);
 }
 
+function playNotes(notes: Array<NoteEvent>) {
+  for (const note of notes) {
+    playNote(note);
+  }
+}
+
 function getNoteEvents(song: Song) {
-  const noteEvents: Array<NoteEvent> = [];
+  const noteEventsPerTick: Record<number, Array<NoteEvent>> = [];
 
   for (const layer of song.layers) {
     for (const tickStr in layer.notes) {
@@ -91,20 +97,25 @@ function getNoteEvents(song: Song) {
       const panning =
         layer.stereo === 0 ? note.panning : ((note.panning ?? 100) + layer.stereo) / 2;
 
-      noteEvents.push({
+      const noteEvent = {
         tick,
         instrument,
         key,
         velocity,
         panning,
-      });
+      };
+
+      if (!(tick in noteEventsPerTick)) {
+        noteEventsPerTick[tick] = [];
+      }
+      noteEventsPerTick[tick].push(noteEvent);
     }
   }
-  return noteEvents;
+  return noteEventsPerTick;
 }
 
 // Schedule playback using Tone.Transport
-export function scheduleSong(notes: NoteEvent[], tempo: number) {
+export function scheduleSong(events: Record<number, Array<NoteEvent>>, tempo: number) {
   const transport = Tone.getTransport();
   transport.stop();
   transport.cancel(); // Clear existing events
@@ -114,12 +125,12 @@ export function scheduleSong(notes: NoteEvent[], tempo: number) {
   transport.bpm.value = tempo;
   const secondsPerTick = 60 / tempo / 4; // 4 ticks per beat
 
-  notes.forEach((note) => {
-    const time = note.tick * secondsPerTick;
+  for (const [tickStr, notes] of Object.entries(events)) {
+    const tick = parseInt(tickStr);
     transport.schedule((time) => {
-      playNote(note);
-    }, time);
-  });
+      playNotes(notes);
+    }, tick * secondsPerTick);
+  }
 
   transport.start();
 }
