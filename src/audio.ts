@@ -57,7 +57,7 @@ export async function loadInstruments() {
 }
 
 // Play a note using Tone.js
-function playNote(note: NoteEvent) {
+function playNote(note: NoteEvent, time: number) {
   const { key, instrument, velocity, panning } = note;
 
   const player = new Tone.ToneBufferSource({
@@ -76,9 +76,9 @@ function playNote(note: NoteEvent) {
   player.chain(gainNode, pannerNode, masterGain);
 }
 
-function playNotes(notes: Array<NoteEvent>) {
+function playNotes(notes: Array<NoteEvent>, time: number) {
   for (const note of notes) {
-    playNote(note);
+    playNote(note, time);
   }
 }
 
@@ -127,7 +127,7 @@ export function scheduleSong(events: Record<number, Array<NoteEvent>>, tempo: nu
   for (const [tickStr, notes] of Object.entries(events)) {
     const tick = parseInt(tickStr);
     transport.schedule((time) => {
-      playNotes(notes);
+      playNotes(notes, time);
     }, tick * secondsPerTick);
   }
 
