@@ -36,20 +36,20 @@ masterGain.connect(compressor);
 compressor.connect(limiter);
 limiter.toDestination(); // Connects to speakers
 
-// Create a map to store instrument samplers
-const instruments: Record<number, Tone.Sampler> = {};
+// Create a map to store instrument audio buffers
+const instrumentBuffers: Record<number, Tone.ToneAudioBuffer> = {};
 
 // Load instruments
 export async function loadInstruments() {
   await Tone.start(); // Ensure the audio context is running
 
   const promises = defaultInstrumentData.map(async (ins, index) => {
-    const sampler = new Tone.Sampler({
-      urls: { 'F#4': ins.audioSrc },
+    const buffer = new Tone.ToneAudioBuffer({
+      url: ins.audioSrc,
     });
 
     await Tone.loaded(); // Wait for all samples to load
-    instruments[index] = sampler;
+    instrumentBuffers[index] = buffer;
   });
 
   await Promise.all(promises);
@@ -61,9 +61,9 @@ function playNote(note: NoteEvent) {
   const { key, instrument, velocity, panning } = note;
 
   const player = new Tone.Player({
-    url: defaultInstrumentData[instrument].audioSrc,
     //volume: velocity / 100,
     autostart: true,
+    url: instrumentBuffers[instrument],
     playbackRate: 2 ** ((key - 45) / 12),
   });
 
