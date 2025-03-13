@@ -60,6 +60,8 @@ export async function loadInstruments() {
 function playNote(note: NoteEvent, time: number) {
   const { key, instrument, velocity, panning } = note;
 
+  if (velocity === 0) return;
+
   const player = new Tone.ToneBufferSource({
     url: instrumentBuffers[instrument],
     playbackRate: 2 ** ((key - 45) / 12),
