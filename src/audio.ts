@@ -60,12 +60,11 @@ export async function loadInstruments() {
 function playNote(note: NoteEvent) {
   const { key, instrument, velocity, panning } = note;
 
-  const player = new Tone.Player({
-    //volume: velocity / 100,
-    autostart: true,
+  const player = new Tone.ToneBufferSource({
     url: instrumentBuffers[instrument],
     playbackRate: 2 ** ((key - 45) / 12),
   });
+  player.start(time);
 
   // Create gain node for volume control
   const gainNode = new Tone.Gain(velocity * 0.5);
