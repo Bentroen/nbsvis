@@ -58,20 +58,21 @@ export async function loadInstruments() {
 function playNote(note: NoteEvent) {
   const { key, instrument, velocity, panning } = note;
 
-  const sampler = instruments[instrument];
-  if (!sampler) return;
+  const player = new Tone.Player({
+    url: defaultInstrumentData[instrument].audioSrc,
+    //volume: velocity / 100,
+    autostart: true,
+    playbackRate: 2 ** ((key - 45) / 12),
+  });
 
   // Create gain node for volume control
   const gainNode = new Tone.Gain({ gain: Tone.dbToGain(-10) }).toDestination();
 
   // Create panner node for stereo effect
-  const pannerNode = new Tone.Panner(panning / 100).connect(gainNode);
+  const pannerNode = new Tone.Panner(panning / 100);
 
   // Chain audio processing
-  sampler.chain(gainNode, pannerNode);
-
-  // Trigger note
-  sampler.triggerAttackRelease(Tone.Midi(key).toFrequency(), '1n', Tone.now(), velocity);
+  player.chain(gainNode, pannerNode, masterGain);
 }
 
 function getNoteEvents(song: Song) {
@@ -83,7 +84,7 @@ function getNoteEvents(song: Song) {
 
       const tick = parseInt(tickStr);
       const instrument = note.instrument;
-      const key = note.key + note.pitch / 100 + 21;
+      const key = note.key + note.pitch / 100;
       const velocity = note.velocity / 100;
       const panning =
         layer.stereo === 0 ? note.panning : ((note.panning ?? 100) + layer.stereo) / 2;
