@@ -33,7 +33,7 @@ export class NoteManager {
   private currentTick = 0;
   private container: Container;
   private keyPositions: Array<number>;
-  private visibleNotes: Record<number, Array<Sprite>> = {};
+  private visibleRows: Record<number, Container> = {};
 
   constructor(song: Song, container: Container, keyPositions: Array<number>) {
     this.notes = loadNotes(song);
@@ -45,20 +45,32 @@ export class NoteManager {
     return this.notes[tick] || [];
   }
 
-  addNoteSprite(note: Note, tick: number) {
+  addNoteSprite(note: Note, container: Container) {
     const sprite = new Sprite(noteBlockTexture);
     sprite.scale.set(2.0);
     const x = this.keyPositions[note.key];
-    const y = -tick * BLOCK_SIZE;
+    const y = 0;
     sprite.position.set(x, y);
-    this.container.addChild(sprite);
-    if (!(tick in this.visibleNotes)) {
-      this.visibleNotes[tick] = [];
-    }
-    this.visibleNotes[tick].push(sprite);
+    container.addChild(sprite);
   }
 
-  update(tick: number, deltaTime: number) {
+  addTick(tick: number) {
+    const rowContainer = new Container();
+    rowContainer.y = -tick * BLOCK_SIZE;
+    this.container.addChild(rowContainer);
+    this.visibleRows[tick] = rowContainer;
+    for (const note of this.getNotesAtTick(tick)) {
+      this.addNoteSprite(note, rowContainer);
+    }
+  }
+
+  removeTick(tick: number) {
+    const rowContainer = this.visibleRows[tick];
+    this.container.removeChild(rowContainer);
+    delete this.visibleRows[tick];
+  }
+
+  update(tick: number) {
     this.container.y = this.container.height + this.currentTick * BLOCK_SIZE;
 
     // Check if the tick has changed
@@ -68,7 +80,7 @@ export class NoteManager {
     }
 
     // Calculate ticks that are currently visible
-    const visibleTicks = new Set<number>(Object.keys(this.visibleNotes).map(Number));
+    const visibleTicks = new Set<number>(Object.keys(this.visibleRows).map(Number));
 
     // Calculate ticks that should be seen after the update
     //const visibleRange = this.container.height / BLOCK_SIZE;
@@ -81,18 +93,8 @@ export class NoteManager {
     const ticksToAdd = newTicks.difference(visibleTicks);
     const ticksToRemove = visibleTicks.difference(newTicks);
 
-    for (const tick of ticksToAdd) {
-      for (const note of this.getNotesAtTick(tick)) {
-        this.addNoteSprite(note, tick);
-      }
-    }
-
-    for (const tick of ticksToRemove) {
-      for (const sprite of this.visibleNotes[tick]) {
-        this.container.removeChild(sprite);
-      }
-      delete this.visibleNotes[tick];
-    }
+    ticksToAdd.forEach((tick) => this.addTick(tick));
+    ticksToRemove.forEach((tick) => this.removeTick(tick));
 
     this.currentTick = tick;
   }
