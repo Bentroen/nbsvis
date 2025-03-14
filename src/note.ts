@@ -83,9 +83,10 @@ export class NoteManager {
     const visibleTicks = new Set<number>(Object.keys(this.visibleRows).map(Number));
 
     // Calculate ticks that should be seen after the update
-    //const visibleRange = this.container.height / BLOCK_SIZE;
+    const visibleHeight = this.container.parent.height - 180; // height of piano
+    const visibleRowCount = Math.floor(visibleHeight / BLOCK_SIZE);
     const newTicks = new Set<number>();
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0; i < visibleRowCount; i++) {
       newTicks.add(Math.floor(tick) + i);
     }
 
