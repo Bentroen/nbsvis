@@ -45,6 +45,19 @@ export class NoteManager {
     return this.notes[tick] || [];
   }
 
+  addNoteSprite(note: Note, tick: number) {
+    const sprite = new Sprite(noteBlockTexture);
+    sprite.scale.set(2.0);
+    const x = this.keyPositions[note.key];
+    const y = -tick * BLOCK_SIZE;
+    sprite.position.set(x, y);
+    this.container.addChild(sprite);
+    if (!(tick in this.visibleNotes)) {
+      this.visibleNotes[tick] = [];
+    }
+    this.visibleNotes[tick].push(sprite);
+  }
+
   update(tick: number, deltaTime: number) {
     this.container.y = this.container.height + this.currentTick * BLOCK_SIZE;
 
@@ -70,16 +83,7 @@ export class NoteManager {
 
     for (const tick of ticksToAdd) {
       for (const note of this.getNotesAtTick(tick)) {
-        const sprite = new Sprite(noteBlockTexture);
-        sprite.scale.set(2.0);
-        const x = this.keyPositions[note.key];
-        const y = -tick * BLOCK_SIZE;
-        sprite.position.set(x, y);
-        this.container.addChild(sprite);
-        if (!(tick in this.visibleNotes)) {
-          this.visibleNotes[tick] = [];
-        }
-        this.visibleNotes[tick].push(sprite);
+        this.addNoteSprite(note, tick);
       }
     }
 
