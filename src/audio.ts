@@ -28,18 +28,16 @@ type NoteEvent = {
   panning: number;
 };
 
-// Define the master audio chain
+// Master audio chain
 const masterGain = new Tone.Gain(1); // Master volume control
 const compressor = new Tone.Compressor(-30, 3); // Dynamic range compression
-const limiter = new Tone.Limiter(-3); // Prevents audio clipping
+const limiter = new Tone.Limiter(-3); // Prevent clipping
 masterGain.connect(compressor);
 compressor.connect(limiter);
-limiter.toDestination(); // Connects to speakers
+limiter.toDestination();
 
-// Create a map to store instrument audio buffers
 const instrumentBuffers: Record<number, Tone.ToneAudioBuffer> = {};
 
-// Load instruments
 export async function loadInstruments() {
   await Tone.start(); // Ensure the audio context is running
 
@@ -56,7 +54,6 @@ export async function loadInstruments() {
   console.log('All instruments loaded.');
 }
 
-// Play a note using Tone.js
 function playNote(note: NoteEvent, time: number) {
   const { key, instrument, velocity, panning } = note;
 
@@ -71,13 +68,10 @@ function playNote(note: NoteEvent, time: number) {
   });
   player.start(time);
 
-  // Create gain node for volume control
   const gainNode = new Tone.Gain(velocity * 0.5);
 
-  // Create panner node for stereo effect
   const pannerNode = new Tone.Panner(panning / 100);
 
-  // Chain audio processing
   player.chain(gainNode, pannerNode, masterGain);
 }
 
@@ -117,14 +111,12 @@ function getNoteEvents(song: Song) {
   return noteEventsPerTick;
 }
 
-// Schedule playback using Tone.Transport
 export function scheduleSong(events: Record<number, Array<NoteEvent>>, tempo: number) {
   const transport = Tone.getTransport();
   transport.stop();
-  transport.cancel(); // Clear existing events
+  transport.cancel();
   transport.position = 0;
 
-  // Set tempo for the transport
   transport.bpm.value = tempo;
   const secondsPerTick = 60 / tempo / 4; // 4 ticks per beat
 
