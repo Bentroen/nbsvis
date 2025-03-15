@@ -169,8 +169,7 @@ export class NoteManager {
   }
 
   update(tick: number): Array<number> {
-    this.container.y =
-      this.container.parent.height - 200 + this.currentTick * BLOCK_SIZE * this.distanceScale;
+    this.container.y = 900 - 200 + this.currentTick * BLOCK_SIZE * this.distanceScale;
     // TODO: refactor this and visibleHeight calculation since they share the same logic
 
     // Check if the tick has changed
