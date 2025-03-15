@@ -7,14 +7,33 @@ const BLACK_KEY_HEIGHT_FACTOR = 2 / 3;
 
 const BLACK_KEY_POSITIONS = new Set([1, 3, 6, 8, 10]);
 
+const KEY_ANIMATION_TIME_MS = 200;
+
 abstract class KeyItem {
   sprite: Container;
+
+  animationTime = 0;
 
   constructor(posX: number) {
     this.sprite = this.draw(posX);
   }
 
   abstract draw(posX: number): Container;
+
+  play() {
+    this.animationTime = KEY_ANIMATION_TIME_MS;
+    this.sprite.alpha = 0.5;
+    this.sprite.y = 5;
+  }
+
+  reset() {
+    this.sprite.alpha = 1;
+    this.sprite.y = 0;
+  }
+
+  update(deltaTime: number) {
+    this.animationTime -= deltaTime;
+  }
 }
 
 class BlackKeyItem extends KeyItem {
@@ -46,6 +65,7 @@ class WhiteKeyItem extends KeyItem {
 export class PianoManager {
   container: Container;
   keys: Array<KeyItem> = [];
+  playingKeys: Set<KeyItem> = new Set();
   keyPositions: Array<number> = [];
 
   constructor(container: Container) {
@@ -78,10 +98,18 @@ export class PianoManager {
     }
   }
 
-  update(notesToPlay: Array<number>) {
+  update(deltaTimeMs: number, notesToPlay: Array<number>) {
     for (const note of notesToPlay) {
       const key = this.keys[note];
-      key.sprite.tint = 0xff0000;
+      key.play();
+      this.playingKeys.add(key);
+    }
+
+    for (const key of this.playingKeys) {
+      key.update(deltaTimeMs);
+      if (key.animationTime <= 0) {
+        key.reset();
+      }
     }
   }
 }
