@@ -28,7 +28,8 @@ const keyLabels = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', '
 
 function normalizeKeyAndPitch(note: Note): { key: number; pitch: number } {
   const weightedKey = note.key + note.pitch / 100;
-  const key = Math.round(weightedKey);
+  let key = Math.round(weightedKey);
+  key = Math.max(0, Math.min(87, key));
   const pitch = weightedKey - key;
   return { key, pitch };
 }
