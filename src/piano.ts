@@ -80,7 +80,7 @@ export class PianoManager {
 
     for (let i = 0; i <= 87; i++) {
       let key: KeyItem;
-      const isBlackKey = BLACK_KEY_POSITIONS.has(i % 12);
+      const isBlackKey = BLACK_KEY_POSITIONS.has((i + 9) % 12);
       if (isBlackKey) {
         key = new BlackKeyItem(x);
         blackKeys.push(key);
