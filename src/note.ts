@@ -1,9 +1,28 @@
 import { fromArrayBuffer, Note, Song } from '@encode42/nbs.js';
-import { Assets, Container, Sprite } from 'pixi.js';
+import { Assets, Container, Graphics, Sprite } from 'pixi.js';
 
 const noteBlockTexture = await Assets.load('/img/note-block-grayscale.png');
 
 const BLOCK_SIZE = 32;
+
+const instrumentColors = [
+  '#1964ac',
+  '#3c8e48',
+  '#be6b6b',
+  '#bebe19',
+  '#9d5a98',
+  '#572b21',
+  '#bec65c',
+  '#be19be',
+  '#52908d',
+  '#bebebe',
+  '#1991be',
+  '#be2328',
+  '#be5728',
+  '#19be19',
+  '#be1957',
+  '#575757',
+];
 
 function normalizeKeyAndPitch(note: Note): { key: number; pitch: number } {
   const weightedKey = note.key + note.pitch / 100;
@@ -38,6 +57,7 @@ export function loadNotes(song: Song) {
 
 class NoteItem {
   tick: number;
+  instrument: number;
   key: number;
   pitch: number;
   velocity: number;
@@ -45,6 +65,7 @@ class NoteItem {
   constructor(note: Note, tick: number) {
     this.tick = tick;
     const { key, pitch } = normalizeKeyAndPitch(note);
+    this.instrument = note.instrument;
     this.key = key;
     this.pitch = pitch;
     this.velocity = note.velocity;
@@ -62,13 +83,27 @@ class NoteItem {
     return x;
   }
 
-  getSprite(keyPositions: Array<number>): Sprite {
-    const sprite = new Sprite(noteBlockTexture);
-    sprite.scale.set(2.0);
+  getSprite(keyPositions: Array<number>): Container {
+    // Container for everything
     const x = this.getXPos(keyPositions);
     const y = 0;
-    sprite.position.set(x, y);
-    return sprite;
+    const container = new Container();
+    container.position.set(x, y);
+    container.alpha = 0.5 + this.velocity / 50;
+
+    // Background rectangle
+    const rect = new Graphics().rect(0, 0, BLOCK_SIZE, BLOCK_SIZE);
+    rect.fill(instrumentColors[this.instrument % 16]);
+    container.addChild(rect);
+
+    // Note block texture
+    const sprite = new Sprite(noteBlockTexture);
+    sprite.scale.set(2.0);
+    sprite.blendMode = 'hard-light';
+    sprite.alpha = 0.67; // Global alpha
+    container.addChild(sprite);
+
+    return container;
   }
 }
 

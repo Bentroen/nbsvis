@@ -17,6 +17,7 @@ if (!appContainer) {
 await app.init({
   backgroundColor: 0x1099bb,
   resizeTo: window,
+  useBackBuffer: true,
 });
 
 appContainer.appendChild(app.canvas);
