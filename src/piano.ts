@@ -7,9 +7,43 @@ const BLACK_KEY_HEIGHT_FACTOR = 2 / 3;
 
 const BLACK_KEY_POSITIONS = new Set([1, 3, 6, 8, 10]);
 
+abstract class KeyItem {
+  abstract sprite: Graphics;
+
+  constructor(posX: number) {}
+}
+
+class BlackKeyItem extends KeyItem {
+  sprite: Graphics;
+
+  constructor(posX: number) {
+    super(posX);
+    const key = new Graphics();
+    const width = WHITE_KEY_WIDTH * BLACK_KEY_WIDTH_FACTOR;
+    const height = WHITE_KEY_HEIGHT * BLACK_KEY_HEIGHT_FACTOR;
+    key.rect(0, 0, width, height);
+    key.fill(0x000000);
+    key.position.set(posX + (width - WHITE_KEY_WIDTH) / 2 - 3, 0);
+    this.sprite = key;
+  }
+}
+
+class WhiteKeyItem extends KeyItem {
+  sprite: Graphics;
+
+  constructor(posX: number) {
+    super(posX);
+    const key = new Graphics();
+    key.rect(0, 3, WHITE_KEY_WIDTH, WHITE_KEY_HEIGHT);
+    key.fill(0xffffff);
+    key.position.set(posX, 0);
+    this.sprite = key;
+  }
+}
+
 export class PianoManager {
   container: Container;
-  keys: Array<Graphics> = [];
+  keys: Array<KeyItem> = [];
   keyPositions: Array<number> = [];
 
   constructor(container: Container) {
@@ -18,42 +52,34 @@ export class PianoManager {
   }
 
   private draw() {
-    const blackKeys: Array<Graphics> = [];
-    const blackKeyWidth = WHITE_KEY_WIDTH * BLACK_KEY_WIDTH_FACTOR;
-    const blackKeyHeight = WHITE_KEY_HEIGHT * BLACK_KEY_HEIGHT_FACTOR;
+    const blackKeys: Array<BlackKeyItem> = [];
 
     let x = 0;
 
     for (let i = 0; i <= 87; i++) {
-      if (BLACK_KEY_POSITIONS.has((i + 9) % 12)) {
-        const blackKey = new Graphics();
-        blackKey.rect(0, 0, blackKeyWidth, blackKeyHeight);
-        blackKey.fill(0x000000);
-        blackKey.position.set(x + (blackKeyWidth - WHITE_KEY_WIDTH) / 2 - 3, 0);
-        blackKeys.push(blackKey);
-        this.keys.push(blackKey);
-        this.keyPositions.push(blackKey.position.x);
+      let key: KeyItem;
+      const isBlackKey = BLACK_KEY_POSITIONS.has(i % 12);
+      if (isBlackKey) {
+        key = new BlackKeyItem(x);
+        blackKeys.push(key);
       } else {
-        const whiteKey = new Graphics();
-        whiteKey.rect(0, 3, WHITE_KEY_WIDTH, WHITE_KEY_HEIGHT);
-        whiteKey.fill(0xffffff);
-        whiteKey.position.set(x, 0);
-        this.container.addChild(whiteKey);
-        this.keys.push(whiteKey);
-        this.keyPositions.push(whiteKey.position.x);
+        key = new WhiteKeyItem(x);
+        this.container.addChild(key.sprite);
         x += WHITE_KEY_WIDTH + 2;
       }
+      this.keys.push(key);
+      this.keyPositions.push(key.sprite.position.x);
     }
 
-    for (const blackKey of blackKeys) {
-      this.container.addChild(blackKey);
+    for (const key of blackKeys) {
+      this.container.addChild(key.sprite);
     }
   }
 
   update(notesToPlay: Array<number>) {
     for (const note of notesToPlay) {
       const key = this.keys[note];
-      key.tint = 0xff0000;
+      key.sprite.tint = 0xff0000;
     }
   }
 }
