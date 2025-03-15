@@ -8,34 +8,38 @@ const BLACK_KEY_HEIGHT_FACTOR = 2 / 3;
 const BLACK_KEY_POSITIONS = new Set([1, 3, 6, 8, 10]);
 
 abstract class KeyItem {
-  sprite: Graphics;
+  sprite: Container;
 
   constructor(posX: number) {
     this.sprite = this.draw(posX);
   }
 
-  abstract draw(posX: number): Graphics;
+  abstract draw(posX: number): Container;
 }
 
 class BlackKeyItem extends KeyItem {
   draw(posX: number) {
+    const container = new Container();
     const key = new Graphics();
     const width = WHITE_KEY_WIDTH * BLACK_KEY_WIDTH_FACTOR;
     const height = WHITE_KEY_HEIGHT * BLACK_KEY_HEIGHT_FACTOR;
     key.rect(0, 0, width, height);
     key.fill(0x000000);
-    key.position.set(posX + (width - WHITE_KEY_WIDTH) / 2 - 3, 0);
-    return key;
+    container.position.set(posX + (width - WHITE_KEY_WIDTH) / 2 - 3, 0);
+    container.addChild(key);
+    return container;
   }
 }
 
 class WhiteKeyItem extends KeyItem {
   draw(posX: number) {
+    const container = new Container();
     const key = new Graphics();
     key.rect(0, 3, WHITE_KEY_WIDTH, WHITE_KEY_HEIGHT);
     key.fill(0xffffff);
-    key.position.set(posX, 0);
-    return key;
+    container.position.set(posX, 0);
+    container.addChild(key);
+    return container;
   }
 }
 
