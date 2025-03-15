@@ -135,6 +135,8 @@ export class NoteManager {
   private keyPositions: Array<number>;
   private visibleRows: Record<number, Container> = {};
 
+  distanceScale = 0.5;
+
   constructor(song: Song, container: Container, keyPositions: Array<number>) {
     this.notes = loadNotes(song);
     this.container = container;
@@ -152,7 +154,7 @@ export class NoteManager {
 
   private addTick(tick: number) {
     const rowContainer = new Container();
-    rowContainer.y = -tick * BLOCK_SIZE;
+    rowContainer.y = -tick * BLOCK_SIZE * this.distanceScale;
     this.container.addChild(rowContainer);
     this.visibleRows[tick] = rowContainer;
     for (const note of this.getNotesAtTick(tick)) {
@@ -168,7 +170,7 @@ export class NoteManager {
 
   update(tick: number): Array<number> {
     this.container.y =
-      this.container.parent.height - 180 + this.currentTick * BLOCK_SIZE * this.distanceScale;
+      this.container.parent.height - 200 + this.currentTick * BLOCK_SIZE * this.distanceScale;
     // TODO: refactor this and visibleHeight calculation since they share the same logic
 
     // Check if the tick has changed
@@ -183,7 +185,7 @@ export class NoteManager {
 
     // Calculate ticks that should be seen after the update
     const visibleHeight = this.container.parent.height - 180; // height of piano
-    const visibleRowCount = Math.floor(visibleHeight / BLOCK_SIZE);
+    const visibleRowCount = Math.floor(visibleHeight / BLOCK_SIZE) * (1 / this.distanceScale);
     const newTicks = new Set<number>();
     for (let i = 0; i < visibleRowCount; i++) {
       newTicks.add(Math.floor(tick) + i);
