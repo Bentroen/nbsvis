@@ -5,13 +5,6 @@ const noteBlockTexture = await Assets.load('/img/note-block-grayscale.png');
 
 const BLOCK_SIZE = 32;
 
-type NoteItem = {
-  tick: number;
-  key: number;
-  pitch: number;
-  instrument: number;
-};
-
 function normalizeKeyAndPitch(note: Note): { key: number; pitch: number } {
   const weightedKey = note.key + note.pitch / 100;
   const key = Math.floor(weightedKey);
@@ -32,13 +25,7 @@ export function loadNotes(song: Song) {
     for (const tickStr in layer.notes) {
       const note = layer.notes[tickStr];
       const tick = parseInt(tickStr);
-      const { key, pitch } = normalizeKeyAndPitch(note);
-      const noteItem = {
-        tick,
-        key,
-        pitch,
-        instrument: note.instrument,
-      };
+      const noteItem = new NoteItem(note, tick);
       if (!(tick in notesPerTick)) {
         notesPerTick[tick] = [];
       }
@@ -47,6 +34,42 @@ export function loadNotes(song: Song) {
   }
 
   return notesPerTick;
+}
+
+class NoteItem {
+  tick: number;
+  key: number;
+  pitch: number;
+  velocity: number;
+
+  constructor(note: Note, tick: number) {
+    this.tick = tick;
+    const { key, pitch } = normalizeKeyAndPitch(note);
+    this.key = key;
+    this.pitch = pitch;
+    this.velocity = note.velocity;
+  }
+  private getXPos(keyPositions: Array<number>): number {
+    let x = keyPositions[this.key];
+    if (this.pitch !== 0) {
+      // Halfway between its actual key and the key it's gliding to
+      const pitchingDirection = this.pitch > 0 ? 1 : -1;
+      const pitchingToNote = this.key + pitchingDirection;
+      const pitchingToX = keyPositions[pitchingToNote];
+      const pitchingX = (x + pitchingToX) / 2;
+      x = pitchingX;
+    }
+    return x;
+  }
+
+  getSprite(keyPositions: Array<number>): Sprite {
+    const sprite = new Sprite(noteBlockTexture);
+    sprite.scale.set(2.0);
+    const x = this.getXPos(keyPositions);
+    const y = 0;
+    sprite.position.set(x, y);
+    return sprite;
+  }
 }
 
 export class NoteManager {
@@ -66,25 +89,8 @@ export class NoteManager {
     return this.notes[tick] || [];
   }
 
-  private getNoteXPos(note: NoteItem) {
-    let x = this.keyPositions[note.key];
-    if (note.pitch !== 0) {
-      // Halfway between its actual key and the key it's gliding to
-      const pitchingDirection = note.pitch > 0 ? 1 : -1;
-      const pitchingToNote = note.key + pitchingDirection;
-      const pitchingToX = this.keyPositions[pitchingToNote];
-      const pitchingX = (x + pitchingToX) / 2;
-      x = pitchingX;
-    }
-    return x;
-  }
-
   private addNoteSprite(note: NoteItem, container: Container) {
-    const sprite = new Sprite(noteBlockTexture);
-    sprite.scale.set(2.0);
-    const x = this.getNoteXPos(note);
-    const y = 0;
-    sprite.position.set(x, y);
+    const sprite = note.getSprite(this.keyPositions);
     container.addChild(sprite);
   }
 
