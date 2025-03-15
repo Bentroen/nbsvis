@@ -1,5 +1,5 @@
 import { fromArrayBuffer, Note, Song } from '@encode42/nbs.js';
-import { Assets, Container, Graphics, Sprite } from 'pixi.js';
+import { Assets, Container, Graphics, Sprite, Text } from 'pixi.js';
 
 const noteBlockTexture = await Assets.load('/img/note-block-grayscale.png');
 
@@ -23,6 +23,8 @@ const instrumentColors = [
   '#be1957',
   '#575757',
 ];
+
+const keyLabels = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 function normalizeKeyAndPitch(note: Note): { key: number; pitch: number } {
   const weightedKey = note.key + note.pitch / 100;
@@ -83,6 +85,12 @@ class NoteItem {
     return x;
   }
 
+  private getKeyLabel(): string {
+    const key = (this.key + 9) % 12;
+    const octave = Math.floor((this.key + 9) / 12);
+    return `${keyLabels[key]}${octave}`;
+  }
+
   getSprite(keyPositions: Array<number>): Container {
     // Container for everything
     const x = this.getXPos(keyPositions);
@@ -102,6 +110,16 @@ class NoteItem {
     sprite.blendMode = 'hard-light';
     sprite.alpha = 0.67; // Global alpha
     container.addChild(sprite);
+
+    // Text
+    const label = new Text();
+    label.text = this.getKeyLabel();
+    label.style.fill = 'white';
+    label.style.fontSize = 12;
+    label.anchor.set(0.5, 0.5);
+    label.position.set(BLOCK_SIZE / 2, BLOCK_SIZE / 2);
+    label.alpha = 0.5;
+    container.addChild(label);
 
     return container;
   }
