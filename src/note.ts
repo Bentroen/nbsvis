@@ -66,9 +66,7 @@ export class NoteManager {
     return this.notes[tick] || [];
   }
 
-  addNoteSprite(note: NoteItem, container: Container) {
-    const sprite = new Sprite(noteBlockTexture);
-    sprite.scale.set(2.0);
+  getNoteXPos(note: NoteItem) {
     let x = this.keyPositions[note.key];
     if (note.pitch !== 0) {
       // Halfway between its actual key and the key it's gliding to
@@ -78,6 +76,13 @@ export class NoteManager {
       const pitchingX = (x + pitchingToX) / 2;
       x = pitchingX;
     }
+    return x;
+  }
+
+  addNoteSprite(note: NoteItem, container: Container) {
+    const sprite = new Sprite(noteBlockTexture);
+    sprite.scale.set(2.0);
+    const x = this.getNoteXPos(note);
     const y = 0;
     sprite.position.set(x, y);
     container.addChild(sprite);
