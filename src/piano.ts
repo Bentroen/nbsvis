@@ -50,4 +50,10 @@ export class PianoManager {
     }
   }
 
+  update(notesToPlay: Array<number>) {
+    for (const note of notesToPlay) {
+      const key = this.keys[note];
+      key.tint = 0xff0000;
+    }
+  }
 }

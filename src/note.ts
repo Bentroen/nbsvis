@@ -163,13 +163,14 @@ export class NoteManager {
     delete this.visibleRows[tick];
   }
 
-  update(tick: number) {
+  update(tick: number): Array<number> {
     this.container.y = this.container.height + this.currentTick * BLOCK_SIZE;
 
     // Check if the tick has changed
-    if (Math.floor(tick) === Math.floor(this.currentTick)) {
+    const floorTick = Math.floor(tick);
+    if (floorTick === Math.floor(this.currentTick)) {
       this.currentTick = tick;
-      return;
+      return [];
     }
 
     // Calculate ticks that are currently visible
@@ -191,5 +192,9 @@ export class NoteManager {
     ticksToRemove.forEach((tick) => this.removeTick(tick));
 
     this.currentTick = tick;
+
+    // Return which keys should be played at this tick
+    const keysToPlay = this.getNotesAtTick(floorTick).map((note) => note.key);
+    return keysToPlay;
   }
 }

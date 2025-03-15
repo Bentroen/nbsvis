@@ -56,7 +56,8 @@ app.ticker.add((time) => {
   currentTick += (time.elapsedMS / 1000) * song.tempo;
   label.text = `Tick: ${currentTick.toFixed(2)}`;
   fpsLabel.text = `${Math.round(app.ticker.FPS)} FPS`;
-  noteManager.update(currentTick);
+  const notesToPlay = noteManager.update(currentTick);
+  pianoManager.update(notesToPlay);
 });
 
 //----------------------------------------------------------------
