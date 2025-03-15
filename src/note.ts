@@ -28,8 +28,8 @@ const keyLabels = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', '
 
 function normalizeKeyAndPitch(note: Note): { key: number; pitch: number } {
   const weightedKey = note.key + note.pitch / 100;
-  const key = Math.floor(weightedKey);
-  const pitch = weightedKey % 1;
+  const key = Math.round(weightedKey);
+  const pitch = weightedKey - key;
   return { key, pitch };
 }
 
@@ -79,7 +79,9 @@ class NoteItem {
       const pitchingDirection = this.pitch > 0 ? 1 : -1;
       const pitchingToNote = this.key + pitchingDirection;
       const pitchingToX = keyPositions[pitchingToNote];
-      const pitchingX = (x + pitchingToX) / 2;
+      const pitchingDistance = x - pitchingToX;
+      const pitchingAmount = Math.abs(this.pitch) * pitchingDistance;
+      const pitchingX = x - pitchingAmount;
       x = pitchingX;
     }
     return x;
