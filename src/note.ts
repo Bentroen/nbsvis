@@ -62,11 +62,11 @@ export class NoteManager {
     this.keyPositions = keyPositions;
   }
 
-  getNotesAtTick(tick: number) {
+  private getNotesAtTick(tick: number) {
     return this.notes[tick] || [];
   }
 
-  getNoteXPos(note: NoteItem) {
+  private getNoteXPos(note: NoteItem) {
     let x = this.keyPositions[note.key];
     if (note.pitch !== 0) {
       // Halfway between its actual key and the key it's gliding to
@@ -79,7 +79,7 @@ export class NoteManager {
     return x;
   }
 
-  addNoteSprite(note: NoteItem, container: Container) {
+  private addNoteSprite(note: NoteItem, container: Container) {
     const sprite = new Sprite(noteBlockTexture);
     sprite.scale.set(2.0);
     const x = this.getNoteXPos(note);
@@ -88,7 +88,7 @@ export class NoteManager {
     container.addChild(sprite);
   }
 
-  addTick(tick: number) {
+  private addTick(tick: number) {
     const rowContainer = new Container();
     rowContainer.y = -tick * BLOCK_SIZE;
     this.container.addChild(rowContainer);
@@ -98,7 +98,7 @@ export class NoteManager {
     }
   }
 
-  removeTick(tick: number) {
+  private removeTick(tick: number) {
     const rowContainer = this.visibleRows[tick];
     this.container.removeChild(rowContainer);
     delete this.visibleRows[tick];
