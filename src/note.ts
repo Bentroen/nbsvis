@@ -155,7 +155,7 @@ export class NoteManager {
   private addTick(tick: number) {
     const rowContainer = new Container();
     rowContainer.y = -tick * BLOCK_SIZE * this.distanceScale;
-    this.container.addChild(rowContainer);
+    this.container.addChildAt(rowContainer, 0);
     this.visibleRows[tick] = rowContainer;
     for (const note of this.getNotesAtTick(tick)) {
       this.addNoteSprite(note, rowContainer);
