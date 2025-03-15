@@ -2,7 +2,7 @@ import { Application, Container, Text, TextureStyle } from 'pixi.js';
 
 import { loadInstruments, playSong } from './audio';
 import { loadSong, NoteManager } from './note';
-import { drawPiano } from './piano';
+import { PianoManager } from './piano';
 
 TextureStyle.defaultOptions.scaleMode = 'nearest';
 
@@ -27,9 +27,10 @@ appContainer.appendChild(app.canvas);
 const song = await loadSong('/song.nbs');
 
 const pianoContainer = new Container();
-const keyPositions = drawPiano(pianoContainer);
+const pianoManager = new PianoManager(pianoContainer);
 pianoContainer.position.set(0, app.screen.height - pianoContainer.height - 10);
 
+const keyPositions = pianoManager.keyPositions;
 const noteContainer = new Container();
 const noteManager = new NoteManager(song, noteContainer, keyPositions);
 noteContainer.position.set(0, 0);
