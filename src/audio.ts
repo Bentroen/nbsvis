@@ -29,8 +29,8 @@ type NoteEvent = {
 };
 
 // Master audio chain
-const masterGain = new Tone.Gain(1); // Master volume control
-const compressor = new Tone.Compressor(-30, 3); // Dynamic range compression
+const masterGain = new Tone.Gain(0.5); // Master volume control
+const compressor = new Tone.Compressor(-24, 3); // Dynamic range compression
 const limiter = new Tone.Limiter(-3); // Prevent clipping
 masterGain.connect(compressor);
 compressor.connect(limiter);
@@ -68,9 +68,8 @@ function playNote(note: NoteEvent, time: number) {
   });
   player.start(time);
 
-  const gainNode = new Tone.Gain(velocity * 0.5);
-
-  const pannerNode = new Tone.Panner(panning / 100);
+  const gainNode = new Tone.Gain(velocity);
+  const pannerNode = new Tone.Panner(panning);
 
   player.chain(gainNode, pannerNode, masterGain);
 }
