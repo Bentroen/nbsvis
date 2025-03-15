@@ -7,10 +7,6 @@ const BLACK_KEY_HEIGHT_FACTOR = 2 / 3;
 
 const BLACK_KEY_POSITIONS = new Set([1, 3, 6, 8, 10]);
 
-function mod(a: number, b: number) {
-  return ((a % b) + b) % b;
-}
-
 export function drawPiano(container: Container) {
   const blackKeys: Array<Graphics> = [];
   const blackKeyWidth = WHITE_KEY_WIDTH * BLACK_KEY_WIDTH_FACTOR;
@@ -21,7 +17,7 @@ export function drawPiano(container: Container) {
   let x = 0;
 
   for (let i = 0; i <= 87; i++) {
-    if (BLACK_KEY_POSITIONS.has(mod(i - 3, 12))) {
+    if (BLACK_KEY_POSITIONS.has((i + 9) % 12)) {
       const blackKey = new Graphics();
       blackKey.rect(0, 0, blackKeyWidth, blackKeyHeight);
       blackKey.fill(0x000000);
