@@ -1,7 +1,7 @@
-import { Container, Graphics } from 'pixi.js';
+import { Application, Container, Graphics } from 'pixi.js';
 
-const WHITE_KEY_WIDTH = 35;
-const WHITE_KEY_HEIGHT = 113;
+let WHITE_KEY_WIDTH = 35;
+let WHITE_KEY_HEIGHT = 113;
 const BLACK_KEY_WIDTH_FACTOR = 2 / 3;
 const BLACK_KEY_HEIGHT_FACTOR = 2 / 3;
 
@@ -113,7 +113,12 @@ export class PianoManager {
     }
   }
 
-  update(deltaTimeMs: number, notesToPlay: Array<number>) {
+  public updateKeySize(app: Application) {
+    WHITE_KEY_WIDTH = app.screen.width / 57;
+    WHITE_KEY_HEIGHT = WHITE_KEY_WIDTH * 3.25;
+  }
+
+  public update(deltaTimeMs: number, notesToPlay: Array<number>) {
     for (const note of notesToPlay) {
       const key = this.keys[note];
       key.play();
@@ -126,5 +131,13 @@ export class PianoManager {
         this.playingKeys.delete(key);
       }
     }
+  }
+
+  public redraw(app: Application) {
+    this.container.removeChildren();
+    this.keys = [];
+    this.keyPositions = [];
+    this.updateKeySize(app);
+    this.draw();
   }
 }

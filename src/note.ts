@@ -1,9 +1,13 @@
 import { fromArrayBuffer, Note, Song } from '@encode42/nbs.js';
-import { Assets, Container, Graphics, Sprite, Text } from 'pixi.js';
+import { Assets, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
 
 const noteBlockTexture = await Assets.load('/img/note-block-grayscale.png');
 
-const BLOCK_SIZE = 32;
+let BLOCK_SIZE = 32;
+
+export const setBlockSize = (size: number) => {
+  BLOCK_SIZE = size;
+};
 
 const instrumentColors = [
   '#1964ac',
@@ -73,6 +77,7 @@ class NoteItem {
     this.pitch = pitch;
     this.velocity = note.velocity;
   }
+
   private getXPos(keyPositions: Array<number>): number {
     let x = keyPositions[this.key];
     if (this.pitch !== 0) {
@@ -109,19 +114,24 @@ class NoteItem {
 
     // Note block texture
     const sprite = new Sprite(noteBlockTexture);
-    sprite.scale.set(2.0);
+    sprite.scale.set(32);
     sprite.blendMode = 'hard-light';
     sprite.alpha = 0.67; // Global alpha
     container.addChild(sprite);
 
+    // Text style
+    const textStyle = new TextStyle({
+      fontFamily: 'Monocraft', // Change this to your desired font
+      fontSize: 12,
+      fill: 'white',
+      align: 'center',
+    });
+
     // Text
-    const label = new Text();
-    label.text = this.getKeyLabel();
-    label.style.fill = 'white';
-    label.style.fontSize = 12;
+    const label = new Text(this.getKeyLabel(), textStyle);
     label.anchor.set(0.5, 0.5);
     label.position.set(BLOCK_SIZE / 2, BLOCK_SIZE / 2);
-    label.alpha = 0.5;
+    label.alpha = 1;
     container.addChild(label);
 
     return container;
@@ -140,6 +150,10 @@ export class NoteManager {
   constructor(song: Song, container: Container, keyPositions: Array<number>) {
     this.notes = loadNotes(song);
     this.container = container;
+    this.keyPositions = keyPositions;
+  }
+
+  public setKeyPositions(keyPositions: Array<number>) {
     this.keyPositions = keyPositions;
   }
 
@@ -166,6 +180,19 @@ export class NoteManager {
     const rowContainer = this.visibleRows[tick];
     this.container.removeChild(rowContainer);
     delete this.visibleRows[tick];
+  }
+
+  public updateNoteSize(app: Application) {
+    // Update BLOCK_SIZE based on screen size
+    BLOCK_SIZE = app.screen.width / 40;
+  }
+
+  public redraw(app: Application) {
+    this.container.removeChildren();
+    this.visibleRows = {};
+    this.updateNoteSize(app);
+    this.currentTick = 0;
+    this.update(this.currentTick);
   }
 
   update(tick: number): Array<number> {

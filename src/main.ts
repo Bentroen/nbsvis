@@ -1,7 +1,7 @@
-import { Application, Container, Text, TextureStyle } from 'pixi.js';
+import { Application, Container, Text, TextStyle, TextureStyle } from 'pixi.js';
 
 import { loadInstruments, playSong } from './audio';
-import { loadSong, NoteManager } from './note';
+import { loadSong, NoteManager, setBlockSize } from './note';
 import { PianoManager } from './piano';
 
 TextureStyle.defaultOptions.scaleMode = 'nearest';
@@ -21,6 +21,8 @@ await app.init({
 });
 
 appContainer.appendChild(app.canvas);
+
+// Text style
 
 //----------------------------------------------------------------
 
@@ -44,12 +46,24 @@ let currentTick = 0;
 const fpsLabel = new Text();
 fpsLabel.x = 10;
 fpsLabel.y = 10;
+fpsLabel.style = new TextStyle({
+  fontFamily: 'Monocraft', // Change this to your desired font
+  fontSize: 24,
+  fill: 'black',
+  align: 'center',
+});
 app.stage.addChild(fpsLabel);
 
 // Add label showing current tick
 const label = new Text();
 label.x = 10;
 label.y = 40;
+label.style = new TextStyle({
+  fontFamily: 'Monocraft', // Change this to your desired font
+  fontSize: 24,
+  fill: 'black',
+  align: 'center',
+});
 app.stage.addChild(label);
 
 app.ticker.add((time) => {
@@ -59,6 +73,22 @@ app.ticker.add((time) => {
   const notesToPlay = noteManager.update(currentTick);
   pianoManager.update(time.elapsedMS, notesToPlay);
 });
+
+function resize() {
+  app.renderer.resize(window.innerWidth, window.innerHeight);
+  pianoManager.redraw(app);
+  noteManager.redraw(app);
+  pianoContainer.position.set(0, app.screen.height - pianoContainer.height - 10);
+  noteContainer.position.set(0, 0);
+  noteManager.setKeyPositions(pianoManager.keyPositions);
+  setBlockSize(app.screen.width / 57);
+}
+
+// Add event listener for window resize
+window.addEventListener('resize', resize);
+
+// Initial resize
+resize();
 
 //----------------------------------------------------------------
 
@@ -70,6 +100,9 @@ declare global {
 
 // Audio
 async function main() {
+  const font = new FontFace('Monocraft', 'url(/fonts/Monocraft.ttf)');
+  const loadedFont = await font.load();
+  document.fonts.add(loadedFont);
   await loadInstruments();
   playSong(song);
 }
