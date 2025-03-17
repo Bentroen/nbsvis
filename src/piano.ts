@@ -133,6 +133,10 @@ export class PianoManager {
     }
   }
 
+  public get pianoHeight(): number {
+    return WHITE_KEY_HEIGHT;
+  }
+
   public redraw(app: Application) {
     this.container.removeChildren();
     this.keys = [];
