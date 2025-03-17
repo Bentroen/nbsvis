@@ -1,5 +1,5 @@
 import { fromArrayBuffer, Note, Song } from '@encode42/nbs.js';
-import { Assets, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
+import { Application, Assets, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
 
 const noteBlockTexture = await Assets.load('/img/note-block-grayscale.png');
 
@@ -144,6 +144,7 @@ export class NoteManager {
   private currentTick = 0;
   private container: Container;
   private keyPositions: Array<number>;
+  private pianoHeight = 200;
   private visibleRows: Record<number, Container> = {};
 
   distanceScale = 0.5;
@@ -156,6 +157,10 @@ export class NoteManager {
 
   public setKeyPositions(keyPositions: Array<number>) {
     this.keyPositions = keyPositions;
+  }
+
+  public setPianoHeight(pianoHeight: number) {
+    this.pianoHeight = pianoHeight;
   }
 
   private getNotesAtTick(tick: number) {
@@ -197,8 +202,10 @@ export class NoteManager {
   }
 
   update(tick: number): Array<number> {
-    this.container.y = 900 - 200 + this.currentTick * BLOCK_SIZE * this.distanceScale;
-    // TODO: refactor this and visibleHeight calculation since they share the same logic
+    const screenHeight = this.container.parent.height;
+    const pianoHeight = this.pianoHeight;
+    this.container.y =
+      screenHeight - pianoHeight + this.currentTick * BLOCK_SIZE * this.distanceScale;
 
     // Check if the tick has changed
     const floorTick = Math.floor(tick);
@@ -211,7 +218,7 @@ export class NoteManager {
     const visibleTicks = new Set<number>(Object.keys(this.visibleRows).map(Number));
 
     // Calculate ticks that should be seen after the update
-    const visibleHeight = this.container.parent.height - 180; // height of piano
+    const visibleHeight = screenHeight - pianoHeight;
     const visibleRowCount = Math.floor(visibleHeight / BLOCK_SIZE) * (1 / this.distanceScale);
     const newTicks = new Set<number>();
     for (let i = 0; i < visibleRowCount; i++) {
