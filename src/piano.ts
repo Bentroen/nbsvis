@@ -7,12 +7,18 @@ const BLACK_KEY_HEIGHT_FACTOR = 2 / 3;
 
 const BLACK_KEY_POSITIONS = new Set([1, 3, 6, 8, 10]);
 
-const KEY_ANIMATION_TIME_MS = 200;
+const PRESS_ANIM_DURATION_MS = 200;
+const PRESS_TRAVEL_DISTANCE = 5;
+
+function easeOutQuad(x: number): number {
+  return 1 - (1 - x) * (1 - x);
+}
 
 abstract class KeyItem {
   sprite: Container;
 
-  animationTime = 0;
+  // 1.0 at the start, 0.0 when fully released
+  animationProgress = 0;
 
   constructor(posX: number) {
     this.sprite = this.draw(posX);
@@ -21,18 +27,22 @@ abstract class KeyItem {
   abstract draw(posX: number): Container;
 
   play() {
-    this.animationTime = KEY_ANIMATION_TIME_MS;
-    this.sprite.alpha = 0.5;
-    this.sprite.y = 5;
+    const isLifting = this.animationProgress < 0.5;
+    if (isLifting) {
+      this.animationProgress += 0.5;
+    } else {
+      this.animationProgress = 1.0;
+    }
   }
 
-  reset() {
-    this.sprite.alpha = 1;
-    this.sprite.y = 0;
-  }
+  update(deltaTimeMs: number) {
+    this.animationProgress -= deltaTimeMs * (1 / PRESS_ANIM_DURATION_MS);
+    this.animationProgress = Math.max(this.animationProgress, 0);
 
-  update(deltaTime: number) {
-    this.animationTime -= deltaTime;
+    const progress = this.animationProgress;
+    const travelAmount = (progress > 0.5 ? 1 - progress : progress) * 2;
+    const travelDistance = easeOutQuad(travelAmount) * PRESS_TRAVEL_DISTANCE;
+    this.sprite.position.y = travelDistance;
   }
 }
 
@@ -107,8 +117,8 @@ export class PianoManager {
 
     for (const key of this.playingKeys) {
       key.update(deltaTimeMs);
-      if (key.animationTime <= 0) {
-        key.reset();
+      if (key.animationProgress <= 0) {
+        this.playingKeys.delete(key);
       }
     }
   }
