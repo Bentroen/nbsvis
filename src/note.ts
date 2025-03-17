@@ -114,7 +114,8 @@ class NoteItem {
 
     // Note block texture
     const sprite = new Sprite(noteBlockTexture);
-    sprite.scale.set(32);
+    sprite.width = BLOCK_SIZE;
+    sprite.height = BLOCK_SIZE;
     sprite.blendMode = 'hard-light';
     sprite.alpha = 0.67; // Global alpha
     container.addChild(sprite);
