@@ -129,7 +129,7 @@ class NoteItem {
     });
 
     // Text
-    const label = new Text(this.getKeyLabel(), textStyle);
+    const label = new Text({ text: this.getKeyLabel(), style: textStyle });
     label.anchor.set(0.5, 0.5);
     label.position.set(BLOCK_SIZE / 2, BLOCK_SIZE / 2);
     label.alpha = 1;
