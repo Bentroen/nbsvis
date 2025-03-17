@@ -81,6 +81,7 @@ function resize() {
   pianoContainer.position.set(0, app.screen.height - pianoContainer.height - 10);
   noteContainer.position.set(0, 0);
   noteManager.setKeyPositions(pianoManager.keyPositions);
+  noteManager.setPianoHeight(pianoContainer.height);
   setBlockSize(app.screen.width / 57);
 }
 
