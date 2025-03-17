@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@encode42/nbs.js':
+        specifier: ^5.0.2
+        version: 5.0.2
       '@nbsjs/core':
         specifier: ^6.0.0
         version: 6.0.0
@@ -57,6 +60,11 @@ packages:
   '@babel/runtime@7.26.10':
     resolution: {integrity: sha512-2WJMeRQPHKSPemqk/awGrAiuFfzBmOIPXKizAsVhWH9YJqLZ0H+HS4c8loHGgW6utJ3E/ejXQUsiGaQy2NZ9Fw==}
     engines: {node: '>=6.9.0'}
+
+  '@encode42/nbs.js@5.0.2':
+    resolution: {integrity: sha512-lbGs1ZGvvUaXt672CG1oQY55QMyl5uTbBgsGpvSN6qJTqZjVxcr/jqzGBiU+JbqImFV3jQ+zQjrxa4QD40Z+lg==}
+    engines: {node: '>=18', pnpm: '>=8'}
+    deprecated: Moved to @nbsjs/core
 
   '@esbuild/aix-ppc64@0.25.1':
     resolution: {integrity: sha512-kfYGy8IdzTGy+z0vFGvExZtxkFlA4zAxgKEahG9KE1ScBjpQnFsNOX8KTU5ojNru5ed5CVoJYXFtoxaq5nFbjQ==}
@@ -1396,6 +1404,8 @@ snapshots:
   '@babel/runtime@7.26.10':
     dependencies:
       regenerator-runtime: 0.14.1
+
+  '@encode42/nbs.js@5.0.2': {}
 
   '@esbuild/aix-ppc64@0.25.1':
     optional: true

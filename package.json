@@ -14,6 +14,7 @@
     "fix": "pnpm run format && pnpm run lint:fix"
   },
   "dependencies": {
+    "@encode42/nbs.js": "^5.0.2",
     "@nbsjs/core": "^6.0.0",
     "pixi.js": "^8.8.1",
     "tone": "^15.0.4"
