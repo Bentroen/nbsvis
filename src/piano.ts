@@ -7,8 +7,8 @@ const BLACK_KEY_HEIGHT_FACTOR = 2 / 3;
 
 const BLACK_KEY_POSITIONS = new Set([1, 3, 6, 8, 10]);
 
-const PRESS_ANIM_DURATION_MS = 200;
-const PRESS_TRAVEL_DISTANCE = 5;
+const PRESS_ANIM_DURATION_MS = 250;
+const PRESS_TRAVEL_DISTANCE = 7;
 
 function easeOutQuad(x: number): number {
   return 1 - (1 - x) * (1 - x);
@@ -27,11 +27,16 @@ abstract class KeyItem {
   abstract draw(posX: number): Container;
 
   play() {
-    const isLifting = this.animationProgress < 0.5;
-    if (isLifting) {
-      this.animationProgress += 0.5;
-    } else {
+    const progress = this.animationProgress;
+
+    if (progress === 0) {
+      // Idle
       this.animationProgress = 1.0;
+    } else if (progress < 0.5) {
+      // Lifting
+      this.animationProgress = 1 - progress;
+    } else {
+      // Pressing (do nothing)
     }
   }
 
