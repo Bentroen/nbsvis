@@ -62,10 +62,16 @@ app.ticker.add((time) => {
 
 //----------------------------------------------------------------
 
+declare global {
+  interface Window {
+    main: () => Promise<void>;
+  }
+}
+
 // Audio
 async function main() {
   await loadInstruments();
   playSong(song);
 }
 
-(window as any).main = main;
+window.main = main;
