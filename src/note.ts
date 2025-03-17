@@ -145,6 +145,7 @@ export class NoteManager {
   private container: Container;
   private keyPositions: Array<number>;
   private pianoHeight = 200;
+  private screenHeight = 600;
   private visibleRows: Record<number, Container> = {};
 
   distanceScale = 0.5;
@@ -157,6 +158,10 @@ export class NoteManager {
 
   public setKeyPositions(keyPositions: Array<number>) {
     this.keyPositions = keyPositions;
+  }
+
+  public setScreenHeight(screenHeight: number) {
+    this.screenHeight = screenHeight;
   }
 
   public setPianoHeight(pianoHeight: number) {
@@ -202,7 +207,7 @@ export class NoteManager {
   }
 
   update(tick: number): Array<number> {
-    const screenHeight = this.container.parent.height;
+    const screenHeight = this.screenHeight;
     const pianoHeight = this.pianoHeight;
     this.container.y =
       screenHeight - pianoHeight + this.currentTick * BLOCK_SIZE * this.distanceScale;
