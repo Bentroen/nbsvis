@@ -16,7 +16,8 @@ if (!appContainer) {
 
 await app.init({
   backgroundColor: 0x1099bb,
-  resizeTo: window,
+  width: 1280,
+  height: 720,
   useBackBuffer: true,
 });
 
@@ -74,7 +75,14 @@ app.ticker.add((time) => {
   pianoManager.update(time.elapsedMS, notesToPlay);
 });
 
-function resize() {
+function resize(width?: number, height?: number) {
+  if (!width || !height) {
+    setResponsive(true);
+  } else {
+    setResponsive(false);
+  }
+  width = width || window.innerWidth;
+  height = height || window.innerHeight;
   app.renderer.resize(window.innerWidth, window.innerHeight);
   pianoManager.redraw(app);
   noteManager.redraw(app);
@@ -87,7 +95,17 @@ function resize() {
 }
 
 // Add event listener for window resize
-window.addEventListener('resize', resize);
+function resizeHandler() {
+  resize();
+}
+
+function setResponsive(responsive: boolean) {
+  if (responsive) {
+    window.addEventListener('resize', resizeHandler);
+  } else {
+    window.removeEventListener('resize', resizeHandler);
+  }
+}
 
 // Initial resize
 resize();
@@ -97,6 +115,7 @@ resize();
 declare global {
   interface Window {
     main: () => Promise<void>;
+    resize: (width?: number, height?: number) => void;
   }
 }
 
@@ -110,3 +129,4 @@ async function main() {
 }
 
 window.main = main;
+window.resize = resize;

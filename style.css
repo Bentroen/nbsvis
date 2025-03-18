@@ -10,7 +10,7 @@ body {
   height: 100vh;
 }
 
-#play {
+.controls {
   position: absolute;
   bottom: 0;
 }
