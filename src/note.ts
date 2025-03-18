@@ -73,7 +73,7 @@ class NoteItem {
     this.instrument = note.instrument;
     this.key = key;
     this.pitch = pitch;
-    this.velocity = note.velocity;
+    this.velocity = note.velocity / 100;
   }
 
   private getXPos(keyPositions: Array<number>): number {
@@ -103,7 +103,7 @@ class NoteItem {
     const y = 0;
     const container = new Container();
     container.position.set(x, y);
-    container.alpha = 0.5 + this.velocity / 50;
+    container.alpha = 0.5 + this.velocity * 0.5;
 
     // Background rectangle
     const rect = new Graphics().rect(0, 0, BLOCK_SIZE, BLOCK_SIZE);
