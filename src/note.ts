@@ -1,13 +1,11 @@
 import { fromArrayBuffer, Note, Song } from '@encode42/nbs.js';
-import { Application, Assets, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
+import { Assets, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
+
+import { WHITE_KEY_COUNT } from './piano';
 
 const noteBlockTexture = await Assets.load('/img/note-block-grayscale.png');
 
 let BLOCK_SIZE = 32;
-
-export const setBlockSize = (size: number) => {
-  BLOCK_SIZE = size;
-};
 
 const instrumentColors = [
   '#1964ac',
@@ -193,15 +191,21 @@ export class NoteManager {
     delete this.visibleRows[tick];
   }
 
-  public updateNoteSize(app: Application) {
+  public updateNoteSize(totalWidth: number) {
     // Update BLOCK_SIZE based on screen size
-    BLOCK_SIZE = app.screen.width / 40;
+    BLOCK_SIZE = 2 ** Math.floor(Math.log2(totalWidth / WHITE_KEY_COUNT));
+    console.log('BLOCK_SIZE', BLOCK_SIZE);
+    console.log('KEY_WIDTH', totalWidth / WHITE_KEY_COUNT);
+
+    // For allowing non-power-of-two block sizes:
+    // (Disabled because it causes rounding artifacts when moving the notes)
+    //BLOCK_SIZE = Math.floor(totalWidth / WHITE_KEY_COUNT);
   }
 
-  public redraw(app: Application) {
+  public redraw(totalWidth: number) {
     this.container.removeChildren();
     this.visibleRows = {};
-    this.updateNoteSize(app);
+    this.updateNoteSize(totalWidth);
     this.currentTick = 0;
     this.update(this.currentTick);
   }

@@ -1,4 +1,7 @@
-import { Application, Container, Graphics } from 'pixi.js';
+import { Container, Graphics } from 'pixi.js';
+
+const KEY_COUNT = 88;
+export const WHITE_KEY_COUNT = Math.ceil((KEY_COUNT / 12) * 7);
 
 let WHITE_KEY_WIDTH = 35;
 let WHITE_KEY_HEIGHT = 113;
@@ -8,7 +11,7 @@ const BLACK_KEY_HEIGHT_FACTOR = 2 / 3;
 const BLACK_KEY_POSITIONS = new Set([1, 3, 6, 8, 10]);
 
 const PRESS_ANIM_DURATION_MS = 250;
-const PRESS_TRAVEL_DISTANCE = 7;
+let PRESS_TRAVEL_DISTANCE = 7;
 
 function easeOutQuad(x: number): number {
   return 1 - (1 - x) * (1 - x);
@@ -113,9 +116,13 @@ export class PianoManager {
     }
   }
 
-  public updateKeySize(app: Application) {
-    WHITE_KEY_WIDTH = app.screen.width / 57;
+  public updateKeySize(totalWidth: number) {
+    const pianoKeyWidth = totalWidth / WHITE_KEY_COUNT - 2;
+
+    WHITE_KEY_WIDTH = pianoKeyWidth;
     WHITE_KEY_HEIGHT = WHITE_KEY_WIDTH * 3.25;
+
+    PRESS_TRAVEL_DISTANCE = WHITE_KEY_HEIGHT / 15;
   }
 
   public update(deltaTimeMs: number, notesToPlay: Array<number>) {
@@ -137,11 +144,11 @@ export class PianoManager {
     return WHITE_KEY_HEIGHT;
   }
 
-  public redraw(app: Application) {
+  public redraw(totalWidth: number) {
     this.container.removeChildren();
     this.keys = [];
     this.keyPositions = [];
-    this.updateKeySize(app);
+    this.updateKeySize(totalWidth);
     this.draw();
   }
 }

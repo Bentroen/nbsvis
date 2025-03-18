@@ -1,7 +1,7 @@
 import { Application, Container, Text, TextStyle, TextureStyle } from 'pixi.js';
 
 import { loadInstruments, playSong } from './audio';
-import { loadSong, NoteManager, setBlockSize } from './note';
+import { loadSong, NoteManager } from './note';
 import { PianoManager } from './piano';
 
 TextureStyle.defaultOptions.scaleMode = 'nearest';
@@ -83,15 +83,23 @@ function resize(width?: number, height?: number) {
   }
   width = width || window.innerWidth;
   height = height || window.innerHeight;
-  app.renderer.resize(window.innerWidth, window.innerHeight);
-  pianoManager.redraw(app);
-  noteManager.redraw(app);
-  pianoContainer.position.set(0, app.screen.height - pianoContainer.height - 10);
+  app.renderer.resize(width, height);
+
+  // 4x = block size 64x
+  // 3x = block size 48x
+  // 2x = block size 32x
+  // 1x = block size 16x
+  // 0.5x = block size 8x
+  // 0.25x = block size 4x
+  //app.stage.scale.set(0.5, 0.5);
+
+  pianoManager.redraw(app.renderer.width);
+  noteManager.redraw(app.renderer.width);
+  pianoContainer.position.set(0, app.renderer.height - pianoContainer.height - 10);
   noteContainer.position.set(0, 0);
   noteManager.setKeyPositions(pianoManager.keyPositions);
   noteManager.setPianoHeight(pianoContainer.height);
-  noteManager.setScreenHeight(app.screen.height);
-  setBlockSize(app.screen.width / 57);
+  noteManager.setScreenHeight(app.renderer.height);
 }
 
 // Add event listener for window resize
