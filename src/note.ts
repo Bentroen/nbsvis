@@ -1,4 +1,4 @@
-import { fromArrayBuffer, Note, Song } from '@encode42/nbs.js';
+import { Note, Song } from '@encode42/nbs.js';
 import { Assets, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
 
 import { WHITE_KEY_COUNT } from './piano';
@@ -34,12 +34,6 @@ function normalizeKeyAndPitch(note: Note): { key: number; pitch: number } {
   key = Math.max(0, Math.min(87, key));
   const pitch = weightedKey - key;
   return { key, pitch };
-}
-
-export async function loadSong(url: string) {
-  const response = await fetch(url);
-  const arrayBuffer = await response.arrayBuffer();
-  return fromArrayBuffer(arrayBuffer);
 }
 
 export function loadNotes(song: Song) {

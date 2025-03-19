@@ -1,7 +1,7 @@
 import { Application, TextureStyle } from 'pixi.js';
 
 import { loadInstruments, playSong } from './audio';
-import { loadSong } from './note';
+import { loadSong } from './song';
 import { Viewer } from './viewer';
 
 TextureStyle.defaultOptions.scaleMode = 'nearest';
