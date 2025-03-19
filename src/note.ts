@@ -199,8 +199,6 @@ export class NoteManager {
   public updateNoteSize(totalWidth: number) {
     // Update BLOCK_SIZE based on screen size
     BLOCK_SIZE = 2 ** Math.floor(Math.log2(totalWidth / WHITE_KEY_COUNT));
-    console.log('BLOCK_SIZE', BLOCK_SIZE);
-    console.log('KEY_WIDTH', totalWidth / WHITE_KEY_COUNT);
 
     // For allowing non-power-of-two block sizes:
     // (Disabled because it causes rounding artifacts when moving the notes)
