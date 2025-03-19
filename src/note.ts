@@ -57,6 +57,10 @@ export function loadNotes(song: Song) {
     }
   }
 
+  for (const tick in notesPerTick) {
+    notesPerTick[tick].sort((a, b) => b.key + b.pitch / 100 - (a.key + a.pitch / 100));
+  }
+
   return notesPerTick;
 }
 
@@ -172,7 +176,7 @@ export class NoteManager {
 
   private addNoteSprite(note: NoteItem, container: Container) {
     const sprite = note.getSprite(this.keyPositions);
-    container.addChild(sprite);
+    container.addChildAt(sprite, 0);
   }
 
   private addTick(tick: number) {
