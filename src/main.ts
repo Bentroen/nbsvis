@@ -77,7 +77,7 @@ declare global {
 }
 
 // Audio
-await loadInstruments();
+await loadInstruments(extraSounds);
 
 function stop() {
   player.stop();

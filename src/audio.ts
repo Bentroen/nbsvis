@@ -1,6 +1,8 @@
 import { Song } from '@encode42/nbs.js';
 import * as Tone from 'tone';
 
+import { ExtraSounds } from './song';
+
 export const defaultInstrumentData = [
   { name: 'Harp', audioSrc: 'assets/sounds/harp.ogg' },
   { name: 'Double Bass', audioSrc: 'assets/sounds/dbass.ogg' },
@@ -38,7 +40,7 @@ limiter.toDestination();
 
 const instrumentBuffers: Record<number, Tone.ToneAudioBuffer> = {};
 
-export async function loadInstruments() {
+export async function loadInstruments(extraSounds: ExtraSounds[]) {
   await Tone.start(); // Ensure the audio context is running
 
   const promises = defaultInstrumentData.map(async (ins, index) => {
@@ -49,6 +51,23 @@ export async function loadInstruments() {
     await Tone.loaded(); // Wait for all samples to load
     instrumentBuffers[index] = buffer;
   });
+
+  if (extraSounds.length === 0) {
+    console.log('No extra sounds found');
+    return;
+  } else {
+    console.log('Extra sounds found:', extraSounds);
+  }
+
+  const extraPromises = extraSounds.map(async (extra) => {
+    const buffer = new Tone.ToneAudioBuffer({
+      url: URL.createObjectURL(new Blob([extra.data])),
+    });
+
+    await Tone.loaded(); // Wait for all samples to load
+    instrumentBuffers[extra.tone] = buffer;
+  });
+  promises.push(...extraPromises);
 
   await Promise.all(promises);
   console.log('All instruments loaded.');
