@@ -2,9 +2,9 @@ import pluginJs from '@eslint/js';
 import tsParser from '@typescript-eslint/parser';
 import prettier from 'eslint-config-prettier';
 import importPlugin from 'eslint-plugin-import';
+import unusedImports from 'eslint-plugin-unused-imports';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
-import unusedImports from 'eslint-plugin-unused-imports';
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
@@ -16,6 +16,13 @@ export default [
       globals: globals.browser,
       parser: tsParser,
       sourceType: 'module',
+    },
+    settings: {
+      'import/resolver': {
+        node: {
+          extensions: ['.js', '.mjs', '.cjs', '.ts'],
+        },
+      },
     },
     plugins: {
       import: importPlugin,
