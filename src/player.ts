@@ -6,12 +6,14 @@ import { Viewer } from './viewer';
 export class Player {
   viewer: Viewer;
   song: Song;
+  isPlaying: boolean;
 
   callbacks: { seek: (tick: number) => void };
 
   constructor(viewer: Viewer, song: Song, callbacks: { seek: (tick: number) => void }) {
     this.viewer = viewer;
     this.song = song;
+    this.isPlaying = false;
 
     this.callbacks = callbacks;
 
@@ -24,11 +26,21 @@ export class Player {
     });
   }
 
-  play() {
+  public togglePlay() {
+    if (!this.isPlaying) {
+      this.play();
+      this.isPlaying = true;
+    } else {
+      this.pause();
+      this.isPlaying = false;
+    }
+  }
+
+  private play() {
     play();
   }
 
-  pause() {
+  private pause() {
     pause();
   }
 

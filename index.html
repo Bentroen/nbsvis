@@ -1,32 +1,25 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="/style.css" />
-    <title>Vite + TS</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
-    <div class="controls">
-      <button id="play" onClick="play()">Play</button>
-      <button id="play" onClick="pause()">Pause</button>
-      <button id="stop" onClick="stop()">Stop</button>
-      <input
-        id="seek"
-        type="range"
-        min="0"
-        max="100"
-        step="1"
-        value="0"
-        style="width: 500px"
-        onInput="handleSeek(event)"
-      />
-      <button id="" onClick="resize(640, 360)">640x360</button>
-      <button id="" onClick="resize(1280, 720)">1280x720</button>
-      <button id="" onClick="resize(1920, 720)">1920x720</button>
-      <button id="" onClick="resize()">Scale to window</button>
-    </div>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/style.css" />
+  <title>Vite + TS</title>
+</head>
+
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/main.ts"></script>
+  <div class="controls">
+    <button id="togglePlay" onClick="togglePlay()">⏸️</button>
+    <input id="seek" type="range" min="0" max="100" step="1" value="0" style="width: 500px"
+      onInput="handleSeek(event)" />
+    <button id="" onClick="resize(640, 360)">640x360</button>
+    <button id="" onClick="resize(1280, 720)">1280x720</button>
+    <button id="" onClick="resize(1920, 720)">1920x720</button>
+    <button id="" onClick="resize()">Scale to window</button>
+  </div>
+</body>
+
 </html>

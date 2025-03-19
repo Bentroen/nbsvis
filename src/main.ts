@@ -69,8 +69,7 @@ resize();
 
 declare global {
   interface Window {
-    play: () => void;
-    pause: () => void;
+    togglePlay: () => void;
     stop: () => void;
     handleSeek: (event: Event) => void;
     resize: (width?: number, height?: number) => void;
@@ -79,14 +78,6 @@ declare global {
 
 // Audio
 await loadInstruments();
-
-function play() {
-  player.play();
-}
-
-function pause() {
-  player.pause();
-}
 
 function stop() {
   player.stop();
@@ -110,8 +101,14 @@ function seekCallback(tick: number) {
   input.value = tick.toString();
 }
 
-window.play = play;
-window.pause = pause;
+window.togglePlay = () => {
+  player.togglePlay();
+  /// get togglePlay button
+  const button = document.getElementById('togglePlay');
+  if (button) {
+    button.innerText = player.isPlaying ? '⏸️' : '▶️';
+  }
+};
 window.stop = stop;
 window.handleSeek = handleSeek;
 window.resize = resize;
