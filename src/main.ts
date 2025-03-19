@@ -1,4 +1,4 @@
-import { Application, Container, Text, TextStyle, TextureStyle } from 'pixi.js';
+import { Application, Container, Text, TextureStyle } from 'pixi.js';
 
 import { loadInstruments, playSong } from './audio';
 import { loadSong, NoteManager } from './note';
@@ -47,24 +47,12 @@ let currentTick = 0;
 const fpsLabel = new Text();
 fpsLabel.x = 10;
 fpsLabel.y = 10;
-fpsLabel.style = new TextStyle({
-  fontFamily: 'Monocraft', // Change this to your desired font
-  fontSize: 24,
-  fill: 'black',
-  align: 'center',
-});
 app.stage.addChild(fpsLabel);
 
 // Add label showing current tick
 const label = new Text();
 label.x = 10;
 label.y = 40;
-label.style = new TextStyle({
-  fontFamily: 'Monocraft', // Change this to your desired font
-  fontSize: 24,
-  fill: 'black',
-  align: 'center',
-});
 app.stage.addChild(label);
 
 app.ticker.add((time) => {
@@ -129,9 +117,9 @@ declare global {
 
 // Audio
 async function main() {
-  const font = new FontFace('Monocraft', 'url(/fonts/Monocraft.ttf)');
-  const loadedFont = await font.load();
-  document.fonts.add(loadedFont);
+  //const font = new FontFace('Monocraft', '/fonts/Monocraft.ttf');
+  //const loadedFont = await font.load();
+  //document.fonts.add(loadedFont);
   await loadInstruments();
   playSong(song);
 }

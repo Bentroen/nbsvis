@@ -125,7 +125,6 @@ class NoteItem {
 
     // Text style
     const textStyle = new TextStyle({
-      fontFamily: 'Monocraft', // Change this to your desired font
       fontSize: 12 * (BLOCK_SIZE / 32),
       fill: 'white',
       align: 'center',
