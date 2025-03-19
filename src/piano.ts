@@ -1,4 +1,4 @@
-import { Container, Graphics } from 'pixi.js';
+import { Assets, Container, Graphics, Sprite } from 'pixi.js';
 
 const KEY_COUNT = 88;
 export const WHITE_KEY_COUNT = Math.ceil((KEY_COUNT / 12) * 7);
@@ -7,6 +7,12 @@ let WHITE_KEY_WIDTH = 35;
 let WHITE_KEY_HEIGHT = 113;
 const BLACK_KEY_WIDTH_FACTOR = 2 / 3;
 const BLACK_KEY_HEIGHT_FACTOR = 2 / 3;
+
+const whiteKeyTexture = await Assets.load('/img/key_white.png');
+const blackKeyTexture = await Assets.load('/img/key_black.png');
+
+whiteKeyTexture.source.scaleMode = 'nearest';
+blackKeyTexture.source.scaleMode = 'nearest';
 
 const BLACK_KEY_POSITIONS = new Set([1, 3, 6, 8, 10]);
 
@@ -64,6 +70,13 @@ class BlackKeyItem extends KeyItem {
     key.fill(0x000000);
     container.position.set(posX + (width - WHITE_KEY_WIDTH) / 2 - 3, 0);
     container.addChild(key);
+
+    // Apply texture
+    const textureSprite = new Sprite(blackKeyTexture);
+    textureSprite.width = width;
+    textureSprite.height = height;
+    container.addChild(textureSprite);
+
     return container;
   }
 }
@@ -76,6 +89,15 @@ class WhiteKeyItem extends KeyItem {
     key.fill(0xffffff);
     container.position.set(posX, 0);
     container.addChild(key);
+
+    // Apply texture
+    const textureSprite = new Sprite(whiteKeyTexture);
+    textureSprite.width = WHITE_KEY_WIDTH;
+    textureSprite.height = WHITE_KEY_HEIGHT;
+    textureSprite.position.set(0, 3);
+    textureSprite.anchor.set(0, 0);
+    container.addChild(textureSprite);
+
     return container;
   }
 }
