@@ -6,6 +6,75 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="/style.css" />
   <title>Vite + TS</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #6b6b6b;
+      color: #fff;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    button {
+      background-color: #727272;
+      border: 3px solid #555;
+      color: #fff;
+      padding: 10px 20px;
+      font-family: 'Minecraft', sans-serif;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 4px 4px 0 #444;
+      transition: all 0.1s ease;
+    }
+
+    button:hover {
+      background-color: #888;
+      box-shadow: 2px 2px 0 #444;
+      transform: translate(2px, 2px);
+    }
+
+    button:active {
+      background-color: #666;
+      box-shadow: 0px 0px 0 #444;
+      transform: translate(4px, 4px);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: #555;
+      height: 10px;
+      border-radius: 5px;
+      box-shadow: 2px 2px 0 #444;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #fff;
+      border: 3px solid #555;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 2px 2px 0 #444;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      background: #fff;
+      border: 3px solid #555;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 2px 2px 0 #444;
+    }
+  </style>
 </head>
 
 <body>
