@@ -209,7 +209,7 @@ export class NoteManager {
     const screenHeight = this.screenHeight;
     const pianoHeight = this.pianoHeight;
     this.container.y =
-      screenHeight - pianoHeight + this.currentTick * BLOCK_SIZE * this.distanceScale;
+      screenHeight - pianoHeight + tick * BLOCK_SIZE * this.distanceScale - 1.5 * BLOCK_SIZE;
 
     // Check if the tick has changed
     const floorTick = Math.floor(tick);
