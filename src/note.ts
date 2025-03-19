@@ -92,6 +92,7 @@ class NoteItem {
       const pitchingX = x - pitchingAmount;
       x = pitchingX;
     }
+    x -= BLOCK_SIZE / 2;
     return x;
   }
 

@@ -108,7 +108,7 @@ export class PianoManager {
         x += WHITE_KEY_WIDTH + 2;
       }
       this.keys.push(key);
-      this.keyPositions.push(key.sprite.position.x);
+      this.keyPositions.push(key.sprite.position.x + key.sprite.width / 2);
     }
 
     for (const key of blackKeys) {
