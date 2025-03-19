@@ -26,7 +26,7 @@ appContainer.appendChild(app.canvas);
 
 const song = await loadSong('song.nbs');
 const viewer = new Viewer(app, song);
-const player = new Player(viewer, song);
+const player = new Player(viewer, song, { seek: seekCallback });
 
 function resize(width?: number, height?: number) {
   if (!width || !height) {
@@ -98,9 +98,16 @@ function handleSeek(event: Event) {
   seek(value);
 }
 
-function seek(percent: number) {
-  player.seek(percent);
-  console.log('Seeking to', percent);
+function seek(tick: number) {
+  player.seek(tick);
+}
+
+const input = document.getElementById('seek') as HTMLInputElement;
+input.max = song.length.toString();
+
+function seekCallback(tick: number) {
+  const input = document.getElementById('seek') as HTMLInputElement;
+  input.value = tick.toString();
 }
 
 window.play = play;

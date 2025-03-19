@@ -7,14 +7,20 @@ export class Player {
   viewer: Viewer;
   song: Song;
 
-  constructor(viewer: Viewer, song: Song) {
+  callbacks: { seek: (tick: number) => void };
+
+  constructor(viewer: Viewer, song: Song, callbacks: { seek: (tick: number) => void }) {
     this.viewer = viewer;
     this.song = song;
+
+    this.callbacks = callbacks;
 
     loadSong(song);
 
     this.viewer.app.ticker.add(() => {
-      this.viewer.currentTick = getCurrentTick();
+      const currentTick = getCurrentTick();
+      this.viewer.currentTick = currentTick;
+      this.callbacks.seek(currentTick); // TODO: This is a bit hacky; should be part of audio handler
     });
   }
 
@@ -30,8 +36,8 @@ export class Player {
     stop();
   }
 
-  seek(percent: number) {
-    const tick = (percent / 100) * this.song.length;
+  seek(tick: number) {
     setCurrentTick(tick);
+    this.callbacks.seek(tick);
   }
 }
