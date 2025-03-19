@@ -1,8 +1,8 @@
-import { Application, Container, Text, TextureStyle } from 'pixi.js';
+import { Application, TextureStyle } from 'pixi.js';
 
 import { loadInstruments, playSong } from './audio';
-import { loadSong, NoteManager } from './note';
-import { PianoManager } from './piano';
+import { loadSong } from './note';
+import { Viewer } from './viewer';
 
 TextureStyle.defaultOptions.scaleMode = 'nearest';
 
@@ -23,45 +23,8 @@ await app.init({
 
 appContainer.appendChild(app.canvas);
 
-// Text style
-
-//----------------------------------------------------------------
-
-const song = await loadSong('/song.nbs');
-
-const pianoContainer = new Container();
-const pianoManager = new PianoManager(pianoContainer);
-pianoContainer.position.set(0, app.screen.height - pianoContainer.height - 10);
-
-const keyPositions = pianoManager.keyPositions;
-const noteContainer = new Container();
-const noteManager = new NoteManager(song, noteContainer, keyPositions);
-noteContainer.position.set(0, 0);
-app.stage.addChild(noteContainer);
-
-app.stage.addChild(pianoContainer);
-
-let currentTick = 0;
-
-// Add label showing current FPS
-const fpsLabel = new Text();
-fpsLabel.x = 10;
-fpsLabel.y = 10;
-app.stage.addChild(fpsLabel);
-
-// Add label showing current tick
-const label = new Text();
-label.x = 10;
-label.y = 40;
-app.stage.addChild(label);
-
-app.ticker.add((time) => {
-  currentTick += (time.elapsedMS / 1000) * song.tempo;
-  label.text = `Tick: ${currentTick.toFixed(2)}`;
-  fpsLabel.text = `${Math.round(app.ticker.FPS)} FPS`;
-  const notesToPlay = noteManager.update(currentTick);
-  pianoManager.update(time.elapsedMS, notesToPlay);
-});
+const song = await loadSong('song.nbs');
+const viewer = new Viewer(app, song);
 
 function resize(width?: number, height?: number) {
   if (!width || !height) {
@@ -81,13 +44,7 @@ function resize(width?: number, height?: number) {
   // 0.25x = block size 4x
   //app.stage.scale.set(0.5, 0.5);
 
-  pianoManager.redraw(app.renderer.width);
-  noteManager.redraw(app.renderer.width);
-  pianoContainer.position.set(0, app.renderer.height - pianoContainer.height - 10);
-  noteContainer.position.set(0, 0);
-  noteManager.setKeyPositions(pianoManager.keyPositions);
-  noteManager.setPianoHeight(pianoContainer.height);
-  noteManager.setScreenHeight(app.renderer.height);
+  viewer.resize(width, height);
 }
 
 // Add event listener for window resize
@@ -117,9 +74,6 @@ declare global {
 
 // Audio
 async function main() {
-  //const font = new FontFace('Monocraft', '/fonts/Monocraft.ttf');
-  //const loadedFont = await font.load();
-  //document.fonts.add(loadedFont);
   await loadInstruments();
   playSong(song);
 }
