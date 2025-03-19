@@ -202,8 +202,7 @@ export class NoteManager {
     this.container.removeChildren();
     this.visibleRows = {};
     this.updateNoteSize(totalWidth);
-    this.currentTick = 0;
-    this.update(this.currentTick);
+    this.update(-1);
   }
 
   update(tick: number): Array<number> {
