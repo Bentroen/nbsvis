@@ -1,59 +1,68 @@
 import { Song, fromArrayBuffer } from '@encode42/nbs.js';
 import JSZIP from 'jszip';
 
-const isZipFile = (buffer: ArrayBuffer) => {
+function isZipFile(buffer: ArrayBuffer) {
   const view = new Uint8Array(buffer);
   return view[0] === 0x50 && view[1] === 0x4b && view[2] === 0x03 && view[3] === 0x04;
-};
+}
 
-export type ExtraSounds = {
-  data: ArrayBuffer;
-  tone: number;
-};
+function getBaseName(url: string) {
+  return new URL(url, 'file://').pathname.split('/').pop() || '';
+}
 
-export const loadSong = async (
-  url: string,
-): Promise<{
-  extraSounds: ExtraSounds[];
+type ExtraSounds = Record<string, ArrayBuffer>;
+
+export async function loadSongFromUrl(url: string): Promise<{
   song: Song;
-}> => {
+  extraSounds: ExtraSounds;
+}> {
   const response = await fetch(url);
-  let arrayBuffer = await response.arrayBuffer();
-  const extraSounds: ExtraSounds[] = [];
+  const arrayBuffer = await response.arrayBuffer();
+  return await loadSong(arrayBuffer);
+}
+
+export async function loadSong(arrayBuffer: ArrayBuffer): Promise<{
+  song: Song;
+  extraSounds: ExtraSounds;
+}> {
   let song: Song;
+  let extraSounds: ExtraSounds = {};
+
   if (isZipFile(arrayBuffer)) {
     console.debug('Loading zip file');
-    const zip = await JSZIP.loadAsync(arrayBuffer);
-    // get the song file song.nbs on the root of the zip
-    const songFile = zip.file('song.nbs');
-    if (songFile) {
-      arrayBuffer = await songFile.async('arraybuffer');
-    }
-    // parse the song file
-    song = await fromArrayBuffer(arrayBuffer);
-    // get the extra sounds
-    // get all files in the sounds folder
-    const soundFiles = Object.keys(zip.files).filter((file) => file.startsWith('sounds/'));
-    // the files don't have a .ogg extension but they are ogg files
-    for (const file of soundFiles) {
-      const data = await zip.file(file)?.async('arraybuffer');
-      if (data) {
-        const fileName = file.split('/')[1];
-        const tone = song.instruments.loaded.find((i) => i.meta.soundFile === fileName)?.key || 45;
-        const extra = { data, tone };
-        console.debug('extra sound', extra);
-        extraSounds.push(extra);
-      }
-    }
-
-    arrayBuffer = (await zip.file('song.nbs')?.async('arraybuffer')) || arrayBuffer;
+    [song, extraSounds] = await loadZipFile(arrayBuffer);
   } else {
     console.debug('Loading nbs file');
-    song = await fromArrayBuffer(arrayBuffer);
+    song = await loadNbsFile(arrayBuffer);
   }
 
-  return {
-    extraSounds,
-    song,
-  };
-};
+  return { song, extraSounds };
+}
+
+async function loadZipFile(arrayBuffer: ArrayBuffer): Promise<[Song, ExtraSounds]> {
+  const zip = await JSZIP.loadAsync(arrayBuffer);
+
+  // Get the song file 'song.nbs' on the root of the zip
+  const songFile = zip.file('song.nbs');
+  if (songFile) {
+    arrayBuffer = await songFile.async('arraybuffer');
+  }
+  const song = await loadNbsFile(arrayBuffer);
+
+  // Load sound files from the 'sounds' directory
+  const soundFiles = Object.keys(zip.files).filter((file) => file.startsWith('sounds/'));
+  const extraSounds: ExtraSounds = {};
+  for (const file of soundFiles) {
+    const soundData = await zip.file(file)?.async('arraybuffer');
+    if (!soundData) continue;
+    const fileName = getBaseName(file);
+    extraSounds[fileName] = soundData;
+  }
+
+  return [song, extraSounds];
+}
+
+async function loadNbsFile(arrayBuffer: ArrayBuffer): Promise<Song> {
+  const song = await fromArrayBuffer(arrayBuffer);
+  return song;
+}

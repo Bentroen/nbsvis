@@ -2,7 +2,7 @@ import { Application, TextureStyle } from 'pixi.js';
 
 import { loadInstruments } from './audio';
 import { Player } from './player';
-import { loadSong } from './song';
+import { loadSongFromUrl } from './song';
 import { Viewer } from './viewer';
 
 TextureStyle.defaultOptions.scaleMode = 'nearest';
@@ -24,7 +24,7 @@ await app.init({
 
 appContainer.appendChild(app.canvas);
 
-const { song, extraSounds } = await loadSong('song.zip');
+const { song, extraSounds } = await loadSongFromUrl('song.zip');
 const viewer = new Viewer(app, song);
 const player = new Player(viewer, song, { seek: seekCallback });
 
