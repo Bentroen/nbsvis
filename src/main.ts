@@ -1,6 +1,7 @@
 import { Application, TextureStyle } from 'pixi.js';
 
-import { loadInstruments, playSong } from './audio';
+import { loadInstruments } from './audio';
+import { Player } from './player';
 import { loadSong } from './song';
 import { Viewer } from './viewer';
 
@@ -25,6 +26,7 @@ appContainer.appendChild(app.canvas);
 
 const song = await loadSong('song.nbs');
 const viewer = new Viewer(app, song);
+const player = new Player(viewer, song);
 
 function resize(width?: number, height?: number) {
   if (!width || !height) {
@@ -67,16 +69,42 @@ resize();
 
 declare global {
   interface Window {
-    main: () => Promise<void>;
+    play: () => void;
+    pause: () => void;
+    stop: () => void;
+    handleSeek: (event: Event) => void;
     resize: (width?: number, height?: number) => void;
   }
 }
 
 // Audio
-async function main() {
-  await loadInstruments();
-  playSong(song);
+await loadInstruments();
+
+function play() {
+  player.play();
 }
 
-window.main = main;
+function pause() {
+  player.pause();
+}
+
+function stop() {
+  player.stop();
+}
+
+function handleSeek(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const value = parseFloat(input.value);
+  seek(value);
+}
+
+function seek(percent: number) {
+  player.seek(percent);
+  console.log('Seeking to', percent);
+}
+
+window.play = play;
+window.pause = pause;
+window.stop = stop;
+window.handleSeek = handleSeek;
 window.resize = resize;

@@ -43,7 +43,6 @@ export class Viewer {
     app.stage.addChild(label);
 
     app.ticker.add((time) => {
-      this.currentTick += (time.elapsedMS / 1000) * song.tempo;
       label.text = `Tick: ${this.currentTick.toFixed(2)}`;
       fpsLabel.text = `${Math.round(app.ticker.FPS)} FPS`;
       const notesToPlay = this.noteManager.update(this.currentTick);

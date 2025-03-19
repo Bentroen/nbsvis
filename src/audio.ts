@@ -126,11 +126,34 @@ export function scheduleSong(events: Record<number, Array<NoteEvent>>, tempo: nu
     }, tick * secondsPerTick);
   }
 
-  transport.start();
+  console.log('Song scheduled.');
 }
 
-export function playSong(song: Song) {
+export function getCurrentTick() {
+  const transport = Tone.getTransport();
+  return (transport.ticks / transport.PPQ) * 4;
+}
+
+export function setCurrentTick(tick: number) {
+  const transport = Tone.getTransport();
+  transport.ticks = (tick * transport.PPQ) / 4;
+}
+
+export function loadSong(song: Song) {
   const notes = getNoteEvents(song);
   scheduleSong(notes, song.tempo * 15);
+}
+
+export function play() {
   Tone.getContext().resume();
+  Tone.getTransport().start();
+}
+
+export function pause() {
+  Tone.getTransport().pause();
+}
+
+export function stop() {
+  Tone.getTransport().stop();
+  Tone.getTransport().position = 0;
 }
