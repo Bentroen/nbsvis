@@ -24,7 +24,7 @@ await app.init({
 
 appContainer.appendChild(app.canvas);
 
-const song = await loadSong('song.nbs');
+const { song, extraSounds } = await loadSong('song.zip');
 const viewer = new Viewer(app, song);
 const player = new Player(viewer, song, { seek: seekCallback });
 

@@ -16,6 +16,7 @@
   "dependencies": {
     "@encode42/nbs.js": "^5.0.2",
     "@nbsjs/core": "^6.0.0",
+    "jszip": "^3.10.1",
     "pixi.js": "^8.8.1",
     "tone": "^15.0.4"
   },
