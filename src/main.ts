@@ -104,18 +104,15 @@ function seekCallback(tick: number) {
   input.value = tick.toString();
 }
 
-function TogglePlay(): () => void {
-  return () => {
-    player.togglePlay();
-    /// get togglePlay button
-    const button = document.getElementById('togglePlay');
-    if (button) {
-      button.innerText = player.isPlaying ? '⏸️' : '▶️';
-    }
-  };
+function togglePlay() {
+  player.togglePlay();
+  const button = document.getElementById('togglePlay');
+  if (button) {
+    button.innerText = player.isPlaying ? '⏸️' : '▶️';
+  }
 }
 
-window.togglePlay = TogglePlay();
+window.togglePlay = togglePlay;
 window.stop = stop;
 window.handleSeek = handleSeek;
 window.resize = resize;
