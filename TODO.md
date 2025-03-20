@@ -1,11 +1,11 @@
 ### Drawing
 
 - [ ] Removing FPS cap
-- [ ] Adjust app size to window size
+- [x] Adjust app size to window size
 
 ### Note blocks/Piano
 
-- [ ] Key press animations
+- [x] Key press animations
 - [ ] Auto-distance scale calculation (to try and keep a consistent scrolling speed)
 - [ ] Implement object pooling for note block sprites
 - [ ] Pre-generate note block instrument sprites
@@ -18,16 +18,17 @@
 - [ ] Piano keys lighting up in the color of the instrument
 - [ ] Disabling/customizing note block colors
 - [ ] Background filters (blur, glow etc.) https://pixijs.io/filters/docs/
+- [ ] Setting to normalize pitch (should the pressed key be the note key, or the actual factored pitch)
 
 # Audio
 
-- [ ] Sync audio and animation
-- [ ] Custom instrument loading
+- [x] Sync audio and animation
+- [x] Custom instrument loading
 - [ ] Figure out a way to avoid sound dropoffs (likely limiting the maximum number of channels, make it a setting)
 
 # Player
 
-- [ ] Player class with song controls, callbacks etc.
+- [x] Player class with song controls, callbacks etc.
 - [ ] Playback speed/pitch controls (e.g. +1st, 1.5x, reverse)
 - [ ] Keyboard controls (spacebar, left/right arrows)
 - [ ] Master volume control
@@ -40,7 +41,6 @@
 # Enhancements
 
 - [ ] Rainbow mode
-- [ ] Editor mode (not a priority)
 - [ ] Set background color/gradient
 
 # Project
@@ -53,6 +53,8 @@
 
 # Custom visualizers
 
+- [ ] Editor mode view
+- [ ] Vertical piano roll/different note scroll directions
 - [ ] Refactor to allow adding custom visualizers
 - [ ] No view (audio only)
 - [ ] Piano mosaic (one window per instrument)
