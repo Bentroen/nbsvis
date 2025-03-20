@@ -10,7 +10,7 @@ function getBaseName(url: string) {
   return new URL(url, 'file://').pathname.split('/').pop() || '';
 }
 
-type ExtraSounds = Record<string, ArrayBuffer>;
+export type ExtraSounds = Record<string, ArrayBuffer>;
 
 export async function loadSongFromUrl(url: string): Promise<{
   song: Song;

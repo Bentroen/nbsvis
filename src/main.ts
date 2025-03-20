@@ -1,6 +1,7 @@
 import { Application, TextureStyle } from 'pixi.js';
 
-import { loadInstruments } from './audio';
+import { loadSounds } from './audio';
+import { loadInstruments } from './instrument';
 import { Player } from './player';
 import { loadSongFromUrl } from './song';
 import { Viewer } from './viewer';
@@ -77,7 +78,8 @@ declare global {
 }
 
 // Audio
-await loadInstruments(extraSounds);
+const instruments = loadInstruments(song, extraSounds);
+loadSounds(instruments);
 
 function stop() {
   player.stop();
