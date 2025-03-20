@@ -25,7 +25,7 @@ await app.init({
 
 appContainer.appendChild(app.canvas);
 
-const { song, extraSounds } = await loadSongFromUrl('song.zip');
+const { song, extraSounds } = await loadSongFromUrl('song.nbs');
 const viewer = new Viewer(app, song);
 
 // Audio
@@ -70,18 +70,6 @@ function setResponsive(responsive: boolean) {
 
 // Initial resize
 resize();
-
-//----------------------------------------------------------------
-
-declare global {
-  interface Window {
-    togglePlay: () => void;
-    stop: () => void;
-    handleSeek: (event: Event) => void;
-    resize: (width?: number, height?: number) => void;
-  }
-}
-
 function stop() {
   player.stop();
 }
@@ -96,9 +84,6 @@ function seek(tick: number) {
   player.seek(tick);
 }
 
-const input = document.getElementById('seek') as HTMLInputElement;
-input.max = song.length.toString();
-
 function seekCallback(tick: number) {
   const input = document.getElementById('seek') as HTMLInputElement;
   input.value = tick.toString();
@@ -112,7 +97,54 @@ function togglePlay() {
   }
 }
 
-window.togglePlay = togglePlay;
-window.stop = stop;
-window.handleSeek = handleSeek;
-window.resize = resize;
+const controls = document.getElementById('controls');
+if (!controls) {
+  throw new Error('Controls container not found');
+}
+
+controls.style.position = 'absolute';
+controls.style.bottom = '10px';
+controls.style.left = '10px';
+controls.style.zIndex = '9999';
+
+const togglePlayButton = document.createElement('button');
+togglePlayButton.id = 'togglePlay';
+togglePlayButton.innerText = '⏸️';
+togglePlayButton.onclick = togglePlay;
+controls.appendChild(togglePlayButton);
+const stopButton = document.createElement('button');
+stopButton.id = 'stop';
+stopButton.innerText = '⏹️';
+stopButton.onclick = stop;
+controls.appendChild(stopButton);
+const seekInput = document.createElement('input');
+seekInput.id = 'seek';
+seekInput.type = 'range';
+seekInput.min = '0';
+seekInput.max = song.length.toString();
+seekInput.step = '1';
+seekInput.value = '0';
+seekInput.style.width = '500px';
+seekInput.oninput = handleSeek;
+controls.appendChild(seekInput);
+const resizeButton = document.createElement('button');
+resizeButton.innerText = 'Scale to window';
+resizeButton.onclick = () => resize();
+controls.appendChild(resizeButton);
+const resizeButton640 = document.createElement('button');
+resizeButton640.innerText = '640x360';
+resizeButton640.onclick = () => resize(640, 360);
+controls.appendChild(resizeButton640);
+const resizeButton1280 = document.createElement('button');
+resizeButton1280.innerText = '1280x720';
+resizeButton1280.onclick = () => resize(1280, 720);
+controls.appendChild(resizeButton1280);
+const resizeButton1920 = document.createElement('button');
+resizeButton1920.innerText = '1920x720';
+resizeButton1920.onclick = () => resize(1920, 720);
+controls.appendChild(resizeButton1920);
+appContainer.appendChild(controls);
+
+// add the controls element after the app container
+appContainer.parentNode?.insertBefore(controls, appContainer.nextSibling);
+// add the app container to the document body
