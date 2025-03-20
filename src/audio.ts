@@ -140,10 +140,9 @@ export class AudioEngine {
     });
     player.start(time);
 
-    const gainNode = new Tone.Gain(velocity);
-    const pannerNode = new Tone.Panner(panning);
+    const panVolNode = new Tone.PanVol(panning, Tone.gainToDb(velocity));
 
-    player.chain(gainNode, pannerNode, this.audioDestination);
+    player.chain(panVolNode, this.audioDestination);
   }
 
   private playNotes(notes: Array<NoteEvent>, time: number) {
