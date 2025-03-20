@@ -1,6 +1,6 @@
 import { Application, TextureStyle } from 'pixi.js';
 
-import { loadSounds } from './audio';
+import { AudioEngine } from './audio';
 import { loadInstruments } from './instrument';
 import { Player } from './player';
 import { loadSongFromUrl } from './song';
@@ -27,7 +27,12 @@ appContainer.appendChild(app.canvas);
 
 const { song, extraSounds } = await loadSongFromUrl('song.zip');
 const viewer = new Viewer(app, song);
-const player = new Player(viewer, song, { seek: seekCallback });
+
+// Audio
+const instruments = loadInstruments(song, extraSounds);
+const audioEngine = new AudioEngine(song, instruments);
+
+const player = new Player(viewer, audioEngine, song, { seek: seekCallback });
 
 function resize(width?: number, height?: number) {
   if (!width || !height) {
@@ -76,10 +81,6 @@ declare global {
     resize: (width?: number, height?: number) => void;
   }
 }
-
-// Audio
-const instruments = loadInstruments(song, extraSounds);
-loadSounds(instruments);
 
 function stop() {
   player.stop();

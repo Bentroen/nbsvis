@@ -11,16 +11,6 @@ type NoteEvent = {
   panning: number;
 };
 
-// Master audio chain
-const masterGain = new Tone.Gain(0.5); // Master volume control
-const compressor = new Tone.Compressor(-24, 3); // Dynamic range compression
-const limiter = new Tone.Limiter(-3); // Prevent clipping
-masterGain.connect(compressor);
-compressor.connect(limiter);
-limiter.toDestination();
-
-const instrumentBuffers: Record<number, Tone.ToneAudioBuffer> = {};
-
 function decodeAudioData(buffer: ArrayBuffer): Promise<AudioBuffer> {
   return Tone.getContext().decodeAudioData(buffer);
 }
@@ -35,51 +25,6 @@ async function loadAudio(audioSource: string | ArrayBuffer): Promise<AudioBuffer
     arrayBuffer = audioSource;
   }
   return await decodeAudioData(arrayBuffer);
-}
-
-export async function loadSounds(instruments: Array<PlayerInstrument>) {
-  await Tone.start(); // Ensure the audio context is running
-
-  const promises = instruments.map(async (ins, index) => {
-    const audioBuffer = await loadAudio(ins.audioSource);
-    if (!audioBuffer) return;
-    const buffer = new Tone.ToneAudioBuffer({
-      url: audioBuffer,
-      onload: () => console.log(`Loaded instrument ${ins.name}`),
-    });
-
-    await Tone.loaded(); // Wait for all samples to load
-    instrumentBuffers[index] = buffer;
-  });
-
-  await Promise.all(promises);
-  console.log('All instruments loaded.');
-}
-
-function playNote(note: NoteEvent, time: number) {
-  const { key, instrument, velocity, panning } = note;
-
-  if (velocity === 0) return;
-
-  const audioBuffer = instrumentBuffers[instrument];
-  if (!audioBuffer) return;
-
-  const player = new Tone.ToneBufferSource({
-    url: audioBuffer,
-    playbackRate: 2 ** ((key - 45) / 12),
-  });
-  player.start(time);
-
-  const gainNode = new Tone.Gain(velocity);
-  const pannerNode = new Tone.Panner(panning);
-
-  player.chain(gainNode, pannerNode, masterGain);
-}
-
-function playNotes(notes: Array<NoteEvent>, time: number) {
-  for (const note of notes) {
-    playNote(note, time);
-  }
 }
 
 function getNoteEvents(song: Song) {
@@ -112,50 +57,121 @@ function getNoteEvents(song: Song) {
   return noteEventsPerTick;
 }
 
-export function scheduleSong(events: Record<number, Array<NoteEvent>>, tempo: number) {
-  const transport = Tone.getTransport();
-  transport.stop();
-  transport.cancel();
-  transport.position = 0;
+export class AudioEngine {
+  instruments: Array<PlayerInstrument>;
+  song: Song;
 
-  transport.bpm.value = tempo;
-  const secondsPerTick = 60 / tempo / 4; // 4 ticks per beat
+  audioBuffers: Record<number, Tone.ToneAudioBuffer> = {};
 
-  for (const [tickStr, notes] of Object.entries(events)) {
-    const tick = parseInt(tickStr);
-    transport.schedule((time) => {
-      playNotes(notes, time);
-    }, tick * secondsPerTick);
+  audioDestination: Tone.ToneAudioNode;
+
+  constructor(song: Song, instruments: Array<PlayerInstrument>) {
+    this.song = song;
+    this.instruments = instruments;
+
+    // Master audio chain
+    const masterGain = new Tone.Gain(0.5); // Master volume control
+    const compressor = new Tone.Compressor(-24, 3); // Dynamic range compression
+    const limiter = new Tone.Limiter(-3); // Prevent clipping
+    masterGain.connect(compressor);
+    compressor.connect(limiter);
+    limiter.toDestination();
+    this.audioDestination = masterGain;
+
+    this.loadSounds();
+    this.loadSong();
   }
 
-  console.log('Song scheduled.');
-}
+  private async loadSounds() {
+    await Tone.start(); // Ensure the audio context is running
 
-export function getCurrentTick() {
-  const transport = Tone.getTransport();
-  return (transport.ticks / transport.PPQ) * 4;
-}
+    const promises = this.instruments.map(async (ins, index) => {
+      const audioBuffer = await loadAudio(ins.audioSource);
+      if (!audioBuffer) return;
+      const buffer = new Tone.ToneAudioBuffer({
+        url: audioBuffer,
+        onload: () => console.log(`Loaded instrument ${ins.name}`),
+      });
 
-export function setCurrentTick(tick: number) {
-  const transport = Tone.getTransport();
-  transport.ticks = (tick * transport.PPQ) / 4;
-}
+      await Tone.loaded(); // Wait for all samples to load
+      this.audioBuffers[index] = buffer;
+    });
 
-export function loadSong(song: Song) {
-  const notes = getNoteEvents(song);
-  scheduleSong(notes, song.tempo * 15);
-}
+    await Promise.all(promises);
+    console.debug('All instruments loaded.');
+  }
 
-export function play() {
-  Tone.getContext().resume();
-  Tone.getTransport().start();
-}
+  private loadSong() {
+    const notes = getNoteEvents(this.song);
+    this.scheduleSong(notes, this.song.tempo * 15);
+  }
 
-export function pause() {
-  Tone.getTransport().pause();
-}
+  private scheduleSong(events: Record<number, Array<NoteEvent>>, tempo: number) {
+    const transport = Tone.getTransport();
+    transport.stop();
+    transport.cancel();
+    transport.position = 0;
 
-export function stop() {
-  Tone.getTransport().stop();
-  Tone.getTransport().position = 0;
+    transport.bpm.value = tempo;
+    const secondsPerTick = 60 / tempo / 4; // 4 ticks per beat
+
+    for (const [tickStr, notes] of Object.entries(events)) {
+      const tick = parseInt(tickStr);
+      transport.schedule((time) => {
+        this.playNotes(notes, time);
+      }, tick * secondsPerTick);
+    }
+
+    console.log('Song scheduled.');
+  }
+
+  private playNote(note: NoteEvent, time: number) {
+    const { key, instrument, velocity, panning } = note;
+
+    if (velocity === 0) return;
+
+    const audioBuffer = this.audioBuffers[instrument];
+    if (!audioBuffer) return;
+
+    const player = new Tone.ToneBufferSource({
+      url: audioBuffer,
+      playbackRate: 2 ** ((key - 45) / 12),
+    });
+    player.start(time);
+
+    const gainNode = new Tone.Gain(velocity);
+    const pannerNode = new Tone.Panner(panning);
+
+    player.chain(gainNode, pannerNode, this.audioDestination);
+  }
+
+  private playNotes(notes: Array<NoteEvent>, time: number) {
+    for (const note of notes) {
+      this.playNote(note, time);
+    }
+  }
+
+  public get currentTick() {
+    const transport = Tone.getTransport();
+    return (transport.ticks / transport.PPQ) * 4;
+  }
+
+  public set currentTick(tick: number) {
+    const transport = Tone.getTransport();
+    transport.ticks = (tick * transport.PPQ) / 4;
+  }
+
+  public play() {
+    Tone.getContext().resume();
+    Tone.getTransport().start();
+  }
+
+  public pause() {
+    Tone.getTransport().pause();
+  }
+
+  public stop() {
+    Tone.getTransport().stop();
+    Tone.getTransport().position = 0;
+  }
 }
