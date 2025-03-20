@@ -133,9 +133,10 @@ export class AudioEngine {
     const audioBuffer = this.audioBuffers[instrument];
     if (!audioBuffer) return;
 
+    const insOffset = 45 - this.instruments[instrument].baseKey + 45;
     const player = new Tone.ToneBufferSource({
       url: audioBuffer,
-      playbackRate: 2 ** ((key - 45) / 12),
+      playbackRate: 2 ** ((key - insOffset) / 12),
     });
     player.start(time);
 
