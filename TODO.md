@@ -48,3 +48,15 @@
 - [ ] Move non-API stuff to demo folder
 - [ ] Publish to npm
 - [ ] CI/CD, documentation
+- [ ] Settings manager + Saving and loading settings from local storage
+- [ ] Publish API documentation + demo GitHub page
+
+# Custom visualizers
+
+- [ ] Refactor to allow adding custom visualizers
+- [ ] No view (audio only)
+- [ ] Piano mosaic (one window per instrument)
+- [ ] Pulsing instrument blocks
+- [ ] Single waveform (one window, overlapping instruments in each color)
+- [ ] Waveform mosaic (one window per instrument)
+- [ ] Player bar with bins (similar to Soundcloud player)
