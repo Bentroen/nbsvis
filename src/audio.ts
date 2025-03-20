@@ -2,6 +2,7 @@ import { Song } from '@encode42/nbs.js';
 import * as Tone from 'tone';
 
 import PlayerInstrument from './instrument';
+import { getTempoChangeEvents, getTempoSegments } from './song';
 
 type NoteEvent = {
   tick: number;
@@ -60,6 +61,7 @@ function getNoteEvents(song: Song) {
 export class AudioEngine {
   instruments: Array<PlayerInstrument>;
   song: Song;
+  tempoSegments: Record<number, number>;
 
   audioBuffers: Record<number, Tone.ToneAudioBuffer> = {};
 
@@ -68,6 +70,7 @@ export class AudioEngine {
   constructor(song: Song, instruments: Array<PlayerInstrument>) {
     this.song = song;
     this.instruments = instruments;
+    this.tempoSegments = getTempoSegments(song);
 
     // Master audio chain
     const masterGain = new Tone.Gain(0.5); // Master volume control
@@ -102,11 +105,16 @@ export class AudioEngine {
   }
 
   private loadSong() {
-    const notes = getNoteEvents(this.song);
-    this.scheduleSong(notes, this.song.tempo * 15);
+    const noteEvents = getNoteEvents(this.song);
+    const tempoChangeEvents = getTempoChangeEvents(this.song);
+    this.scheduleSong(noteEvents, tempoChangeEvents, this.song.tempo * 15);
   }
 
-  private scheduleSong(events: Record<number, Array<NoteEvent>>, tempo: number) {
+  private scheduleSong(
+    noteEvents: Record<number, Array<NoteEvent>>,
+    tempoChangeEvents: Record<number, number>,
+    tempo: number,
+  ) {
     const transport = Tone.getTransport();
     transport.stop();
     transport.cancel();
@@ -115,13 +123,19 @@ export class AudioEngine {
     transport.bpm.value = tempo;
     const secondsPerTick = 60 / tempo / 4; // 4 ticks per beat
 
-    for (const [tickStr, notes] of Object.entries(events)) {
+    for (const [tickStr, notes] of Object.entries(noteEvents)) {
       const tick = parseInt(tickStr);
       transport.schedule((time) => {
         this.playNotes(notes, time);
       }, tick * secondsPerTick);
     }
 
+    for (const [tickStr, newTempo] of Object.entries(tempoChangeEvents)) {
+      const tick = parseInt(tickStr);
+      transport.schedule((time) => {
+        transport.bpm.setValueAtTime(newTempo * 15, time);
+      }, tick * secondsPerTick);
+    }
     console.log('Song scheduled.');
   }
 
@@ -159,6 +173,10 @@ export class AudioEngine {
   public set currentTick(tick: number) {
     const transport = Tone.getTransport();
     transport.ticks = (tick * transport.PPQ) / 4;
+    const newBPM = this.tempoSegments[tick] * 15;
+    console.debug('Setting tick to:', tick);
+    console.debug('BPM:', newBPM);
+    transport.bpm.value = newBPM;
   }
 
   public play() {

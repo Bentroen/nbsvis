@@ -66,3 +66,41 @@ async function loadNbsFile(arrayBuffer: ArrayBuffer): Promise<Song> {
   const song = await fromArrayBuffer(arrayBuffer);
   return song;
 }
+
+function getTempoChangerInstrumentIds(song: Song): Array<number> {
+  return song.instruments.loaded.flatMap((instrument, id) =>
+    instrument.meta.name === 'Tempo Changer' ? [id] : [],
+  );
+}
+export function getTempoChangeEvents(song: Song) {
+  const tempoChangerInstrumentIds = getTempoChangerInstrumentIds(song);
+  const tempoChangeEvents: Record<number, number> = {};
+
+  for (const layer of song.layers) {
+    for (const tickStr in layer.notes) {
+      const note = layer.notes[tickStr];
+      if (tempoChangerInstrumentIds.includes(note.instrument)) {
+        const tick = parseInt(tickStr);
+        const tempo = note.pitch / 15; // Convert from BPM to t/s
+        tempoChangeEvents[tick] = tempo;
+      }
+    }
+  }
+
+  return tempoChangeEvents;
+}
+
+export function getTempoSegments(song: Song) {
+  // TODO: this is recalculated. Cache it or extend the Song class with this data
+  const tempoChangeEvents = getTempoChangeEvents(song);
+  const tempoSegments: Record<number, number> = {};
+  let lastTempo = song.tempo;
+
+  for (let tick = 0; tick < song.length; tick++) {
+    const tempo = tempoChangeEvents[tick] || lastTempo;
+    lastTempo = tempo;
+    tempoSegments[tick] = tempo;
+  }
+
+  return tempoSegments;
+}
