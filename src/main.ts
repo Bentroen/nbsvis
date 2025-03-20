@@ -1,8 +1,9 @@
 import { Application, TextureStyle } from 'pixi.js';
 
-import { loadInstruments } from './audio';
+import { AudioEngine } from './audio';
+import { loadInstruments } from './instrument';
 import { Player } from './player';
-import { loadSong } from './song';
+import { loadSongFromUrl } from './song';
 import { Viewer } from './viewer';
 
 TextureStyle.defaultOptions.scaleMode = 'nearest';
@@ -24,9 +25,14 @@ await app.init({
 
 appContainer.appendChild(app.canvas);
 
-const song = await loadSong('song.nbs');
+const { song, extraSounds } = await loadSongFromUrl('song.zip');
 const viewer = new Viewer(app, song);
-const player = new Player(viewer, song, { seek: seekCallback });
+
+// Audio
+const instruments = loadInstruments(song, extraSounds);
+const audioEngine = new AudioEngine(song, instruments);
+
+const player = new Player(viewer, audioEngine, song, { seek: seekCallback });
 
 function resize(width?: number, height?: number) {
   if (!width || !height) {
@@ -69,23 +75,11 @@ resize();
 
 declare global {
   interface Window {
-    play: () => void;
-    pause: () => void;
+    togglePlay: () => void;
     stop: () => void;
     handleSeek: (event: Event) => void;
     resize: (width?: number, height?: number) => void;
   }
-}
-
-// Audio
-await loadInstruments();
-
-function play() {
-  player.play();
-}
-
-function pause() {
-  player.pause();
 }
 
 function stop() {
@@ -110,8 +104,15 @@ function seekCallback(tick: number) {
   input.value = tick.toString();
 }
 
-window.play = play;
-window.pause = pause;
+function togglePlay() {
+  player.togglePlay();
+  const button = document.getElementById('togglePlay');
+  if (button) {
+    button.innerText = player.isPlaying ? '⏸️' : '▶️';
+  }
+}
+
+window.togglePlay = togglePlay;
 window.stop = stop;
 window.handleSeek = handleSeek;
 window.resize = resize;

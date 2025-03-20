@@ -16,6 +16,7 @@
   "dependencies": {
     "@encode42/nbs.js": "^5.0.2",
     "@nbsjs/core": "^6.0.0",
+    "jszip": "^3.10.1",
     "pixi.js": "^8.8.1",
     "tone": "^15.0.4"
   },
@@ -28,7 +29,7 @@
     "eslint-plugin-unused-imports": "^4.1.4",
     "globals": "^16.0.0",
     "prettier": "^3.5.3",
-    "typescript": "~5.7.2",
+    "typescript": "5.8.2",
     "typescript-eslint": "^8.26.1",
     "vite": "^6.2.0"
   }

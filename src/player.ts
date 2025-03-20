@@ -1,43 +1,63 @@
 import { Song } from '@encode42/nbs.js';
 
-import { play, pause, stop, getCurrentTick, loadSong, setCurrentTick } from './audio';
+import { AudioEngine } from './audio';
 import { Viewer } from './viewer';
 
 export class Player {
   viewer: Viewer;
+  audioEngine: AudioEngine;
   song: Song;
+  isPlaying: boolean;
 
   callbacks: { seek: (tick: number) => void };
 
-  constructor(viewer: Viewer, song: Song, callbacks: { seek: (tick: number) => void }) {
+  constructor(
+    viewer: Viewer,
+    audioEngine: AudioEngine,
+    song: Song,
+    callbacks: { seek: (tick: number) => void },
+  ) {
     this.viewer = viewer;
+    this.audioEngine = audioEngine;
     this.song = song;
+    this.isPlaying = false;
 
     this.callbacks = callbacks;
 
-    loadSong(song);
+    // TODO: this may be better handled here than in main.ts
+    // this.audioEngine.loadSong(song);
 
     this.viewer.app.ticker.add(() => {
-      const currentTick = getCurrentTick();
+      const currentTick = this.audioEngine.currentTick;
       this.viewer.currentTick = currentTick;
       this.callbacks.seek(currentTick); // TODO: This is a bit hacky; should be part of audio handler
     });
   }
 
-  play() {
-    play();
+  public togglePlay() {
+    if (!this.isPlaying) {
+      this.play();
+      this.isPlaying = true;
+    } else {
+      this.pause();
+      this.isPlaying = false;
+    }
   }
 
-  pause() {
-    pause();
+  private play() {
+    this.audioEngine.play();
+  }
+
+  private pause() {
+    this.audioEngine.pause();
   }
 
   stop() {
-    stop();
+    this.audioEngine.stop();
   }
 
   seek(tick: number) {
-    setCurrentTick(tick);
+    this.audioEngine.currentTick = tick;
     this.callbacks.seek(tick);
   }
 }
