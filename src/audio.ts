@@ -4,7 +4,7 @@ import * as Tone from 'tone';
 import PlayerInstrument from './instrument';
 import { getTempoChangeEvents, getTempoSegments } from './song';
 
-const MAX_AUDIO_SOURCES = 256;
+export const MAX_AUDIO_SOURCES = 256;
 
 type NoteEvent = {
   tick: number;
@@ -103,7 +103,10 @@ class AudioSource {
 class AudioSourcePool {
   private pool: Array<AudioSource> = [];
 
+  numSources: number;
+
   constructor(numSources: number) {
+    this.numSources = numSources;
     for (let i = 0; i < numSources; i++) {
       this.pool.push(new AudioSource());
     }
@@ -111,6 +114,13 @@ class AudioSourcePool {
 
   get activeSources() {
     return this.numSources - this.pool.length;
+  }
+
+  get() {
+    if (this.pool.length === 0) {
+      throw new Error('No audio sources available');
+    }
+    return this.pool.pop();
   }
 
   recycle(source: AudioSource) {

@@ -1,6 +1,7 @@
 import { Song } from '@encode42/nbs.js';
 import { Application, Container, Text } from 'pixi.js';
 
+import { MAX_AUDIO_SOURCES } from './audio';
 import { NoteManager } from './note';
 import { PianoManager } from './piano';
 
@@ -14,6 +15,7 @@ export class Viewer {
   noteContainer: Container;
 
   currentTick: number = 0;
+  soundCount: number = 0;
 
   constructor(app: Application, song: Song) {
     this.app = app;
@@ -42,9 +44,16 @@ export class Viewer {
     label.y = 40;
     app.stage.addChild(label);
 
+    // Add label showing current sound count
+    const soundCountLabel = new Text();
+    soundCountLabel.x = 10;
+    soundCountLabel.y = 70;
+    app.stage.addChild(soundCountLabel);
+
     app.ticker.add((time) => {
       label.text = `Tick: ${this.currentTick.toFixed(2)}`;
       fpsLabel.text = `${Math.round(app.ticker.FPS)} FPS`;
+      soundCountLabel.text = `Sounds: ${this.soundCount} / ${MAX_AUDIO_SOURCES}`;
       const notesToPlay = this.noteManager.update(this.currentTick);
       this.pianoManager.update(time.elapsedMS, notesToPlay);
     });

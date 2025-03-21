@@ -30,6 +30,7 @@ export class Player {
     this.viewer.app.ticker.add(() => {
       const currentTick = this.audioEngine.currentTick;
       this.viewer.currentTick = currentTick;
+      this.viewer.soundCount = this.audioEngine.soundCount;
       this.callbacks.seek(currentTick); // TODO: This is a bit hacky; should be part of audio handler
     });
   }
