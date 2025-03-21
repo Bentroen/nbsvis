@@ -14,6 +14,9 @@ importers:
       '@nbsjs/core':
         specifier: ^6.0.0
         version: 6.0.0
+      avl:
+        specifier: ^1.6.0
+        version: 1.6.0
       jszip:
         specifier: ^3.10.1
         version: 3.10.1
@@ -518,6 +521,9 @@ packages:
   available-typed-arrays@1.0.7:
     resolution: {integrity: sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==}
     engines: {node: '>= 0.4'}
+
+  avl@1.6.0:
+    resolution: {integrity: sha512-sXZcG/wbnIWbJJnH0wQrZl0iyzorHUQaL1BX9+8byrhIp2iPaXnloQ3bFkXTBEHKrshK6wcWe6iGblgMNXarUA==}
 
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
@@ -1823,6 +1829,8 @@ snapshots:
   available-typed-arrays@1.0.7:
     dependencies:
       possible-typed-array-names: 1.1.0
+
+  avl@1.6.0: {}
 
   balanced-match@1.0.2: {}
 
