@@ -4,6 +4,8 @@ import * as Tone from 'tone';
 import PlayerInstrument from './instrument';
 import { getTempoChangeEvents, getTempoSegments } from './song';
 
+const MAX_AUDIO_SOURCES = 256;
+
 type NoteEvent = {
   tick: number;
   instrument: number;
@@ -58,6 +60,64 @@ function getNoteEvents(song: Song) {
   return noteEventsPerTick;
 }
 
+type AudioSourceParams = {
+  source: Tone.ToneAudioBuffer;
+  destinationNode: Tone.ToneAudioNode;
+  time: number;
+  playbackRate: number;
+  volumeDb: number;
+  panning: number;
+  onEnded: () => void;
+};
+
+class AudioSource {
+  sourceNode: Tone.ToneBufferSource;
+  panVolNode: Tone.PanVol;
+
+  constructor() {
+    this.sourceNode = new Tone.ToneBufferSource();
+    this.panVolNode = new Tone.PanVol();
+  }
+
+  play(params: AudioSourceParams) {
+    const { source, destinationNode, time, playbackRate, volumeDb, panning, onEnded } = params;
+
+    this.sourceNode = new Tone.ToneBufferSource({
+      url: source,
+      playbackRate,
+    });
+
+    this.panVolNode = new Tone.PanVol({ volume: volumeDb, pan: panning });
+
+    this.sourceNode.chain(this.panVolNode, destinationNode);
+    this.sourceNode.start(time);
+    this.sourceNode.onended = onEnded;
+  }
+
+  stop() {
+    this.sourceNode.stop();
+    this.sourceNode.disconnect();
+  }
+}
+
+class AudioSourcePool {
+  private pool: Array<AudioSource> = [];
+
+  constructor(numSources: number) {
+    for (let i = 0; i < numSources; i++) {
+      this.pool.push(new AudioSource());
+    }
+  }
+
+  get activeSources() {
+    return this.numSources - this.pool.length;
+  }
+
+  recycle(source: AudioSource) {
+    this.pool.push(source);
+  }
+}
+
 export class AudioEngine {
   instruments: Array<PlayerInstrument>;
   song: Song;
@@ -67,7 +127,13 @@ export class AudioEngine {
 
   audioDestination: Tone.ToneAudioNode;
 
-  constructor(song: Song, instruments: Array<PlayerInstrument>) {
+  audioSourcePool: AudioSourcePool;
+
+  constructor(
+    song: Song,
+    instruments: Array<PlayerInstrument>,
+    maxAudioSources: number = MAX_AUDIO_SOURCES,
+  ) {
     this.song = song;
     this.instruments = instruments;
     this.tempoSegments = getTempoSegments(song);
@@ -83,6 +149,8 @@ export class AudioEngine {
 
     this.loadSounds();
     this.loadSong();
+
+    this.audioSourcePool = new AudioSourcePool(maxAudioSources);
   }
 
   private async loadSounds() {
@@ -148,15 +216,32 @@ export class AudioEngine {
     if (!audioBuffer) return;
 
     const insOffset = 45 - this.instruments[instrument].baseKey + 45;
-    const player = new Tone.ToneBufferSource({
-      url: audioBuffer,
-      playbackRate: 2 ** ((key - insOffset) / 12),
+    const playbackRate = 2 ** ((key - insOffset) / 12);
+
+    const volumeDb = Tone.gainToDb(velocity);
+
+    let source: AudioSource | undefined;
+
+    try {
+      source = this.audioSourcePool.get();
+    } catch {
+      return;
+    }
+
+    if (!source) return;
+
+    source.play({
+      source: audioBuffer,
+      destinationNode: this.audioDestination,
+      time,
+      playbackRate,
+      panning,
+      volumeDb,
+      onEnded: () => {
+        //source.stop();
+        this.audioSourcePool.recycle(source);
+      },
     });
-    player.start(time);
-
-    const panVolNode = new Tone.PanVol(panning, Tone.gainToDb(velocity));
-
-    player.chain(panVolNode, this.audioDestination);
   }
 
   private playNotes(notes: Array<NoteEvent>, time: number) {
@@ -177,6 +262,10 @@ export class AudioEngine {
     console.debug('Setting tick to:', tick);
     console.debug('BPM:', newBPM);
     transport.bpm.value = newBPM;
+  }
+
+  public get soundCount() {
+    return this.audioSourcePool.activeSources;
   }
 
   public play() {
