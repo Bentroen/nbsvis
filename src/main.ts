@@ -103,8 +103,8 @@ if (!controls) {
 }
 
 controls.style.position = 'absolute';
-controls.style.bottom = '10px';
-controls.style.left = '10px';
+controls.style.top = '10px';
+controls.style.right = '10px';
 controls.style.zIndex = '9999';
 
 const togglePlayButton = document.createElement('button');
