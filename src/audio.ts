@@ -1,4 +1,5 @@
 import { Song } from '@encode42/nbs.js';
+import { AVLTree } from 'avl';
 import * as Tone from 'tone';
 
 import PlayerInstrument from './instrument';
@@ -67,20 +68,27 @@ type AudioSourceParams = {
   playbackRate: number;
   volumeDb: number;
   panning: number;
+  onStarted: () => void;
   onEnded: () => void;
 };
 
 class AudioSource {
+  static nextId = 0;
+  id: number;
   sourceNode: Tone.ToneBufferSource;
   panVolNode: Tone.PanVol;
+  endTime: number;
 
   constructor() {
+    this.id = AudioSource.nextId++;
     this.sourceNode = new Tone.ToneBufferSource();
     this.panVolNode = new Tone.PanVol();
+    this.endTime = -1;
   }
 
   play(params: AudioSourceParams) {
-    const { source, destinationNode, time, playbackRate, volumeDb, panning, onEnded } = params;
+    const { source, destinationNode, time, playbackRate, volumeDb, panning, onStarted, onEnded } =
+      params;
 
     this.sourceNode = new Tone.ToneBufferSource({
       url: source,
@@ -92,9 +100,14 @@ class AudioSource {
     this.sourceNode.chain(this.panVolNode, destinationNode);
     this.sourceNode.start(time);
     this.sourceNode.onended = onEnded;
+
+    this.endTime = time + source.duration * (1 / playbackRate);
+    onStarted();
   }
 
   stop() {
+    //this.sourceNode.onended(this.sourceNode);
+    this.sourceNode.onended = () => {};
     this.sourceNode.stop();
     this.sourceNode.disconnect();
   }
@@ -102,6 +115,10 @@ class AudioSource {
 
 class AudioSourcePool {
   private pool: Array<AudioSource> = [];
+
+  private activeSources: AVLTree<{ endTime: number; id: number }, AudioSource> = new AVLTree(
+    (a, b) => a.endTime - b.endTime || a.id - b.id,
+  );
 
   numSources: number;
 
@@ -112,18 +129,53 @@ class AudioSourcePool {
     }
   }
 
-  get activeSources() {
-    return this.numSources - this.pool.length;
+  get activeSourceCount() {
+    return this.activeSources.size;
   }
 
   get() {
+    // Call register() with the source after playing it!
+    //console.log('Pool:', this.pool.length);
     if (this.pool.length === 0) {
-      throw new Error('No audio sources available');
+      //console.log('No sources available in pool; freeing one.');
+      this.freeSource();
     }
-    return this.pool.pop();
+    const source = this.pool.pop();
+    if (!source) throw new Error('No source available in pool (this should not happen!)');
+    return source;
+  }
+
+  register(source: AudioSource) {
+    const key = { endTime: source.endTime, id: source.id };
+    if (this.activeSources.find(key)) {
+      //console.log('Source already registered!');
+    }
+    this.activeSources.insert(key, source);
+    //console.log('Adding', key);
+  }
+
+  freeSource() {
+    //console.log('Freeing source; pool:', this.activeSources.size);
+    const minNode = this.activeSources.minNode();
+    if (!minNode) throw new Error('No active sources to free (this should not happen!)');
+    const source = minNode.data;
+    if (!source) {
+      throw new Error('No source to free (this should not happen!)');
+    }
+    this.recycle(source);
+    return source;
   }
 
   recycle(source: AudioSource) {
+    const key = { endTime: source.endTime, id: source.id };
+    //console.log('Removing', key);
+
+    source.stop();
+    const removed = this.activeSources.remove(key);
+    if (removed == null) {
+      console.log('Failed to remove source from active sources (this should not happen!)');
+      //console.log(this.activeSources.keys());
+    }
     this.pool.push(source);
   }
 }
@@ -230,15 +282,7 @@ export class AudioEngine {
 
     const volumeDb = Tone.gainToDb(velocity);
 
-    let source: AudioSource | undefined;
-
-    try {
-      source = this.audioSourcePool.get();
-    } catch {
-      return;
-    }
-
-    if (!source) return;
+    const source = this.audioSourcePool.get();
 
     source.play({
       source: audioBuffer,
@@ -247,8 +291,11 @@ export class AudioEngine {
       playbackRate,
       panning,
       volumeDb,
+      onStarted: () => {
+        this.audioSourcePool.register(source);
+      },
       onEnded: () => {
-        //source.stop();
+        //console.log('Ended, recycling:', source.id);
         this.audioSourcePool.recycle(source);
       },
     });
@@ -275,7 +322,7 @@ export class AudioEngine {
   }
 
   public get soundCount() {
-    return this.audioSourcePool.activeSources;
+    return this.audioSourcePool.activeSourceCount;
   }
 
   public play() {
