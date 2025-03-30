@@ -1,40 +1,24 @@
 import { Song } from '@encode42/nbs.js';
 
-import banjo from './assets/sounds/banjo.ogg';
-import bdrum from './assets/sounds/bdrum.ogg';
-import bell from './assets/sounds/bell.ogg';
-import bit from './assets/sounds/bit.ogg';
-import click from './assets/sounds/click.ogg';
-import cow_bell from './assets/sounds/cow_bell.ogg';
-import dbass from './assets/sounds/dbass.ogg';
-import didgeridoo from './assets/sounds/didgeridoo.ogg';
-import flute from './assets/sounds/flute.ogg';
-import guitar from './assets/sounds/guitar.ogg';
-import harp from './assets/sounds/harp.ogg';
-import icechime from './assets/sounds/icechime.ogg';
-import iron_xylophone from './assets/sounds/iron_xylophone.ogg';
-import pling from './assets/sounds/pling.ogg';
-import sdrum from './assets/sounds/sdrum.ogg';
-import xylobone from './assets/sounds/xylobone.ogg';
 import { ExtraSounds } from './song';
 
 export const defaultInstrumentData = [
-  { name: 'Harp', audioSource: harp },
-  { name: 'Double Bass', audioSource: dbass },
-  { name: 'Bass Drum', audioSource: bdrum },
-  { name: 'Snare Drum', audioSource: sdrum },
-  { name: 'Click', audioSource: click },
-  { name: 'Guitar', audioSource: guitar },
-  { name: 'Flute', audioSource: flute },
-  { name: 'Bell', audioSource: bell },
-  { name: 'Chime', audioSource: icechime },
-  { name: 'Xylophone', audioSource: xylobone },
-  { name: 'Iron Xylophone', audioSource: iron_xylophone },
-  { name: 'Cow Bell', audioSource: cow_bell },
-  { name: 'Didgeridoo', audioSource: didgeridoo },
-  { name: 'Bit', audioSource: bit },
-  { name: 'Banjo', audioSource: banjo },
-  { name: 'Pling', audioSource: pling },
+  { name: 'Harp', audioSource: 'assets/sounds/harp.ogg' },
+  { name: 'Double Bass', audioSource: 'assets/sounds/dbass.ogg' },
+  { name: 'Bass Drum', audioSource: 'assets/sounds/bdrum.ogg' },
+  { name: 'Snare Drum', audioSource: 'assets/sounds/sdrum.ogg' },
+  { name: 'Click', audioSource: 'assets/sounds/click.ogg' },
+  { name: 'Guitar', audioSource: 'assets/sounds/guitar.ogg' },
+  { name: 'Flute', audioSource: 'assets/sounds/flute.ogg' },
+  { name: 'Bell', audioSource: 'assets/sounds/bell.ogg' },
+  { name: 'Chime', audioSource: 'assets/sounds/icechime.ogg' },
+  { name: 'Xylophone', audioSource: 'assets/sounds/xylobone.ogg' },
+  { name: 'Iron Xylophone', audioSource: 'assets/sounds/iron_xylophone.ogg' },
+  { name: 'Cow Bell', audioSource: 'assets/sounds/cow_bell.ogg' },
+  { name: 'Didgeridoo', audioSource: 'assets/sounds/didgeridoo.ogg' },
+  { name: 'Bit', audioSource: 'assets/sounds/bit.ogg' },
+  { name: 'Banjo', audioSource: 'assets/sounds/banjo.ogg' },
+  { name: 'Pling', audioSource: 'assets/sounds/pling.ogg' },
 ];
 
 export default class PlayerInstrument {
