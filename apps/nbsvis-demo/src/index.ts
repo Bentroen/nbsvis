@@ -1,10 +1,5 @@
+import { AudioEngine, loadInstruments, Player, loadSongFromUrl, Viewer } from '@nbsvis/core';
 import { Application, TextureStyle } from 'pixi.js';
-
-import { AudioEngine } from './audio';
-import { loadInstruments } from './instrument';
-import { Player } from './player';
-import { loadSongFromUrl } from './song';
-import { Viewer } from './viewer';
 
 TextureStyle.defaultOptions.scaleMode = 'nearest';
 
@@ -21,11 +16,14 @@ await app.init({
   width: 1280,
   height: 720,
   useBackBuffer: true,
+  eventMode: 'none', // https://github.com/pixijs/pixijs/issues/9380
 });
+
+// disable event mode
 
 appContainer.appendChild(app.canvas);
 
-const { song, extraSounds } = await loadSongFromUrl('song.nbs');
+const { song, extraSounds } = await loadSongFromUrl('mgc.zip');
 const viewer = new Viewer(app, song);
 
 // Audio

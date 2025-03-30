@@ -1,4 +1,7 @@
-import { Assets, Container, Graphics, Sprite } from 'pixi.js';
+import { Container, Graphics, Sprite, Texture } from 'pixi.js';
+
+import blackKeyImg from './assets/img/key_black.png';
+import whiteKeyImg from './assets/img/key_white.png';
 
 const KEY_COUNT = 88;
 export const WHITE_KEY_COUNT = Math.ceil((KEY_COUNT / 12) * 7);
@@ -8,11 +11,14 @@ let WHITE_KEY_HEIGHT = 113;
 const BLACK_KEY_WIDTH_FACTOR = 2 / 3;
 const BLACK_KEY_HEIGHT_FACTOR = 2 / 3;
 
-const whiteKeyTexture = await Assets.load('/img/key_white.png');
-const blackKeyTexture = await Assets.load('/img/key_black.png');
+console.log(whiteKeyImg);
+console.log(blackKeyImg);
 
-whiteKeyTexture.source.scaleMode = 'nearest';
-blackKeyTexture.source.scaleMode = 'nearest';
+const whiteKeyTexture = Texture.from(whiteKeyImg);
+const blackKeyTexture = Texture.from(blackKeyImg);
+
+//whiteKeyTexture.source.scaleMode = 'nearest';
+//blackKeyTexture.source.scaleMode = 'nearest';
 
 const BLACK_KEY_POSITIONS = new Set([1, 3, 6, 8, 10]);
 

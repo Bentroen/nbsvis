@@ -1,9 +1,14 @@
 import { Note, Song } from '@encode42/nbs.js';
-import { Assets, Container, Graphics, Sprite, Text, TextStyle } from 'pixi.js';
+import { Container, Graphics, Sprite, Texture } from 'pixi.js';
 
+import noteBlockImgUrl from './assets/img/note-block-grayscale.png';
 import { WHITE_KEY_COUNT } from './piano';
 
-const noteBlockTexture = await Assets.load('/img/note-block-grayscale.png');
+//const noteBlockTexture = await Assets.load(noteBlockImgUrl);
+
+const noteBlockTexture = Texture.from(noteBlockImgUrl);
+
+console.log(noteBlockImgUrl);
 
 let BLOCK_SIZE = 32;
 
@@ -118,18 +123,20 @@ class NoteItem {
     container.addChild(sprite);
 
     // Text style
-    const textStyle = new TextStyle({
-      fontSize: 12 * (BLOCK_SIZE / 32),
-      fill: 'white',
-      align: 'center',
-    });
+    //const textStyle = new TextStyle({
+    //  fontSize: 12 * (BLOCK_SIZE / 32),
+    //  //fill: 'white',
+    //  align: 'center',
+    //});
+
+    this.getKeyLabel();
 
     // Text
-    const label = new Text({ text: this.getKeyLabel(), style: textStyle });
-    label.anchor.set(0.5, 0.5);
-    label.position.set(BLOCK_SIZE / 2, BLOCK_SIZE / 2);
-    label.alpha = 1;
-    container.addChild(label);
+    //const label = new Text({ text: this.getKeyLabel() }); //style: textStyle });
+    //label.anchor.set(0.5, 0.5);
+    //label.position.set(BLOCK_SIZE / 2, BLOCK_SIZE / 2);
+    //label.alpha = 1;
+    //container.addChild(label);
 
     return container;
   }

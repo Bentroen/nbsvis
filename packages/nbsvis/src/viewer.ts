@@ -1,5 +1,5 @@
 import { Song } from '@encode42/nbs.js';
-import { Application, Container, Text } from 'pixi.js';
+import { Application, Container, FillGradient, Text, TextStyle } from 'pixi.js';
 
 import { MAX_AUDIO_SOURCES } from './audio';
 import { NoteManager } from './note';
@@ -32,20 +32,39 @@ export class Viewer {
     app.stage.addChild(this.noteContainer);
     app.stage.addChild(this.pianoContainer);
 
+    const fill = new FillGradient({
+      type: 'linear',
+      start: { x: 0, y: 0 },
+      end: { x: 0, y: 1 },
+      colorStops: [
+        { offset: 0, color: 0x000000 },
+        { offset: 1, color: 0x000000 },
+      ],
+      textureSpace: 'local',
+    });
+    const debugTextStyle = new TextStyle({
+      fill: fill,
+    });
+
+    //const fillPattern = new FillPattern(Texture.WHITE);
+    //const debugTextStyle = new TextStyle({
+    //  fill: fillPattern,
+    //});
+
     // Add label showing current FPS
-    const fpsLabel = new Text();
+    const fpsLabel = new Text({ style: debugTextStyle });
     fpsLabel.x = 10;
     fpsLabel.y = 10;
     app.stage.addChild(fpsLabel);
 
     // Add label showing current tick
-    const label = new Text();
+    const label = new Text({ style: debugTextStyle });
     label.x = 10;
     label.y = 40;
     app.stage.addChild(label);
 
     // Add label showing current sound count
-    const soundCountLabel = new Text();
+    const soundCountLabel = new Text({ style: debugTextStyle });
     soundCountLabel.x = 10;
     soundCountLabel.y = 70;
     app.stage.addChild(soundCountLabel);
