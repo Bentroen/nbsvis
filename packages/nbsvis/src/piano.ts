@@ -1,4 +1,6 @@
-import { Container, Graphics, Sprite, Assets } from 'pixi.js';
+import { Assets, Container, Graphics, Sprite } from 'pixi.js';
+
+import assetPaths from './assets';
 
 const KEY_COUNT = 88;
 export const WHITE_KEY_COUNT = Math.ceil((KEY_COUNT / 12) * 7);
@@ -8,8 +10,8 @@ let WHITE_KEY_HEIGHT = 113;
 const BLACK_KEY_WIDTH_FACTOR = 2 / 3;
 const BLACK_KEY_HEIGHT_FACTOR = 2 / 3;
 
-const whiteKeyTexture = await Assets.load('assets/img/key_white.png');
-const blackKeyTexture = await Assets.load('assets/img/key_black.png');
+const whiteKeyTexture = await Assets.load(assetPaths['img/key_white.png']);
+const blackKeyTexture = await Assets.load(assetPaths['img/key_black.png']);
 
 //whiteKeyTexture.source.scaleMode = 'nearest';
 //blackKeyTexture.source.scaleMode = 'nearest';
