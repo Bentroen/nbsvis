@@ -1,4 +1,4 @@
-import { Assets, Container, Graphics, Sprite } from 'pixi.js';
+import { Assets, Container, Graphics, Sprite, Texture } from 'pixi.js';
 
 import assetPaths from './assets';
 
@@ -10,8 +10,13 @@ let WHITE_KEY_HEIGHT = 113;
 const BLACK_KEY_WIDTH_FACTOR = 2 / 3;
 const BLACK_KEY_HEIGHT_FACTOR = 2 / 3;
 
-const whiteKeyTexture = await Assets.load(assetPaths['img/key_white.png']);
-const blackKeyTexture = await Assets.load(assetPaths['img/key_black.png']);
+let whiteKeyTexture: Texture;
+let blackKeyTexture: Texture;
+
+export async function loadPianoTextures() {
+  whiteKeyTexture = await Assets.load(assetPaths['img/key_white.png']);
+  blackKeyTexture = await Assets.load(assetPaths['img/key_black.png']);
+}
 
 //whiteKeyTexture.source.scaleMode = 'nearest';
 //blackKeyTexture.source.scaleMode = 'nearest';

@@ -1,9 +1,15 @@
 import { Note, Song } from '@encode42/nbs.js';
-import { Container, Graphics, Sprite } from 'pixi.js';
+import { Assets, Container, Graphics, Sprite, Texture } from 'pixi.js';
 
 import { WHITE_KEY_COUNT } from './piano';
 
-import { noteBlockTexture } from './assets';
+import assetPaths from './assets';
+
+let noteBlockTexture: Texture;
+
+export async function loadNoteTexture() {
+  noteBlockTexture = await Assets.load(assetPaths['img/note_block_grayscale.png']);
+}
 
 let BLOCK_SIZE = 32;
 
