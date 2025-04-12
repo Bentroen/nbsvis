@@ -34,7 +34,7 @@
 - [ ] Master volume control
 - [ ] React wrapper (may be part of another lib)
 - [ ] Playlist support
-- [ ] Tempo changer support
+- [x] Tempo changer support
 - [ ] Loop support
 - [ ] Zipped song support
 
