@@ -45,6 +45,13 @@ export default [
         },
       ],
       'import/no-unresolved': ['warn'],
+      'unused-imports/no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+        },
+      ],
       'unused-imports/no-unused-imports': 'warn',
     },
   },
