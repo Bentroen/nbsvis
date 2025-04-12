@@ -19,9 +19,8 @@ export default [
     },
     settings: {
       'import/resolver': {
-        node: {
-          extensions: ['.js', '.mjs', '.cjs', '.ts'],
-        },
+        typescript: true,
+        node: true,
       },
     },
     plugins: {
