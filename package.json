@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "pnpm --parallel dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
