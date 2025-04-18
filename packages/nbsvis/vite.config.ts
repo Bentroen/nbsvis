@@ -1,3 +1,4 @@
+import libAssetsPlugin from '@laynezh/vite-plugin-lib-assets';
 import { resolve } from 'pathe';
 import { defineConfig, UserConfig } from 'vite';
 import dts from 'vite-plugin-dts';
@@ -8,6 +9,7 @@ export default defineConfig(({ mode }: UserConfig) => {
       dts({
         insertTypesEntry: true,
       }),
+      libAssetsPlugin(),
     ],
     build: {
       target: 'ESNext',
