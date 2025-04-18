@@ -1,8 +1,8 @@
 import { resolve } from 'pathe';
-import { defineConfig } from 'vite';
+import { defineConfig, UserConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode }: UserConfig) => {
   return {
     plugins: [
       dts({
@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
     build: {
       target: 'ESNext',
       sourcemap: mode === 'development',
-      minify: mode === 'production' ? 'oxc' : false,
+      minify: mode === 'production' ? 'terser' : false,
       lib: {
         entry: resolve(__dirname, 'src/main.ts'),
         name: 'nbsvis',
@@ -23,5 +23,5 @@ export default defineConfig(({ mode }) => {
         external: ['pixi.js'],
       },
     },
-  };
+  } satisfies UserConfig;
 });
