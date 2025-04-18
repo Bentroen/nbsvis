@@ -1,9 +1,8 @@
 import { Note, Song } from '@encode42/nbs.js';
 import { Assets, Container, Graphics, Sprite, Texture } from 'pixi.js';
 
-import { WHITE_KEY_COUNT } from './piano';
-
 import assetPaths from './assets';
+import { WHITE_KEY_COUNT } from './piano';
 
 let noteBlockTexture: Texture;
 

@@ -1,8 +1,9 @@
 import { Song } from '@encode42/nbs.js';
-import { AudioEngine, loadInstruments, Player, loadSongFromUrl, Viewer } from '.';
 import { Application, TextureStyle } from 'pixi.js';
-import { loadPianoTextures } from './piano';
+
+import { AudioEngine, loadInstruments, Player, loadSongFromUrl, Viewer } from '.';
 import { loadNoteTexture } from './note';
+import { loadPianoTextures } from './piano';
 
 TextureStyle.defaultOptions.scaleMode = 'nearest';
 
