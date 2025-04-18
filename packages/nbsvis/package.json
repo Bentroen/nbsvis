@@ -18,8 +18,8 @@
     }
   },
   "scripts": {
-    "dev": "tsc && vite build --watch",
-    "build": "tsc && vite build",
+    "dev": "vite build --watch --mode development",
+    "build": "tsc && vite build --mode production",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "format": "prettier --write .",
