@@ -9,7 +9,10 @@ export default defineConfig(({ mode }: UserConfig) => {
       dts({
         insertTypesEntry: true,
       }),
-      libAssetsPlugin(),
+      // inline assets in dev mode, use lib-assets in production mode
+      // libAssetsPlugin currently does not regenerate assets in --watch mode:
+      // https://github.com/laynezh/vite-plugin-lib-assets/issues/62
+      mode == 'production' && libAssetsPlugin(),
     ],
     build: {
       target: 'ESNext',
