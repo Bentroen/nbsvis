@@ -11,8 +11,8 @@
     <div id="app"></div>
     <script type="module" src="src/main.ts"></script>
     <div class="controls">
-      <button id="togglePlay" onClick="togglePlay()">⏸️</button>
-      <button id="stop" onClick="stop()">⏹️</button>
+      <button id="togglePlay" onClick="controls.togglePlayback()">⏸️</button>
+      <button id="stop" onClick="controls.stop()">⏹️</button>
       <input
         id="seek"
         type="range"
@@ -21,12 +21,12 @@
         step="1"
         value="0"
         style="width: 500px"
-        onInput="handleSeek(event)"
+        onInput="controls.seek(event)"
       />
-      <button id="" onClick="resize(640, 360)">640x360</button>
-      <button id="" onClick="resize(1280, 720)">1280x720</button>
-      <button id="" onClick="resize(1920, 720)">1920x720</button>
-      <button id="" onClick="resize()">Scale to window</button>
+      <button id="" onClick="controls.resize(640, 360)">640x360</button>
+      <button id="" onClick="controls.resize(1280, 720)">1280x720</button>
+      <button id="" onClick="controls.resize(1920, 720)">1920x720</button>
+      <button id="" onClick="controls.resize()">Scale to window</button>
     </div>
   </body>
 </html>

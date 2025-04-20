@@ -3,4 +3,3 @@ export * from './song';
 export * from './viewer';
 export * from './audio';
 export * from './instrument';
-export * from './main';

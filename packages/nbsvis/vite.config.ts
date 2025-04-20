@@ -19,7 +19,7 @@ export default defineConfig(({ mode }: UserConfig) => {
       sourcemap: mode === 'development',
       minify: mode === 'production' ? 'terser' : false,
       lib: {
-        entry: resolve(__dirname, 'src/main.ts'),
+        entry: resolve(__dirname, 'src/index.ts'),
         name: 'nbsvis',
         fileName: 'nbsvis',
         formats: ['es'], // TODO: umd, cjs (remove top-level await)
