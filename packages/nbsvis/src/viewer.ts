@@ -18,6 +18,10 @@ export class Viewer {
   noteManager: NoteManager;
   noteContainer: Container;
 
+  private resizeObserver: ResizeObserver = new ResizeObserver(() => {
+    this.resize();
+  });
+
   currentTick: number = 0;
   soundCount: number = 0;
 
@@ -40,6 +44,7 @@ export class Viewer {
     this.container.appendChild(this.app.canvas);
     this.app.ticker.add(this.updateFunction);
     this.draw();
+    this.setResponsive(true);
   }
 
   private draw() {
@@ -89,8 +94,21 @@ export class Viewer {
     this.pianoManager.redraw(this.app.screen.width);
   }
 
-  resize(width: number, height: number) {
+  resize(width?: number, height?: number) {
+    if (!width || !height) {
+      this.setResponsive(true);
+    } else {
+      this.setResponsive(false);
+    }
+
+    //const containerRect = this.container.getBoundingClientRect();
+    width = width ?? this.container.clientWidth;
+    height = height ?? this.container.clientHeight;
+    console.debug('Resizing to:', width, height);
     this.app.renderer.resize(width, height);
+    // Re-render current scene to avoid flickering. See:
+    // https://github.com/pixijs/pixijs/issues/3395#issuecomment-328495407
+    this.app.render();
     this.pianoManager.redraw(width);
     this.noteManager.redraw(width);
     this.pianoContainer.position.set(0, height - this.pianoContainer.height - 10);
@@ -99,4 +117,20 @@ export class Viewer {
     this.noteManager.setPianoHeight(this.pianoContainer.height);
     this.noteManager.setScreenHeight(height);
   }
+
+  public setResponsive(responsive: boolean) {
+    if (responsive) {
+      this.resizeObserver.observe(this.container);
+    } else {
+      this.resizeObserver.unobserve(this.container);
+    }
+  }
 }
+
+// 4x = block size 64x
+// 3x = block size 48x
+// 2x = block size 32x
+// 1x = block size 16x
+// 0.5x = block size 8x
+// 0.25x = block size 4x
+//app.stage.scale.set(0.5, 0.5);

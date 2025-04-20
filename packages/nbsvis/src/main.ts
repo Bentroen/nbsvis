@@ -17,43 +17,7 @@ export async function initializeApp() {
   player = new Player(viewer, { seek: seekCallback });
   await player.loadSong('mgc.zip');
 
-  // Initial resize
-  resize();
-
   console.log('Done!');
-}
-
-function resize(width?: number, height?: number) {
-  if (!width || !height) {
-    setResponsive(true);
-  } else {
-    setResponsive(false);
-  }
-  width = width || window.innerWidth;
-  height = height || window.innerHeight;
-
-  // 4x = block size 64x
-  // 3x = block size 48x
-  // 2x = block size 32x
-  // 1x = block size 16x
-  // 0.5x = block size 8x
-  // 0.25x = block size 4x
-  //app.stage.scale.set(0.5, 0.5);
-
-  viewer.resize(width, height);
-}
-
-// Add event listener for window resize
-function resizeHandler() {
-  resize();
-}
-
-function setResponsive(responsive: boolean) {
-  if (responsive) {
-    window.addEventListener('resize', resizeHandler);
-  } else {
-    window.removeEventListener('resize', resizeHandler);
-  }
 }
 
 function stop() {
