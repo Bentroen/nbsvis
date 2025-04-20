@@ -181,6 +181,7 @@ export class AudioEngine {
     await Tone.start(); // Ensure the audio context is running
 
     const promises = this.instruments.map(async (ins, index) => {
+      if (this.audioBuffers[index]) return; // Skip if already loaded
       const audioBuffer = await loadAudio(ins.audioSource);
       if (!audioBuffer) return;
       const buffer = new Tone.ToneAudioBuffer({
@@ -196,7 +197,30 @@ export class AudioEngine {
     console.debug('All instruments loaded.');
   }
 
-  public loadSong(song: Song) {
+  private async resetSounds() {
+    /*
+    Clears all custom instrument sounds from the audio engine, resetting it to the initial state.
+    */
+    this.instruments
+      .filter((ins) => !ins.isBuiltIn)
+      .forEach((ins, index) => {
+        const audioBuffer = this.audioBuffers[index];
+        if (audioBuffer) {
+          audioBuffer.dispose();
+          delete this.audioBuffers[index];
+          console.log(`Disposed custom instrument ${ins.name} (id: ${index})`);
+        }
+      });
+    this.instruments = this.instruments.filter((ins) => ins.isBuiltIn);
+  }
+
+  public loadSong(song: Song, instruments: Array<PlayerInstrument>) {
+    // Custom sounds
+    this.resetSounds();
+    this.instruments = defaultInstruments.concat(instruments);
+    this.loadSounds();
+
+    // Song
     this.song = song;
     this.tempoSegments = getTempoSegments(song);
     const noteEvents = getNoteEvents(this.song);

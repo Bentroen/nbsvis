@@ -1,7 +1,7 @@
 import { Song } from '@encode42/nbs.js';
 
 import { AudioEngine } from './audio';
-import { loadInstruments } from './instrument';
+import { loadCustomInstruments } from './instrument';
 import { loadSongFromUrl } from './song';
 import { Viewer } from './viewer';
 
@@ -31,10 +31,9 @@ export class Player {
 
   public async loadSong(url: string) {
     const { song, extraSounds } = await loadSongFromUrl(url);
-    const instruments = loadInstruments(song, extraSounds);
+    const instruments = loadCustomInstruments(song, extraSounds);
     this.song = song;
-    this.audioEngine.loadSong(song);
-    // TODO: load custom instruments in the audio engine
+    this.audioEngine.loadSong(song, instruments);
     this.viewer?.loadSong(song);
   }
 

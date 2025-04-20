@@ -55,10 +55,3 @@ export function loadCustomInstruments(song: Song, extraSounds: ExtraSounds) {
     );
   return customInstruments;
 }
-
-export function loadInstruments(song: Song, extraSounds: ExtraSounds) {
-  const customInstruments = loadCustomInstruments(song, extraSounds);
-  const allInstruments = defaultInstruments.concat(customInstruments);
-  console.debug('All instruments created.');
-  return allInstruments;
-}
