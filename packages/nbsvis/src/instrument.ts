@@ -1,7 +1,7 @@
 import { Song } from '@encode42/nbs.js';
 
-import { ExtraSounds } from './song';
 import assetPaths from './assets';
+import { ExtraSounds } from './song';
 
 export const defaultInstrumentData = [
   { name: 'Harp', audioSource: assetPaths['sounds/harp.ogg'] },
