@@ -9,7 +9,9 @@
   ],
   "scripts": {
     "dev": "pnpm --parallel dev",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "pnpm --filter ./packages/* build",
+    "build:demo": "pnpm build && pnpm --filter ./apps/nbsvis-demo build",
+    "test": "pnpm --filter ./packages/* test"
   },
   "keywords": [],
   "author": "",
