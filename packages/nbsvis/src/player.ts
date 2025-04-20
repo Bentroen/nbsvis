@@ -10,9 +10,9 @@ export class Player {
   audioEngine: AudioEngine;
   song?: Song;
 
-  callbacks: { seek: (tick: number) => void };
+  callbacks: { seek: (tick: number, totalLength: number) => void };
 
-  constructor(viewer: Viewer, callbacks: { seek: (tick: number) => void }) {
+  constructor(viewer: Viewer, callbacks: { seek: (tick: number, totalLength: number) => void }) {
     this.viewer = viewer;
     this.audioEngine = new AudioEngine();
     this.callbacks = callbacks;
@@ -22,7 +22,7 @@ export class Player {
         const currentTick = this.audioEngine.currentTick;
         this.viewer.currentTick = currentTick;
         this.viewer.soundCount = this.audioEngine.soundCount;
-        this.callbacks.seek(currentTick); // TODO: This is a bit hacky; should be part of audio handler
+        this.callbacks.seek(currentTick, this.song?.length ?? 0); // TODO: This is a bit hacky; should be part of audio handler
       });
     } else {
       console.debug('Viewer not initialized, skipping ticker update');
@@ -65,6 +65,6 @@ export class Player {
 
   seek(tick: number) {
     this.audioEngine.currentTick = tick;
-    this.callbacks.seek(tick);
+    this.callbacks.seek(tick, this.song?.length ?? 0);
   }
 }
