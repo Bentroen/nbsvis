@@ -13,10 +13,12 @@ export class Viewer {
   container: HTMLElement;
 
   updateFunction: () => void;
-  pianoManager: PianoManager;
-  pianoContainer: Container;
-  noteManager: NoteManager;
-  noteContainer: Container;
+
+  // TODO: remove this mess
+  pianoManager: PianoManager = new PianoManager(new Container());
+  pianoContainer: Container = new Container();
+  noteManager: NoteManager = new NoteManager(new Container(), []);
+  noteContainer: Container = new Container();
 
   private resizeObserver: ResizeObserver = new ResizeObserver(() => {
     this.resize();
