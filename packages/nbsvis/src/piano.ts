@@ -18,6 +18,8 @@ export async function loadPianoTextures() {
   blackKeyTexture = await Assets.load(assetPaths['img/key_black.png']);
 }
 
+await loadPianoTextures();
+
 //whiteKeyTexture.source.scaleMode = 'nearest';
 //blackKeyTexture.source.scaleMode = 'nearest';
 

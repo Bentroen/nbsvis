@@ -42,7 +42,7 @@ export default class PlayerInstrument {
   }
 }
 
-const defaultInstruments: Array<PlayerInstrument> = defaultInstrumentData.map(
+export const defaultInstruments: Array<PlayerInstrument> = defaultInstrumentData.map(
   (data) => new PlayerInstrument(data.name, 45, data.audioSource, true),
 );
 

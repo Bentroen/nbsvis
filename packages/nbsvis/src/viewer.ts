@@ -1,14 +1,18 @@
 import { Song } from '@encode42/nbs.js';
-import { Application, Container, Text } from 'pixi.js';
+import { Application, Container, Text, TextureStyle } from 'pixi.js';
 
 import { MAX_AUDIO_SOURCES } from './audio';
 import { NoteManager } from './note';
 import { PianoManager } from './piano';
 
+// TODO: is this needed?
+TextureStyle.defaultOptions.scaleMode = 'nearest';
+
 export class Viewer {
   app: Application;
-  song: Song;
+  container: HTMLElement;
 
+  updateFunction: () => void;
   pianoManager: PianoManager;
   pianoContainer: Container;
   noteManager: NoteManager;
@@ -17,46 +21,72 @@ export class Viewer {
   currentTick: number = 0;
   soundCount: number = 0;
 
-  constructor(app: Application, song: Song) {
-    this.app = app;
-    this.song = song;
+  constructor(container: HTMLElement) {
+    this.app = new Application();
+    this.container = container;
+    this.updateFunction = () => {};
+  }
 
+  public async init() {
+    await this.app.init({
+      backgroundColor: 0x1099bb,
+      width: 1280,
+      height: 720,
+      useBackBuffer: true,
+      eventMode: 'none', // https://github.com/pixijs/pixijs/issues/9380
+    });
+
+    console.log('App initialized');
+    this.container.appendChild(this.app.canvas);
+    this.app.ticker.add(this.updateFunction);
+    this.draw();
+  }
+
+  private draw() {
     this.pianoContainer = new Container();
     this.pianoManager = new PianoManager(this.pianoContainer);
-    this.pianoContainer.position.set(0, app.screen.height - this.pianoContainer.height - 10);
+    this.pianoContainer.position.set(0, this.app.screen.height - this.pianoContainer.height - 10);
+
+    this.noteContainer = new Container();
 
     const keyPositions = this.pianoManager.keyPositions;
-    this.noteContainer = new Container();
-    this.noteManager = new NoteManager(song, this.noteContainer, keyPositions);
+    this.noteManager = new NoteManager(this.noteContainer, keyPositions);
+
     this.noteContainer.position.set(0, 0);
-    app.stage.addChild(this.noteContainer);
-    app.stage.addChild(this.pianoContainer);
+    this.app.stage.addChild(this.noteContainer);
+    this.app.stage.addChild(this.pianoContainer);
 
     // Add label showing current FPS
     const fpsLabel = new Text();
     fpsLabel.x = 10;
     fpsLabel.y = 10;
-    app.stage.addChild(fpsLabel);
+    this.app.stage.addChild(fpsLabel);
 
     // Add label showing current tick
     const label = new Text();
     label.x = 10;
     label.y = 40;
-    app.stage.addChild(label);
+    this.app.stage.addChild(label);
 
     // Add label showing current sound count
     const soundCountLabel = new Text();
     soundCountLabel.x = 10;
     soundCountLabel.y = 70;
-    app.stage.addChild(soundCountLabel);
+    this.app.stage.addChild(soundCountLabel);
 
-    app.ticker.add((time) => {
+    this.app.ticker.add((time) => {
       label.text = `Tick: ${this.currentTick.toFixed(2)}`;
-      fpsLabel.text = `${Math.round(app.ticker.FPS)} FPS`;
+      fpsLabel.text = `${Math.round(this.app.ticker.FPS)} FPS`;
       soundCountLabel.text = `Sounds: ${this.soundCount} / ${MAX_AUDIO_SOURCES}`;
       const notesToPlay = this.noteManager.update(this.currentTick);
       this.pianoManager.update(time.elapsedMS, notesToPlay);
     });
+  }
+
+  public loadSong(song: Song) {
+    this.noteManager.setSong(song);
+    this.noteManager.redraw(this.app.screen.width);
+    this.pianoManager.redraw(this.app.screen.width);
   }
 
   resize(width: number, height: number) {

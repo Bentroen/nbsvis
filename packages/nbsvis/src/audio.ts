@@ -1,10 +1,12 @@
 import { Song } from '@encode42/nbs.js';
 import * as Tone from 'tone';
 
-import PlayerInstrument from './instrument';
+import PlayerInstrument, { defaultInstruments } from './instrument';
 import { getTempoChangeEvents, getTempoSegments } from './song';
 
 export const MAX_AUDIO_SOURCES = 256;
+
+const DEFAULT_TEMPO_TPS = new Song().tempo * 15;
 
 type NoteEvent = {
   tick: number;
@@ -149,8 +151,8 @@ class AudioSourcePool {
 
 export class AudioEngine {
   instruments: Array<PlayerInstrument>;
-  song: Song;
-  tempoSegments: Record<number, number>;
+  song?: Song;
+  tempoSegments?: Record<number, number>;
 
   audioBuffers: Record<number, Tone.ToneAudioBuffer> = {};
 
@@ -158,14 +160,8 @@ export class AudioEngine {
 
   audioSourcePool: AudioSourcePool;
 
-  constructor(
-    song: Song,
-    instruments: Array<PlayerInstrument>,
-    maxAudioSources: number = MAX_AUDIO_SOURCES,
-  ) {
-    this.song = song;
-    this.instruments = instruments;
-    this.tempoSegments = getTempoSegments(song);
+  constructor(maxAudioSources: number = MAX_AUDIO_SOURCES) {
+    this.instruments = defaultInstruments; // Load default instruments
 
     // Master audio chain
     const masterGain = new Tone.Gain(0.5); // Master volume control
@@ -177,7 +173,6 @@ export class AudioEngine {
     this.audioDestination = masterGain;
 
     this.loadSounds();
-    this.loadSong();
 
     this.audioSourcePool = new AudioSourcePool(maxAudioSources);
   }
@@ -201,7 +196,9 @@ export class AudioEngine {
     console.debug('All instruments loaded.');
   }
 
-  private loadSong() {
+  public loadSong(song: Song) {
+    this.song = song;
+    this.tempoSegments = getTempoSegments(song);
     const noteEvents = getNoteEvents(this.song);
     const tempoChangeEvents = getTempoChangeEvents(this.song);
     this.scheduleSong(noteEvents, tempoChangeEvents, this.song.tempo * 15);
@@ -278,7 +275,7 @@ export class AudioEngine {
   public set currentTick(tick: number) {
     const transport = Tone.getTransport();
     transport.ticks = (tick * transport.PPQ) / 4;
-    const newBPM = this.tempoSegments[tick] * 15;
+    const newBPM = (this.tempoSegments?.[tick] ?? DEFAULT_TEMPO_TPS) * 15;
     console.debug('Setting tick to:', tick);
     console.debug('BPM:', newBPM);
     transport.bpm.value = newBPM;

@@ -10,6 +10,8 @@ export async function loadNoteTexture() {
   noteBlockTexture = await Assets.load(assetPaths['img/note_block_grayscale.png']);
 }
 
+await loadNoteTexture();
+
 let BLOCK_SIZE = 32;
 
 const instrumentColors = [
@@ -153,10 +155,13 @@ export class NoteManager {
 
   distanceScale = 0.5;
 
-  constructor(song: Song, container: Container, keyPositions: Array<number>) {
-    this.notes = loadNotes(song);
+  constructor(container: Container, keyPositions: Array<number>) {
     this.container = container;
     this.keyPositions = keyPositions;
+  }
+
+  public setSong(song: Song) {
+    this.notes = loadNotes(song);
   }
 
   public setKeyPositions(keyPositions: Array<number>) {

@@ -1,57 +1,26 @@
-import { Song } from '@encode42/nbs.js';
-import { Application, TextureStyle } from 'pixi.js';
-
-import { AudioEngine, loadInstruments, Player, loadSongFromUrl, Viewer } from '.';
-import { loadNoteTexture } from './note';
-import { loadPianoTextures } from './piano';
-
-TextureStyle.defaultOptions.scaleMode = 'nearest';
+import { Player, Viewer } from '.';
 
 const appContainer = document.getElementById('app');
 
-let app: Application;
 let viewer: Viewer;
 let player: Player;
 
-let song: Song;
-
 export async function initializeApp() {
-  app = new Application();
-
-  await app.init({
-    backgroundColor: 0x1099bb,
-    width: 1280,
-    height: 720,
-    useBackBuffer: true,
-    eventMode: 'none', // https://github.com/pixijs/pixijs/issues/9380
-  });
-
+  // Append the app canvas to the container
   if (!appContainer) {
     throw new Error('App container not found');
   }
 
-  await loadPianoTextures();
-  await loadNoteTexture();
+  viewer = new Viewer(appContainer);
+  await viewer.init();
 
-  console.log('Is this running?');
-
-  appContainer.appendChild(app.canvas);
-
-  const { song: loadedSong, extraSounds } = await loadSongFromUrl('mgc.zip');
-
-  song = loadedSong;
-
-  viewer = new Viewer(app, song);
-
-  const instruments = loadInstruments(song, extraSounds);
-  const audioEngine = new AudioEngine(song, instruments);
-
-  player = new Player(viewer, audioEngine, song, { seek: seekCallback });
+  player = new Player(viewer, { seek: seekCallback });
+  await player.loadSong('mgc.zip');
 
   // Initial resize
   resize();
 
-  addControls();
+  console.log('Done!');
 }
 
 function resize(width?: number, height?: number) {
@@ -62,8 +31,6 @@ function resize(width?: number, height?: number) {
   }
   width = width || window.innerWidth;
   height = height || window.innerHeight;
-
-  app.renderer.resize(width, height);
 
   // 4x = block size 64x
   // 3x = block size 48x
