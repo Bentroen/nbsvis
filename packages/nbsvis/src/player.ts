@@ -38,7 +38,7 @@ export class Player {
     this.viewer?.loadSong(song);
   }
 
-  public togglePlay() {
+  public togglePlayback(): boolean {
     if (!this.isPlaying) {
       this.play();
     } else {
