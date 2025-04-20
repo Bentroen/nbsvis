@@ -161,7 +161,7 @@ export class AudioEngine {
   audioSourcePool: AudioSourcePool;
 
   constructor(maxAudioSources: number = MAX_AUDIO_SOURCES) {
-    this.instruments = defaultInstruments; // Load default instruments
+    this.instruments = [...defaultInstruments];
 
     // Master audio chain
     const masterGain = new Tone.Gain(0.5); // Master volume control
