@@ -17,7 +17,6 @@ async function main() {
   await viewer.init();
 
   player = new Player(viewer, { seek: seekCallback });
-  await player.loadSong('mgc.zip');
 
   console.log('Done!');
 }
@@ -34,6 +33,10 @@ function seekCallback(tick: number, totalLength: number) {
 }
 
 // ---------- Controls ---------- //
+
+async function loadSong() {
+  await player.loadSong('mgc.zip');
+}
 
 function togglePlayback() {
   const isPlaying = player.togglePlayback();
@@ -61,6 +64,7 @@ function resize(width?: number, height?: number) {
 declare global {
   interface Window {
     controls: {
+      loadSong: () => Promise<void>;
       togglePlayback: () => void;
       stop: () => void;
       seek: (event: Event) => void;
@@ -70,6 +74,7 @@ declare global {
 }
 
 window.controls = {
+  loadSong,
   togglePlayback,
   stop,
   seek,
