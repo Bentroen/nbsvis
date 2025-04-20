@@ -47,6 +47,7 @@ export class Player {
   }
 
   public play() {
+    if (!this.song) return;
     this.audioEngine.play();
   }
 
