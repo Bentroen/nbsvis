@@ -51,13 +51,13 @@ jobs:
         run: pnpm install
 
       - name: Build project
-        run: pnpm run build
+        run: pnpm run build:demo
 
       - name: Upload production-ready build files
         uses: actions/upload-pages-artifact@v3
         with:
           name: github-pages
-          path: ./dist
+          path: ./apps/nbsvis-demo/dist
 
   deploy:
     name: Deploy
