@@ -9,14 +9,12 @@ export class Player {
   viewer: Viewer;
   audioEngine: AudioEngine;
   song?: Song;
-  isPlaying: boolean;
 
   callbacks: { seek: (tick: number) => void };
 
   constructor(viewer: Viewer, callbacks: { seek: (tick: number) => void }) {
     this.viewer = viewer;
     this.audioEngine = new AudioEngine();
-    this.isPlaying = false;
     this.callbacks = callbacks;
 
     if (this.viewer) {
@@ -43,11 +41,10 @@ export class Player {
   public togglePlay() {
     if (!this.isPlaying) {
       this.play();
-      this.isPlaying = true;
     } else {
       this.pause();
-      this.isPlaying = false;
     }
+    return this.isPlaying;
   }
 
   private play() {
@@ -60,6 +57,10 @@ export class Player {
 
   stop() {
     this.audioEngine.stop();
+  }
+
+  get isPlaying() {
+    return this.audioEngine.isPlaying;
   }
 
   seek(tick: number) {

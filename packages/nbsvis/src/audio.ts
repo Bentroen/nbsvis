@@ -285,6 +285,10 @@ export class AudioEngine {
     return this.audioSourcePool.activeSourceCount;
   }
 
+  public get isPlaying() {
+    return Tone.getTransport().state === 'started';
+  }
+
   public play() {
     Tone.getContext().resume();
     Tone.getTransport().start();
