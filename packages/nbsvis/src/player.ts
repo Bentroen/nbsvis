@@ -47,15 +47,15 @@ export class Player {
     return this.isPlaying;
   }
 
-  private play() {
+  public play() {
     this.audioEngine.play();
   }
 
-  private pause() {
+  public pause() {
     this.audioEngine.pause();
   }
 
-  stop() {
+  public stop() {
     this.audioEngine.stop();
   }
 
