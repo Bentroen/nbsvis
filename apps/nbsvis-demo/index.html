@@ -11,6 +11,15 @@
     <div id="app"></div>
     <script type="module" src="src/main.ts"></script>
     <div class="controls">
+      <div class="song-input">
+        <input type="file" id="file" accept=".nbs" onChange="controls.setFile(event)" />
+        <input
+          id="url"
+          type="text"
+          placeholder="or enter noteblock.world URL"
+          onInput="controls.setUrl(event)"
+        />
+      </div>
       <button id="loadSong" onClick="controls.loadSong()">Load song</button>
       <button id="togglePlay" onClick="controls.togglePlayback()">▶</button>
       <button id="stop" onClick="controls.stop()">⏹️</button>

@@ -24,6 +24,11 @@ body {
   margin-top: 20px;
 }
 
+.song-input {
+  display: flex;
+  flex-direction: column;
+}
+
 button {
   background-color: #727272;
   border: 3px solid #555;
