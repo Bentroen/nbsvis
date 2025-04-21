@@ -35,7 +35,7 @@ function seekCallback(tick: number, totalLength: number) {
 // ---------- Controls ---------- //
 
 async function loadSong() {
-  await player.loadSong('mgc.zip');
+  await player.loadSong('megacollab.zip');
 }
 
 function togglePlayback() {
