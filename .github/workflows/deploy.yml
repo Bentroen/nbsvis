@@ -51,6 +51,8 @@ jobs:
         run: pnpm install
 
       - name: Build project
+        env:
+          VITE_BASE_URL: /${{ github.event.repository.name }}/ # Set the base URL for GitHub Pages
         run: pnpm run build:demo
 
       - name: Upload production-ready build files
