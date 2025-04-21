@@ -1,9 +1,9 @@
 import { Song } from '@encode42/nbs.js';
 import { Application, Container, Text, TextureStyle } from 'pixi.js';
 
-import { MAX_AUDIO_SOURCES } from './audio';
-import { NoteManager } from './note';
-import { PianoManager } from './piano';
+import { MAX_AUDIO_SOURCES } from '../audio';
+import { NoteManager } from './widgets/note';
+import { PianoManager } from './widgets/piano';
 
 // TODO: is this needed?
 TextureStyle.defaultOptions.scaleMode = 'nearest';

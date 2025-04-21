@@ -1,6 +1,6 @@
 import { Assets, Container, Graphics, Sprite, Texture } from 'pixi.js';
 
-import assetPaths from './assets';
+import assetPaths from '../../assets';
 
 const KEY_COUNT = 88;
 export const WHITE_KEY_COUNT = Math.ceil((KEY_COUNT / 12) * 7);
