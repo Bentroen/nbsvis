@@ -8,6 +8,7 @@ let noteBlockTexture: Texture;
 
 export async function loadNoteTexture() {
   noteBlockTexture = await Assets.load(assetPaths['img/note_block_grayscale.png']);
+  noteBlockTexture.source.scaleMode = 'nearest';
 }
 
 await loadNoteTexture();

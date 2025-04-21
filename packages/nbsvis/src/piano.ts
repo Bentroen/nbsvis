@@ -16,12 +16,12 @@ let blackKeyTexture: Texture;
 export async function loadPianoTextures() {
   whiteKeyTexture = await Assets.load(assetPaths['img/key_white.png']);
   blackKeyTexture = await Assets.load(assetPaths['img/key_black.png']);
+
+  whiteKeyTexture.source.scaleMode = 'nearest';
+  blackKeyTexture.source.scaleMode = 'nearest';
 }
 
 await loadPianoTextures();
-
-//whiteKeyTexture.source.scaleMode = 'nearest';
-//blackKeyTexture.source.scaleMode = 'nearest';
 
 const BLACK_KEY_POSITIONS = new Set([1, 3, 6, 8, 10]);
 
