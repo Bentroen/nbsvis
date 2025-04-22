@@ -102,7 +102,7 @@ class AudioSource {
   stop() {
     //this.sourceNode.onended(this.sourceNode);
     this.sourceNode.onended = () => {};
-    this.sourceNode.stop();
+    this.sourceNode.stop(Tone.getTransport().now());
     this.sourceNode.disconnect();
   }
 }
