@@ -1,9 +1,7 @@
 import { Song } from '@encode42/nbs.js';
-import { Application, Container, Text, TextureStyle } from 'pixi.js';
+import { Application, Container, Text, TextureStyle, Ticker } from 'pixi.js';
 
 import { MAX_AUDIO_SOURCES } from '../audio';
-import { NoteManager } from './widgets/note';
-import { PianoManager } from './widgets/piano';
 
 // TODO: is this needed?
 TextureStyle.defaultOptions.scaleMode = 'nearest';
@@ -14,11 +12,7 @@ export class Viewer {
 
   updateFunction: () => void;
 
-  // TODO: remove this mess
-  pianoManager: PianoManager = new PianoManager(new Container());
-  pianoContainer: Container = new Container();
-  noteManager: NoteManager = new NoteManager(new Container(), []);
-  noteContainer: Container = new Container();
+  view?: BaseView;
 
   private resizeObserver: ResizeObserver = new ResizeObserver(() => {
     this.resize();
@@ -49,20 +43,16 @@ export class Viewer {
     this.setResponsive(true);
   }
 
+  public setView(view: BaseView) {
+    if (this.view) {
+      this.app.stage.removeChild(this.view.stage);
+    }
+    this.view = view;
+    this.app.stage.addChild(this.view.stage);
+    this.view?.draw();
+  }
+
   private draw() {
-    this.pianoContainer = new Container();
-    this.pianoManager = new PianoManager(this.pianoContainer);
-    this.pianoContainer.position.set(0, this.app.screen.height - this.pianoContainer.height - 10);
-
-    this.noteContainer = new Container();
-
-    const keyPositions = this.pianoManager.keyPositions;
-    this.noteManager = new NoteManager(this.noteContainer, keyPositions);
-
-    this.noteContainer.position.set(0, 0);
-    this.app.stage.addChild(this.noteContainer);
-    this.app.stage.addChild(this.pianoContainer);
-
     // Add label showing current FPS
     const fpsLabel = new Text();
     fpsLabel.x = 10;
@@ -81,19 +71,20 @@ export class Viewer {
     soundCountLabel.y = 70;
     this.app.stage.addChild(soundCountLabel);
 
-    this.app.ticker.add((time) => {
+    this.app.ticker.add(() => {
       label.text = `Tick: ${this.currentTick.toFixed(2)}`;
       fpsLabel.text = `${Math.round(this.app.ticker.FPS)} FPS`;
       soundCountLabel.text = `Sounds: ${this.soundCount} / ${MAX_AUDIO_SOURCES}`;
-      const notesToPlay = this.noteManager.update(this.currentTick);
-      this.pianoManager.update(time.elapsedMS, notesToPlay);
+
+      if (this.view) {
+        this.view.currentTick = this.currentTick;
+        this.view.soundCount = this.soundCount;
+      }
     });
   }
 
   public loadSong(song: Song) {
-    this.noteManager.setSong(song);
-    this.noteManager.redraw(this.app.screen.width);
-    this.pianoManager.redraw(this.app.screen.width);
+    this.view?.loadSong(song);
   }
 
   resize(width?: number, height?: number) {
@@ -111,13 +102,7 @@ export class Viewer {
     // Re-render current scene to avoid flickering. See:
     // https://github.com/pixijs/pixijs/issues/3395#issuecomment-328495407
     this.app.render();
-    this.pianoManager.redraw(width);
-    this.noteManager.redraw(width);
-    this.pianoContainer.position.set(0, height - this.pianoContainer.height - 10);
-    this.noteContainer.position.set(0, 0);
-    this.noteManager.setKeyPositions(this.pianoManager.keyPositions);
-    this.noteManager.setPianoHeight(this.pianoContainer.height);
-    this.noteManager.setScreenHeight(height);
+    this.view?.resize(width, height);
   }
 
   public setResponsive(responsive: boolean) {
@@ -136,3 +121,28 @@ export class Viewer {
 // 0.5x = block size 8x
 // 0.25x = block size 4x
 //app.stage.scale.set(0.5, 0.5);
+
+export abstract class BaseView {
+  public stage: Container;
+
+  public ticker: Ticker;
+
+  // TODO: make this part of a Context object
+  public currentTick: number = 0;
+
+  public soundCount: number = 0;
+
+  constructor() {
+    this.stage = new Container();
+    this.ticker = new Ticker();
+    this.ticker.autoStart = true;
+  }
+
+  public abstract draw(): void;
+
+  public abstract loadSong(song: Song): void;
+
+  public abstract redraw(width: number, height: number): void;
+
+  public abstract resize(width: number, height: number): void;
+}

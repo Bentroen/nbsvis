@@ -1,4 +1,4 @@
-import { Player, Viewer } from '@nbsvis/core';
+import { Player, Viewer, PianoRollView } from '@nbsvis/core';
 
 // ---------- App ---------- //
 
@@ -15,6 +15,8 @@ async function main() {
 
   viewer = new Viewer(appContainer);
   await viewer.init();
+
+  viewer.setView(new PianoRollView());
 
   player = new Player(viewer, { seek: seekCallback });
   await player.loadSong('megacollab.zip');
