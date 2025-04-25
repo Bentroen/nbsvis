@@ -19,7 +19,8 @@ body {
   top: 0;
   right: 0;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: end;
   gap: 10px;
   margin-top: 20px;
 }
@@ -51,6 +52,10 @@ button:active {
   background-color: #666;
   box-shadow: 0px 0px 0 #444;
   transform: translate(4px, 4px);
+}
+
+.resolution-controls > button {
+  padding: 5px 10px;
 }
 
 input[type='range'] {

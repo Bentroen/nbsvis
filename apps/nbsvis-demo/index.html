@@ -11,18 +11,6 @@
     <div id="app"></div>
     <script type="module" src="src/main.ts"></script>
     <div class="controls">
-      <div class="song-input">
-        <input type="file" id="file" accept=".nbs,.zip" onChange="controls.setFile(event)" />
-        <input
-          id="url"
-          type="text"
-          placeholder="or enter noteblock.world URL"
-          onInput="controls.setUrl(event)"
-        />
-      </div>
-      <button id="loadSong" onClick="controls.loadSong()">Load song</button>
-      <button id="togglePlay" onClick="controls.togglePlayback()">▶</button>
-      <button id="stop" onClick="controls.stop()">⏹️</button>
       <input
         id="seek"
         type="range"
@@ -30,13 +18,30 @@
         max="100"
         step="1"
         value="0"
-        style="width: 500px"
+        style="width: 90vw"
         onInput="controls.seek(event)"
       />
-      <button id="" onClick="controls.resize(640, 360)">640x360</button>
-      <button id="" onClick="controls.resize(1280, 720)">1280x720</button>
-      <button id="" onClick="controls.resize(1920, 720)">1920x720</button>
-      <button id="" onClick="controls.resize()">Scale to window</button>
+      <div style="display: flex; gap: 1rem; align-items: center">
+        <div class="song-input">
+          <input type="file" id="file" accept=".nbs,.zip" onChange="controls.setFile(event)" />
+          <input
+            id="url"
+            type="text"
+            placeholder="or enter noteblock.world URL"
+            onInput="controls.setUrl(event)"
+          />
+        </div>
+        <button id="loadSong" onClick="controls.loadSong()">Load song</button>
+      </div>
+      <div class="playback-controls" style="display: flex; gap: 1rem">
+        <button id="togglePlay" onClick="controls.togglePlayback()">▶</button>
+        <button id="stop" onClick="controls.stop()">⏹️</button>
+      </div>
+      <div class="resolution-controls">
+        <button id="" onClick="controls.resize()">Auto</button>
+        <button id="" onClick="controls.resize(640, 360)">640x360</button>
+        <button id="" onClick="controls.resize(1280, 720)">1280x720</button>
+      </div>
     </div>
   </body>
 </html>
