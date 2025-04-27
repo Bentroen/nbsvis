@@ -11,16 +11,20 @@
     <div id="app"></div>
     <script type="module" src="src/main.ts"></script>
     <div class="controls">
-      <input
-        id="seek"
-        type="range"
-        min="0"
-        max="100"
-        step="1"
-        value="0"
-        style="width: 90vw"
-        onInput="controls.seek(event)"
-      />
+      <div class="playback-controls" style="display: flex; gap: 1rem; width: 100%">
+        <input
+          id="seek"
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          value="0"
+          style="width: 100%"
+          onInput="controls.seek(event)"
+        />
+        <button id="togglePlay" onClick="controls.togglePlayback()">▶</button>
+        <button id="stop" onClick="controls.stop()">⏹️</button>
+      </div>
       <div style="display: flex; gap: 1rem; align-items: center">
         <div class="song-input">
           <input type="file" id="file" accept=".nbs,.zip" onChange="controls.setFile(event)" />
@@ -32,10 +36,6 @@
           />
         </div>
         <button id="loadSong" onClick="controls.loadSong()">Load song</button>
-      </div>
-      <div class="playback-controls" style="display: flex; gap: 1rem">
-        <button id="togglePlay" onClick="controls.togglePlayback()">▶</button>
-        <button id="stop" onClick="controls.stop()">⏹️</button>
       </div>
       <div class="resolution-controls">
         <button id="" onClick="controls.resize()">Auto</button>
