@@ -4,6 +4,16 @@ import { Assets, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { WHITE_KEY_COUNT } from './piano';
 import assetPaths from '../../assets';
 
+// TODO: how to refactor this to abstract away the complexity?
+// The goal: push as many 'as generic as possible' utils out of this and
+// into a shared module that can be imported by other viewers.
+// Ideally, this class will be very 'dumb' - just draw notes it's given
+// and not care about details of how the notes are loaded.
+
+// e.g. export class ViewerContext {}
+// ^ contains info such as the notes to play in this tick, the Song object, methods to
+// cull offscreen notes, calculate diff between visible and newly entered notes etc.
+
 let noteBlockTexture: Texture;
 
 export async function loadNoteTexture() {
