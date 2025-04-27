@@ -19,6 +19,7 @@
 - [ ] Disabling/customizing note block colors
 - [ ] Background filters (blur, glow etc.) https://pixijs.io/filters/docs/
 - [ ] Setting to normalize pitch (should the pressed key be the note key, or the actual factored pitch)
+- [ ] Dynamic resize based on performance (e.g. 50% using `app.stage.scale(2.0)`)
 
 # Audio
 
@@ -33,10 +34,13 @@
 - [ ] Keyboard controls (spacebar, left/right arrows)
 - [ ] Master volume control
 - [ ] React wrapper (may be part of another lib)
+- [ ] Media API integration
 - [ ] Playlist support
 - [x] Tempo changer support
+- [ ] Normalize duration representation as seconds instead of ticks (progress bar should move at a constant speed)
 - [ ] Loop support
-- [ ] Zipped song support
+- [x] Zipped song support
+- [ ] Keeping global state (e.g. song position, volume, etc.) between pages, as in Soundcloud, Spotify... (consider using a state management lib)
 
 # Enhancements
 
@@ -45,9 +49,10 @@
 
 # Project
 
-- [ ] Move non-API stuff to demo folder
+- [x] Move non-API stuff to demo folder
 - [ ] Publish to npm
-- [ ] CI/CD, documentation
+- [ ] CI/CD
+- [ ] Documentation
 - [ ] Settings manager + Saving and loading settings from local storage
 - [ ] Publish API documentation + demo GitHub page
 
