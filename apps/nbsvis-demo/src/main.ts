@@ -18,22 +18,20 @@ async function main() {
 
   viewer.setView(new PianoRollView());
 
-  player = new Player(viewer, { seek: seekCallback });
+  player = new Player(viewer);
   await player.loadSong('megacollab.zip');
+
+  player.on('seek', ({ tick, totalLength }) => {
+    const input = document.getElementById('seek') as HTMLInputElement;
+    if (!input) return;
+    input.value = tick.toString();
+    input.max = totalLength.toString();
+  });
 
   console.log('Done!');
 }
 
 main();
-
-// ---------- Callbacks ---------- //
-
-function seekCallback(tick: number, totalLength: number) {
-  const input = document.getElementById('seek') as HTMLInputElement;
-  if (!input) return;
-  input.value = tick.toString();
-  input.max = totalLength.toString();
-}
 
 // ---------- Controls ---------- //
 
