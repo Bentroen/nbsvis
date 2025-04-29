@@ -1,4 +1,4 @@
-import { Player, Viewer, PianoRollView } from '@nbsvis/core';
+import { Player, Viewer, PianoRollView, PlayerControlHandler } from '@nbsvis/core';
 
 // ---------- App ---------- //
 
@@ -27,6 +27,8 @@ async function main() {
     input.value = tick.toString();
     input.max = totalLength.toString();
   });
+
+  const controls = new PlayerControlHandler(player);
 
   console.log('Done!');
 }
