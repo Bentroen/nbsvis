@@ -199,8 +199,6 @@ export class AudioEngine {
   }
 
   private async loadSounds() {
-    await Tone.start(); // Ensure the audio context is running
-
     const promises = this.instruments.map(async (ins, index) => {
       if (this.audioBuffers[index]) return; // Skip if already loaded
       const audioBuffer = await loadAudio(ins.audioSource);
@@ -467,15 +465,18 @@ export class AudioEngine {
   }
 
   public play() {
+    Tone.setContext(this.defaultContext);
     Tone.getContext().resume();
     Tone.getTransport().start();
   }
 
   public pause() {
+    Tone.setContext(this.defaultContext);
     Tone.getTransport().pause();
   }
 
   public stop() {
+    Tone.setContext(this.defaultContext);
     Tone.getTransport().stop();
     Tone.getTransport().position = 0;
   }
