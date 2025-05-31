@@ -171,13 +171,13 @@ export class AudioEngine {
     this.instruments = [...defaultInstruments];
 
     // Master audio chain
-    const masterGain = new Tone.Gain(0.5); // Master volume control
     const compressor = new Tone.Compressor(-24, 3); // Dynamic range compression
     const limiter = new Tone.Limiter(-3); // Prevent clipping
-    masterGain.connect(compressor);
+    const masterGain = new Tone.Gain(1); // Master volume control
     compressor.connect(limiter);
-    //limiter.toDestination();
-    this.audioDestination = masterGain;
+    limiter.connect(masterGain);
+    masterGain.toDestination();
+    this.audioDestination = compressor;
 
     this.loadSounds();
 
@@ -195,7 +195,7 @@ export class AudioEngine {
       },
     })
       .sync()
-      .toDestination();
+      .connect(this.audioDestination);
   }
 
   private async loadSounds() {
@@ -298,15 +298,7 @@ export class AudioEngine {
       Tone.setContext(context);
       const transport = context.transport;
 
-      // Master chain
-      const masterGain = new Tone.Gain(0.5); // Master volume control
-      const compressor = new Tone.Compressor(-24, 3); // Dynamic range compression
-      const limiter = new Tone.Limiter(-3); // Prevent clipping
-      console.log(masterGain.context);
-      masterGain.connect(compressor);
-      compressor.connect(limiter);
-      limiter.toDestination();
-      const audioDestination = masterGain;
+      const destinationNode = new Tone.Gain(0.5).toDestination();
 
       const secondsPerTick = 60 / tempo / 4;
 
@@ -336,7 +328,7 @@ export class AudioEngine {
 
             const panVolNode = new Tone.PanVol({ volume: volumeDb, pan: panning });
 
-            sourceNode.chain(panVolNode, audioDestination);
+            sourceNode.chain(panVolNode, destinationNode);
             sourceNode.start(time);
           }, tick * secondsPerTick);
         }
