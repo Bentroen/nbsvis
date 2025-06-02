@@ -67,40 +67,119 @@ async function loadNbsFile(arrayBuffer: ArrayBuffer): Promise<Song> {
   return song;
 }
 
-function getTempoChangerInstrumentIds(song: Song): Array<number> {
-  return song.instruments.loaded.flatMap((instrument, id) =>
-    instrument.meta.name === 'Tempo Changer' ? [id] : [],
-  );
-}
-export function getTempoChangeEvents(song: Song) {
-  const tempoChangerInstrumentIds = getTempoChangerInstrumentIds(song);
-  const tempoChangeEvents: Record<number, number> = {};
+// ==========================================
 
-  for (const layer of song.layers) {
-    for (const tickStr in layer.notes) {
-      const note = layer.notes[tickStr];
-      if (tempoChangerInstrumentIds.includes(note.instrument)) {
+export type NoteEvent = {
+  tick: number;
+  instrument: number;
+  key: number;
+  velocity: number;
+  panning: number;
+};
+
+export class SongManager {
+  private _song: Song;
+
+  private _noteEvents: Record<number, Array<NoteEvent>> = {};
+
+  private _tempoChangeEvents: Record<number, number> = {};
+
+  private _tempoSegments: Record<number, number> = {};
+
+  constructor(song?: Song) {
+    this._song = song ?? new Song();
+  }
+
+  get noteEvents() {
+    if (Object.keys(this._noteEvents).length === 0) {
+      this._noteEvents = this.getNoteEvents();
+    }
+    return this._noteEvents;
+  }
+
+  get initialTempo() {
+    return this._song.tempo;
+  }
+
+  get tempoChangeEvents() {
+    if (Object.keys(this._tempoChangeEvents).length === 0) {
+      this._tempoChangeEvents = this.getTempoChangeEvents();
+    }
+    return this._tempoChangeEvents;
+  }
+
+  get tempoSegments() {
+    if (Object.keys(this._tempoSegments).length === 0) {
+      this._tempoSegments = this.getTempoSegments();
+    }
+    return this._tempoSegments;
+  }
+
+  private getNoteEvents() {
+    const noteEventsPerTick: Record<number, Array<NoteEvent>> = [];
+
+    for (const layer of this._song.layers) {
+      for (const tickStr in layer.notes) {
+        const note = layer.notes[tickStr];
+
         const tick = parseInt(tickStr);
-        const tempo = note.pitch / 15; // Convert from BPM to t/s
-        tempoChangeEvents[tick] = tempo;
+        const instrument = note.instrument;
+        const key = note.key + note.pitch / 100;
+        const velocity = ((note.velocity / 100) * layer.volume) / 100;
+        const panning =
+          (layer.stereo === 0 ? note.panning : (note.panning + layer.stereo) / 2) / 100;
+
+        const noteEvent = {
+          tick,
+          instrument,
+          key,
+          velocity,
+          panning,
+        };
+
+        if (!(tick in noteEventsPerTick)) {
+          noteEventsPerTick[tick] = [];
+        }
+        noteEventsPerTick[tick].push(noteEvent);
       }
     }
+    return noteEventsPerTick;
   }
 
-  return tempoChangeEvents;
-}
+  private getTempoChangerInstrumentIds(): Array<number> {
+    return this._song.instruments.loaded.flatMap((instrument, id) =>
+      instrument.meta.name === 'Tempo Changer' ? [id] : [],
+    );
+  }
+  private getTempoChangeEvents() {
+    const tempoChangerInstrumentIds = this.getTempoChangerInstrumentIds();
+    const tempoChangeEvents: Record<number, number> = {};
 
-export function getTempoSegments(song: Song) {
-  // TODO: this is recalculated. Cache it or extend the Song class with this data
-  const tempoChangeEvents = getTempoChangeEvents(song);
-  const tempoSegments: Record<number, number> = {};
-  let lastTempo = song.tempo;
+    for (const layer of this._song.layers) {
+      for (const tickStr in layer.notes) {
+        const note = layer.notes[tickStr];
+        if (tempoChangerInstrumentIds.includes(note.instrument)) {
+          const tick = parseInt(tickStr);
+          const tempo = note.pitch / 15; // Convert from BPM to t/s
+          tempoChangeEvents[tick] = tempo;
+        }
+      }
+    }
 
-  for (let tick = 0; tick < song.length; tick++) {
-    const tempo = tempoChangeEvents[tick] || lastTempo;
-    lastTempo = tempo;
-    tempoSegments[tick] = tempo;
+    return tempoChangeEvents;
   }
 
-  return tempoSegments;
+  private getTempoSegments() {
+    const tempoChangeEvents = this.tempoChangeEvents;
+    const tempoSegments: Record<number, number> = {};
+    let lastTempo = this._song.tempo;
+
+    for (let tick = 0; tick < this._song.length; tick++) {
+      const tempo = tempoChangeEvents[tick] || lastTempo;
+      lastTempo = tempo;
+      tempoSegments[tick] = tempo;
+    }
+
+    return tempoSegments;
+  }
 }

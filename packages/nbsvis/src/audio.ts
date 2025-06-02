@@ -2,20 +2,13 @@ import { Song } from '@encode42/nbs.js';
 import * as Tone from 'tone';
 
 import PlayerInstrument, { defaultInstruments } from './instrument';
-import { getTempoChangeEvents, getTempoSegments } from './song';
-import { TransportClass } from 'tone/build/esm/core/clock/Transport';
+import { NoteEvent, SongManager } from './song';
 
 export const MAX_AUDIO_SOURCES = 256;
 
 const DEFAULT_TEMPO_TPS = new Song().tempo * 15;
 
-type NoteEvent = {
-  tick: number;
-  instrument: number;
-  key: number;
-  velocity: number;
-  panning: number;
-};
+const DEFAULT_BUFFER_LENGTH_SECONDS = 5; // Default length for offline rendering buffers
 
 function decodeAudioData(buffer: ArrayBuffer): Promise<AudioBuffer> {
   return Tone.getContext().decodeAudioData(buffer);
@@ -31,36 +24,6 @@ async function loadAudio(audioSource: string | ArrayBuffer): Promise<AudioBuffer
     arrayBuffer = audioSource;
   }
   return await decodeAudioData(arrayBuffer);
-}
-
-function getNoteEvents(song: Song) {
-  const noteEventsPerTick: Record<number, Array<NoteEvent>> = [];
-
-  for (const layer of song.layers) {
-    for (const tickStr in layer.notes) {
-      const note = layer.notes[tickStr];
-
-      const tick = parseInt(tickStr);
-      const instrument = note.instrument;
-      const key = note.key + note.pitch / 100;
-      const velocity = ((note.velocity / 100) * layer.volume) / 100;
-      const panning = (layer.stereo === 0 ? note.panning : (note.panning + layer.stereo) / 2) / 100;
-
-      const noteEvent = {
-        tick,
-        instrument,
-        key,
-        velocity,
-        panning,
-      };
-
-      if (!(tick in noteEventsPerTick)) {
-        noteEventsPerTick[tick] = [];
-      }
-      noteEventsPerTick[tick].push(noteEvent);
-    }
-  }
-  return noteEventsPerTick;
 }
 
 type AudioSourceParams = {
@@ -151,9 +114,9 @@ class AudioSourcePool {
 }
 
 export class AudioEngine {
+  songManager: SongManager;
+
   instruments: Array<PlayerInstrument>;
-  song?: Song;
-  tempoSegments?: Record<number, number>;
 
   audioBuffers: Record<number, Tone.ToneAudioBuffer> = {};
 
@@ -161,13 +124,13 @@ export class AudioEngine {
 
   audioSourcePool: AudioSourcePool;
 
-  outputBuffer?: Tone.ToneBufferSource;
 
-  defaultContext: Tone.BaseContext;
 
-  player: Tone.Player;
+  defaultContext: Tone.Context;
 
   constructor(maxAudioSources: number = MAX_AUDIO_SOURCES) {
+    this.songManager = new SongManager();
+
     this.instruments = [...defaultInstruments];
 
     // Master audio chain
@@ -183,19 +146,8 @@ export class AudioEngine {
 
     this.audioSourcePool = new AudioSourcePool(maxAudioSources);
 
-    this.defaultContext = Tone.getContext();
 
-    // Set up player
-    this.player = new Tone.Player({
-      onload: () => {
-        console.log('Player loaded');
-      },
-      onerror: (error) => {
-        console.error('Error loading player:', error);
-      },
-    })
-      .sync()
-      .connect(this.audioDestination);
+    this.defaultContext = Tone.getContext() as Tone.Context;
   }
 
   private async loadSounds() {
@@ -240,167 +192,81 @@ export class AudioEngine {
     this.loadSounds();
 
     // Song
-    this.song = song;
-    this.tempoSegments = getTempoSegments(song);
-    const noteEvents = getNoteEvents(this.song);
-    const tempoChangeEvents = getTempoChangeEvents(this.song);
+    this.songManager = new SongManager(song);
 
     const transport = Tone.getTransport();
-    this.scheduleSong(transport, [], tempoChangeEvents, this.song.tempo * 15);
 
-    const buffer = await this.renderSong(noteEvents, tempoChangeEvents, this.song.tempo * 15);
-    console.log(buffer);
-    console.log('Song pre-render complete.');
+    this.scheduleSong(
+      this.defaultContext,
+      song.tempo * 15,
+      this.songManager.noteEvents,
+      this.songManager.tempoChangeEvents,
+    );
 
-    Tone.setContext(this.defaultContext); // Ensure Tone context is set
 
-    this.player = new Tone.Player({
-      url: buffer,
-      loop: false,
-      autostart: false,
-      onload: () => {
-        console.log('Player loaded');
-      },
-      onerror: (error) => {
-        console.error('Error loading player:', error);
-      },
-    })
-      .toDestination()
-      .sync()
-      .start(0);
-
-    //const player2 = new Tone.Player({
-    //  url: buffer,
-    //  loop: false,
-    //  autostart: false,
-    //  onload: () => {
-    //    console.log('Player loaded');
-    //  },
-    //  onerror: (error) => {
-    //    console.error('Error loading player:', error);
-    //  },
-    //})
-    //  .toDestination()
-    //  .sync()
-    //  .start(0.2);
-  }
-
-  private async renderSong(
-    noteEvents: Record<number, Array<NoteEvent>> = {},
-    tempoChangeEvents: Record<number, number> = {},
-    tempo: number,
-  ) {
-    console.log('Starting offline rendering...');
-
-    return await Tone.Offline((context) => {
-      //this.scheduleSong(transport, noteEvents, tempoChangeEvents, tempo);
-
-      Tone.setContext(context);
-      const transport = context.transport;
-
-      const destinationNode = new Tone.Gain(0.5).toDestination();
-
-      const secondsPerTick = 60 / tempo / 4;
-
-      for (const [tickStr, notes] of Object.entries(noteEvents)) {
-        const tick = parseInt(tickStr);
-
-        for (const note of notes) {
-          transport.schedule((time) => {
-            Tone.setContext(context);
-
-            const { key, instrument, velocity, panning } = note;
-
-            if (velocity === 0) return;
-
-            const audioBuffer = this.audioBuffers[instrument];
-            if (!audioBuffer) return;
-
-            const insOffset = 45 - this.instruments[instrument].baseKey + 45;
-            const playbackRate = 2 ** ((key - insOffset) / 12);
-
-            const volumeDb = Tone.gainToDb(velocity);
-
-            const sourceNode = new Tone.ToneBufferSource({
-              url: audioBuffer,
-              playbackRate,
-            });
-
-            const panVolNode = new Tone.PanVol({ volume: volumeDb, pan: panning });
-
-            sourceNode.chain(panVolNode, destinationNode);
-            sourceNode.start(time);
-          }, tick * secondsPerTick);
-        }
-      }
-
-      console.log(tempo);
-      transport.bpm.value = tempo / 6; // TODO: why??
-      console.log(tempo / 6);
-
-      //for (const [tickStr, newTempo] of Object.entries(tempoChangeEvents)) {
-      //  const tick = parseInt(tickStr);
-      //  transport.schedule((time) => {
-      //    transport.bpm.setValueAtTime(newTempo * 15, time);
-      //  }, tick * secondsPerTick);
-      //}
-
-      //const osc = new Tone.Oscillator(440).toDestination();
-      //transport.schedule((time) => {
-      //  osc.start(time).stop(time + 0.5);
-      //}, 0);
-      //make sure to start the transport
-      transport.start(0);
-    }, 5);
   }
 
   private scheduleSong(
-    transport: TransportClass,
+    context: Tone.Context,
+    tempo: number,
     noteEvents: Record<number, Array<NoteEvent>>,
     tempoChangeEvents: Record<number, number>,
-    tempo: number,
   ) {
+    //Tone.setContext(context);
+    const transport = Tone.getTransport();
+
     transport.stop();
     transport.cancel();
     transport.position = 0;
 
+    transport.bpm.value = tempo;
     const secondsPerTick = 60 / tempo / 4; // 4 ticks per beat
 
-    this.scheduleNotes(transport, noteEvents, secondsPerTick);
-    this.scheduleTempoChanges(transport, tempo, tempoChangeEvents, secondsPerTick);
+    this.scheduleNotes(context, noteEvents, secondsPerTick, (notes, time) => {
+      this.playNotes(notes, time);
+    });
+    this.scheduleTempoChanges(context, tempo, tempoChangeEvents, secondsPerTick);
 
     console.log('Song scheduled.');
   }
 
-  private scheduleNotes(
-    transport: TransportClass,
+  public scheduleNotes(
+    context: Tone.Context,
     noteEvents: Record<number, Array<NoteEvent>>,
     secondsPerTick: number,
+    callback: (notes: Array<NoteEvent>, time: number) => void,
   ) {
+    Tone.setContext(context);
+    const transport = Tone.getTransport();
     for (const [tickStr, notes] of Object.entries(noteEvents)) {
       const tick = parseInt(tickStr);
       transport.schedule((time) => {
-        this.playNotes(notes, time);
+        Tone.setContext(context);
+        callback(notes, time);
       }, tick * secondsPerTick);
     }
   }
 
-  private scheduleTempoChanges(
-    transport: TransportClass,
+  public scheduleTempoChanges(
+    context: Tone.Context,
     initialTempo: number,
     tempoChangeEvents: Record<number, number>,
     secondsPerTick: number,
   ) {
-    transport.bpm.value = initialTempo;
+    Tone.setContext(context);
+    const transport = Tone.getTransport();
+    //transport.bpm.value = initialTempo * 15; // Set initial BPM
+    // TODO: the above assignment makes the scheduled BPM changes stop working
     for (const [tickStr, newTempo] of Object.entries(tempoChangeEvents)) {
       const tick = parseInt(tickStr);
       transport.schedule((time) => {
+        Tone.setContext(context);
         transport.bpm.setValueAtTime(newTempo * 15, time);
       }, tick * secondsPerTick);
     }
   }
 
-  private playNote(note: NoteEvent, time: number) {
+  private playNote(note: NoteEvent, time: number, destinationNode?: Tone.ToneAudioNode) {
     const { key, instrument, velocity, panning } = note;
 
     if (velocity === 0) return;
@@ -417,7 +283,7 @@ export class AudioEngine {
 
     source.play({
       source: audioBuffer,
-      destinationNode: this.audioDestination,
+      destinationNode: destinationNode ?? this.audioDestination,
       time,
       playbackRate,
       panning,
@@ -428,9 +294,10 @@ export class AudioEngine {
     });
   }
 
-  private playNotes(notes: Array<NoteEvent>, time: number) {
+  // TODO: should be private, but used in offline rendering
+  public playNotes(notes: Array<NoteEvent>, time: number, destinationNode?: Tone.ToneAudioNode) {
     for (const note of notes) {
-      this.playNote(note, time);
+      this.playNote(note, time, destinationNode);
     }
   }
 
@@ -442,7 +309,7 @@ export class AudioEngine {
   public set currentTick(tick: number) {
     const transport = Tone.getTransport();
     transport.ticks = (tick * transport.PPQ) / 4;
-    const newBPM = (this.tempoSegments?.[tick] ?? DEFAULT_TEMPO_TPS) * 15;
+    const newBPM = (this.songManager.tempoSegments[tick] ?? DEFAULT_TEMPO_TPS) * 15;
     console.debug('Setting tick to:', tick);
     console.debug('BPM:', newBPM);
     transport.bpm.value = newBPM;
