@@ -113,6 +113,125 @@ class AudioSourcePool {
   }
 }
 
+type ContextInfo = {
+  context: Tone.Context;
+  destinationNode: Tone.ToneAudioNode;
+};
+
+/**
+ * Returns a new object containing only the entries from `obj` whose numeric keys are in the range [min, max).
+ * The keys in the returned object are shifted so that the lowest key is 0 (i.e., original key - min).
+ * Only keys that exist in the original object are included.
+ *
+ * @param min - The inclusive lower bound of the key range.
+ * @param max - The exclusive upper bound of the key range.
+ * @param obj - The source object with numeric keys.
+ * @returns A new object with keys 0...(max-min-1) containing the filtered and shifted entries.
+ */
+function sliceObject<T>(min: number, max: number, obj: Record<number, T>): Record<number, T> {
+  const result: Record<number, T> = {};
+  for (let k = min; k < max; k++) {
+    if (obj[k] !== undefined) {
+      result[k - min] = obj[k];
+    }
+  }
+  return result;
+}
+
+class OfflineRenderer {
+  private buffers: Record<string, Tone.ToneAudioBuffer> = {};
+
+  private players: Array<Tone.Player> = [];
+
+  private audioEngine: AudioEngine;
+
+  private songManager: SongManager;
+
+  private bufferLengthSeconds: number;
+
+  constructor(
+    audioEngine: AudioEngine,
+    bufferLengthSeconds: number = DEFAULT_BUFFER_LENGTH_SECONDS,
+  ) {
+    this.audioEngine = audioEngine;
+    this.songManager = audioEngine.songManager;
+    this.bufferLengthSeconds = bufferLengthSeconds;
+  }
+
+  private async renderSlice(startTime: number, length: number) {
+    return await Tone.Offline((context) => {
+      const transport = context.transport;
+      const destinationNode = new Tone.Gain(0.5).toDestination();
+
+      const [startTick, endTick] = this.songManager.getTickRangeForTime(startTime, length);
+      console.log(`Rendering slice from ${startTime} to ${startTime + length} seconds...`);
+
+      const initialTempo = this.songManager.initialTempo;
+      const secondsPerTick = 60 / this.songManager.initialTempo / 4; // 4 ticks per beat
+
+      const noteEvents = sliceObject(startTick, endTick, this.songManager.noteEvents);
+      const tempoChangeEvents = sliceObject(startTick, endTick, this.songManager.tempoChangeEvents);
+
+      this.audioEngine.scheduleNotes(context, noteEvents, secondsPerTick, destinationNode);
+      this.audioEngine.scheduleTempoChanges(
+        context,
+        initialTempo,
+        tempoChangeEvents,
+        secondsPerTick,
+      );
+      transport.start(0);
+    }, length + 3); // TODO: calculate exact length needed (+3s may be too much or not enough)
+  }
+
+  public async startRendering() {
+    console.log('Starting offline rendering...');
+
+    const length = this.bufferLengthSeconds;
+
+    let currentPosition = 0;
+    let currentTick = 0;
+
+    // TESTS
+    const ticksPerSecond = this.audioEngine.songManager.ticksPlayedAtEachSecond;
+    console.log(ticksPerSecond);
+
+    console.log(this.audioEngine.songManager.getTickRangeForTime(5, 5));
+    console.log(this.audioEngine.songManager.getTickRangeForTime(10, 5));
+
+    const renderedBuffer = await this.renderSlice(currentPosition, length);
+    this.scheduleRenderedBuffer(currentPosition, renderedBuffer);
+    currentPosition += length;
+  }
+
+  public async scheduleRenderedBuffer(time: number, buffer: Tone.ToneAudioBuffer) {
+    /*-
+    Schedules a rendered buffer to be played at the specified time.
+    Used for playing pre-rendered audio slices for offline rendering.
+    */
+    Tone.setContext(this.audioEngine.defaultContext);
+    const player = new Tone.Player({
+      url: buffer,
+      loop: false,
+      autostart: false,
+    })
+      .connect(this.audioEngine.audioDestination)
+      .sync() // sync this player with the audio engine's transport
+      .start(time);
+
+    this.players.push(player);
+  }
+
+  dispose() {
+    for (const key in this.buffers) {
+      this.buffers[key].dispose();
+      delete this.buffers[key];
+    }
+    for (const player of this.players) {
+      player.dispose();
+    }
+  }
+}
+
 export class AudioEngine {
   songManager: SongManager;
 
@@ -124,7 +243,9 @@ export class AudioEngine {
 
   audioSourcePool: AudioSourcePool;
 
+  offlineRenderer: OfflineRenderer;
 
+  players: Array<Tone.Player> = [];
 
   defaultContext: Tone.Context;
 
@@ -146,6 +267,7 @@ export class AudioEngine {
 
     this.audioSourcePool = new AudioSourcePool(maxAudioSources);
 
+    this.offlineRenderer = new OfflineRenderer(this);
 
     this.defaultContext = Tone.getContext() as Tone.Context;
   }
@@ -203,7 +325,9 @@ export class AudioEngine {
       this.songManager.tempoChangeEvents,
     );
 
-
+    // Offline rendering setup
+    this.offlineRenderer.dispose();
+    this.offlineRenderer.startRendering();
   }
 
   private scheduleSong(
@@ -222,9 +346,7 @@ export class AudioEngine {
     transport.bpm.value = tempo;
     const secondsPerTick = 60 / tempo / 4; // 4 ticks per beat
 
-    this.scheduleNotes(context, noteEvents, secondsPerTick, (notes, time) => {
-      this.playNotes(notes, time);
-    });
+    this.scheduleNotes(context, noteEvents, secondsPerTick, this.audioDestination);
     this.scheduleTempoChanges(context, tempo, tempoChangeEvents, secondsPerTick);
 
     console.log('Song scheduled.');
@@ -234,15 +356,14 @@ export class AudioEngine {
     context: Tone.Context,
     noteEvents: Record<number, Array<NoteEvent>>,
     secondsPerTick: number,
-    callback: (notes: Array<NoteEvent>, time: number) => void,
+    destinationNode: Tone.ToneAudioNode = this.audioDestination,
   ) {
     Tone.setContext(context);
     const transport = Tone.getTransport();
     for (const [tickStr, notes] of Object.entries(noteEvents)) {
       const tick = parseInt(tickStr);
       transport.schedule((time) => {
-        Tone.setContext(context);
-        callback(notes, time);
+        this.playNotes(notes, time, context, destinationNode);
       }, tick * secondsPerTick);
     }
   }
@@ -266,7 +387,11 @@ export class AudioEngine {
     }
   }
 
-  private playNote(note: NoteEvent, time: number, destinationNode?: Tone.ToneAudioNode) {
+  private playNote(
+    note: NoteEvent,
+    time: number,
+    destinationNode: Tone.ToneAudioNode = this.audioDestination,
+  ) {
     const { key, instrument, velocity, panning } = note;
 
     if (velocity === 0) return;
@@ -283,7 +408,7 @@ export class AudioEngine {
 
     source.play({
       source: audioBuffer,
-      destinationNode: destinationNode ?? this.audioDestination,
+      destinationNode: destinationNode,
       time,
       playbackRate,
       panning,
@@ -295,7 +420,13 @@ export class AudioEngine {
   }
 
   // TODO: should be private, but used in offline rendering
-  public playNotes(notes: Array<NoteEvent>, time: number, destinationNode?: Tone.ToneAudioNode) {
+  public playNotes(
+    notes: Array<NoteEvent>,
+    time: number,
+    context: Tone.Context = this.defaultContext,
+    destinationNode: Tone.ToneAudioNode = this.audioDestination,
+  ) {
+    Tone.setContext(context);
     for (const note of notes) {
       this.playNote(note, time, destinationNode);
     }

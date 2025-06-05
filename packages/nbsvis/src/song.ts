@@ -1,5 +1,6 @@
 import { Song, fromArrayBuffer } from '@encode42/nbs.js';
 import JSZIP from 'jszip';
+import { start } from 'tone';
 
 function isZipFile(buffer: ArrayBuffer) {
   const view = new Uint8Array(buffer);
@@ -86,6 +87,8 @@ export class SongManager {
 
   private _tempoSegments: Record<number, number> = {};
 
+  private _ticksPlayedAtEachSecond: Record<number, number> = {};
+
   constructor(song?: Song) {
     this._song = song ?? new Song();
   }
@@ -113,6 +116,13 @@ export class SongManager {
       this._tempoSegments = this.getTempoSegments();
     }
     return this._tempoSegments;
+  }
+
+  get ticksPlayedAtEachSecond() {
+    if (Object.keys(this._ticksPlayedAtEachSecond).length === 0) {
+      this._ticksPlayedAtEachSecond = this.getTicksPlayedAtEachSecond();
+    }
+    return this._ticksPlayedAtEachSecond;
   }
 
   private getNoteEvents() {
@@ -181,5 +191,51 @@ export class SongManager {
     }
 
     return tempoSegments;
+  }
+
+  private getTicksPlayedAtEachSecond(): Record<number, number> {
+    const ticksPerSecond: Record<number, number> = {};
+
+    console.log('Calculating ticks played at each second...');
+
+    let tickPlayTimeSeconds = 0;
+    let lastSecond = -1;
+    const tempoSegments = this.tempoSegments;
+    for (let tick = 0; tick < this._song.length; tick++) {
+      const tempoAtTick = tempoSegments[tick];
+      tickPlayTimeSeconds += 1 / tempoAtTick;
+      const second = Math.floor(tickPlayTimeSeconds);
+      if (second === lastSecond) continue; // Skip if we're still in the same second
+      lastSecond = second;
+      // Store the tick at the end of this second
+      ticksPerSecond[second] = tick;
+    }
+
+    // TODO: Ensure the last second captures the end of the song
+
+    console.log('Finished calculating ticks played at each second.');
+
+    return ticksPerSecond;
+  }
+
+  // TODO: may be better as startTime and endTime
+  public getTickRangeForTime(startTime: number, length: number): [number, number] {
+    if (startTime < 0 || length <= 0) {
+      throw new Error('Invalid start time or length');
+    }
+    const ticksPerSecond = this.ticksPlayedAtEachSecond;
+    const startTick = ticksPerSecond[startTime];
+    const endTick = ticksPerSecond[startTime + length];
+
+    console.log(startTime, length);
+
+    console.log(startTick, endTick);
+
+    if (startTick === undefined || endTick === undefined) {
+      console.log(startTick, endTick);
+      console.warn(`No ticks found for time range ${startTime} to ${startTime + length}`);
+    }
+
+    return [startTick ?? 0, endTick ?? this._song.length];
   }
 }
