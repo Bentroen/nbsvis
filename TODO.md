@@ -41,6 +41,7 @@
 - [ ] Loop support
 - [x] Zipped song support
 - [ ] Keeping global state (e.g. song position, volume, etc.) between pages, as in Soundcloud, Spotify... (consider using a state management lib)
+- [ ] Automatic sound count throttling based on Web Audio CPU load
 
 # Enhancements
 
@@ -67,3 +68,6 @@
 - [ ] Single waveform (one window, overlapping instruments in each color)
 - [ ] Waveform mosaic (one window per instrument)
 - [ ] Player bar with bins (similar to Soundcloud player)
+- [ ] Audio visualizers (e.g. waves, bars, etc.)
+  - Example: https://tonejs.github.io/examples/analysis
+  - Example: https://tonejs.github.io/examples/funkyShape
