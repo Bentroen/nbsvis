@@ -1,6 +1,5 @@
 import { Song, fromArrayBuffer } from '@encode42/nbs.js';
 import JSZIP from 'jszip';
-import { start } from 'tone';
 
 function isZipFile(buffer: ArrayBuffer) {
   const view = new Uint8Array(buffer);
@@ -81,6 +80,8 @@ export type NoteEvent = {
 export class SongManager {
   private _song: Song;
 
+  private _length: number = 0;
+
   private _noteEvents: Record<number, Array<NoteEvent>> = {};
 
   private _tempoChangeEvents: Record<number, number> = {};
@@ -89,8 +90,15 @@ export class SongManager {
 
   private _ticksPlayedAtEachSecond: Record<number, number> = {};
 
-  constructor(song?: Song) {
-    this._song = song ?? new Song();
+  constructor(song: Song) {
+    this._song = song;
+  }
+
+  get length() {
+    if (this._length === 0) {
+      this._length = this.getLength();
+    }
+    return this._length;
   }
 
   get noteEvents() {
@@ -113,8 +121,11 @@ export class SongManager {
 
   get tempoSegments() {
     if (Object.keys(this._tempoSegments).length === 0) {
+      //console.log('Calculating tempo segments...');
       this._tempoSegments = this.getTempoSegments();
-    }
+    } // else {
+    //console.log('Using cached tempo segments');
+    //}
     return this._tempoSegments;
   }
 
@@ -123,6 +134,22 @@ export class SongManager {
       this._ticksPlayedAtEachSecond = this.getTicksPlayedAtEachSecond();
     }
     return this._ticksPlayedAtEachSecond;
+  }
+
+  private getLength(): number {
+    let length = 0;
+    //console.log(this._song.layers);
+    //console.log(this._song.meta.name);
+    for (const layer of this._song.layers) {
+      for (const tickStr in layer.notes) {
+        const tick = parseInt(tickStr);
+        if (tick > length) {
+          length = tick;
+        }
+      }
+    }
+    //console.log('Calculated length:', length);
+    return length;
   }
 
   private getNoteEvents() {
@@ -184,7 +211,10 @@ export class SongManager {
     const tempoSegments: Record<number, number> = {};
     let lastTempo = this._song.tempo;
 
-    for (let tick = 0; tick < this._song.length; tick++) {
+    //console.log('Song length:', this.length);
+    //console.log('Tempo change events:', tempoChangeEvents);
+
+    for (let tick = 0; tick < this.length; tick++) {
       const tempo = tempoChangeEvents[tick] || lastTempo;
       lastTempo = tempo;
       tempoSegments[tick] = tempo;
@@ -196,12 +226,13 @@ export class SongManager {
   private getTicksPlayedAtEachSecond(): Record<number, number> {
     const ticksPerSecond: Record<number, number> = {};
 
-    console.log('Calculating ticks played at each second...');
+    //console.log('Calculating ticks played at each second...');
 
     let tickPlayTimeSeconds = 0;
     let lastSecond = -1;
     const tempoSegments = this.tempoSegments;
-    for (let tick = 0; tick < this._song.length; tick++) {
+    //console.log(this.length, tempoSegments);
+    for (let tick = 0; tick < this.length; tick++) {
       const tempoAtTick = tempoSegments[tick];
       tickPlayTimeSeconds += 1 / tempoAtTick;
       const second = Math.floor(tickPlayTimeSeconds);
@@ -213,7 +244,7 @@ export class SongManager {
 
     // TODO: Ensure the last second captures the end of the song
 
-    console.log('Finished calculating ticks played at each second.');
+    //console.log('Finished calculating ticks played at each second.');
 
     return ticksPerSecond;
   }
@@ -227,15 +258,23 @@ export class SongManager {
     const startTick = ticksPerSecond[startTime];
     const endTick = ticksPerSecond[startTime + length];
 
-    console.log(startTime, length);
-
-    console.log(startTick, endTick);
+    //console.log(ticksPerSecond);
+    //
+    //console.log(startTime, length);
+    //
+    //console.log(startTick, endTick);
+    //
+    //console.trace(
+    //  `Getting tick range for time ${startTime} to ${startTime + length}:`,
+    //  startTick,
+    //  endTick,
+    //);
 
     if (startTick === undefined || endTick === undefined) {
       console.log(startTick, endTick);
       console.warn(`No ticks found for time range ${startTime} to ${startTime + length}`);
     }
 
-    return [startTick ?? 0, endTick ?? this._song.length];
+    return [startTick ?? 0, endTick ?? this.length];
   }
 }

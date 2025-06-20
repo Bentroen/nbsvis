@@ -4,11 +4,11 @@ import * as Tone from 'tone';
 import PlayerInstrument, { defaultInstruments } from './instrument';
 import { NoteEvent, SongManager } from './song';
 
-export const MAX_AUDIO_SOURCES = 256;
+export const MAX_AUDIO_SOURCES = 1024;
 
 const DEFAULT_TEMPO_TPS = new Song().tempo * 15;
 
-const DEFAULT_BUFFER_LENGTH_SECONDS = 5; // Default length for offline rendering buffers
+const DEFAULT_BUFFER_LENGTH_SECONDS = 2; // Default length for offline rendering buffers
 
 function decodeAudioData(buffer: ArrayBuffer): Promise<AudioBuffer> {
   return Tone.getContext().decodeAudioData(buffer);
@@ -145,7 +145,7 @@ class OfflineRenderer {
 
   private audioEngine: AudioEngine;
 
-  private songManager: SongManager;
+  //private songManager: SongManager;
 
   private bufferLengthSeconds: number;
 
@@ -154,7 +154,8 @@ class OfflineRenderer {
     bufferLengthSeconds: number = DEFAULT_BUFFER_LENGTH_SECONDS,
   ) {
     this.audioEngine = audioEngine;
-    this.songManager = audioEngine.songManager;
+    // TODO: this causes an empty SongManager to be persisted as a reference to it is stored, not its value
+    //this.songManager = audioEngine.songManager;
     this.bufferLengthSeconds = bufferLengthSeconds;
   }
 
@@ -163,24 +164,41 @@ class OfflineRenderer {
       const transport = context.transport;
       const destinationNode = new Tone.Gain(0.5).toDestination();
 
-      const [startTick, endTick] = this.songManager.getTickRangeForTime(startTime, length);
+      const audioSourcePool = new AudioSourcePool(1024);
+
+      const [startTick, endTick] = this.audioEngine.songManager.getTickRangeForTime(
+        startTime,
+        length,
+      );
       console.log(`Rendering slice from ${startTime} to ${startTime + length} seconds...`);
 
-      const initialTempo = this.songManager.initialTempo;
-      const secondsPerTick = 60 / this.songManager.initialTempo / 4; // 4 ticks per beat
+      const initialTempo = this.audioEngine.songManager.initialTempo;
+      transport.bpm.value = initialTempo * 15;
+      const secondsPerTick = 60 / (initialTempo * 15) / 4; // 4 ticks per beat
 
-      const noteEvents = sliceObject(startTick, endTick, this.songManager.noteEvents);
-      const tempoChangeEvents = sliceObject(startTick, endTick, this.songManager.tempoChangeEvents);
+      const noteEvents = sliceObject(startTick, endTick, this.audioEngine.songManager.noteEvents);
+      const tempoChangeEvents = sliceObject(
+        startTick,
+        endTick,
+        this.audioEngine.songManager.tempoChangeEvents,
+      );
 
-      this.audioEngine.scheduleNotes(context, noteEvents, secondsPerTick, destinationNode);
+      this.audioEngine.scheduleNotes(
+        context,
+        noteEvents,
+        secondsPerTick,
+        destinationNode,
+        //audioSourcePool,
+      );
       this.audioEngine.scheduleTempoChanges(
         context,
         initialTempo,
         tempoChangeEvents,
         secondsPerTick,
       );
+
       transport.start(0);
-    }, length + 3); // TODO: calculate exact length needed (+3s may be too much or not enough)
+    }, length + 2 /* + 3*/); // TODO: calculate exact length needed (+3s may be too much or not enough)
   }
 
   public async startRendering() {
@@ -198,9 +216,17 @@ class OfflineRenderer {
     console.log(this.audioEngine.songManager.getTickRangeForTime(5, 5));
     console.log(this.audioEngine.songManager.getTickRangeForTime(10, 5));
 
-    const renderedBuffer = await this.renderSlice(currentPosition, length);
-    this.scheduleRenderedBuffer(currentPosition, renderedBuffer);
-    currentPosition += length;
+    while (true) {
+      // currentPosition < this.audioEngine.songManager.length
+      try {
+        const renderedBuffer = await this.renderSlice(currentPosition, length);
+        this.scheduleRenderedBuffer(currentPosition, renderedBuffer);
+        currentPosition += length;
+      } catch (error) {
+        console.error('Error during rendering:', error);
+        break; // Exit loop on error
+      }
+    }
   }
 
   public async scheduleRenderedBuffer(time: number, buffer: Tone.ToneAudioBuffer) {
@@ -221,7 +247,7 @@ class OfflineRenderer {
     this.players.push(player);
   }
 
-  dispose() {
+  public dispose() {
     for (const key in this.buffers) {
       this.buffers[key].dispose();
       delete this.buffers[key];
@@ -250,7 +276,9 @@ export class AudioEngine {
   defaultContext: Tone.Context;
 
   constructor(maxAudioSources: number = MAX_AUDIO_SOURCES) {
-    this.songManager = new SongManager();
+    this.songManager = new SongManager(new Song());
+    this.songManager._song.meta.name = 'Default Song'; // Set default song name
+    // TODO: this is problematic. We don't want a default song to be created here?
 
     this.instruments = [...defaultInstruments];
 
@@ -315,6 +343,7 @@ export class AudioEngine {
 
     // Song
     this.songManager = new SongManager(song);
+    this.songManager._song.meta.name = 'Loaded Song'; // Set song name
 
     const transport = Tone.getTransport();
 
@@ -337,7 +366,7 @@ export class AudioEngine {
     tempoChangeEvents: Record<number, number>,
   ) {
     //Tone.setContext(context);
-    const transport = Tone.getTransport();
+    const transport = this.defaultContext.transport;
 
     transport.stop();
     transport.cancel();
@@ -346,7 +375,7 @@ export class AudioEngine {
     transport.bpm.value = tempo;
     const secondsPerTick = 60 / tempo / 4; // 4 ticks per beat
 
-    this.scheduleNotes(context, noteEvents, secondsPerTick, this.audioDestination);
+    //this.scheduleNotes(context, noteEvents, secondsPerTick, this.audioDestination);
     this.scheduleTempoChanges(context, tempo, tempoChangeEvents, secondsPerTick);
 
     console.log('Song scheduled.');
@@ -357,13 +386,14 @@ export class AudioEngine {
     noteEvents: Record<number, Array<NoteEvent>>,
     secondsPerTick: number,
     destinationNode: Tone.ToneAudioNode = this.audioDestination,
+    audioSourcePool: AudioSourcePool = this.audioSourcePool,
   ) {
     Tone.setContext(context);
     const transport = Tone.getTransport();
     for (const [tickStr, notes] of Object.entries(noteEvents)) {
       const tick = parseInt(tickStr);
       transport.schedule((time) => {
-        this.playNotes(notes, time, context, destinationNode);
+        this.playNotes(notes, time, context, destinationNode, audioSourcePool);
       }, tick * secondsPerTick);
     }
   }
@@ -383,6 +413,9 @@ export class AudioEngine {
       transport.schedule((time) => {
         Tone.setContext(context);
         transport.bpm.setValueAtTime(newTempo * 15, time);
+        console.log(
+          `Scheduled BPM change at tick ${tick}: ${newTempo * 15} BPM (offline: ${context.isOffline})`,
+        );
       }, tick * secondsPerTick);
     }
   }
@@ -391,6 +424,7 @@ export class AudioEngine {
     note: NoteEvent,
     time: number,
     destinationNode: Tone.ToneAudioNode = this.audioDestination,
+    audioSourcePool: AudioSourcePool = this.audioSourcePool,
   ) {
     const { key, instrument, velocity, panning } = note;
 
@@ -404,7 +438,7 @@ export class AudioEngine {
 
     const volumeDb = Tone.gainToDb(velocity);
 
-    const source = this.audioSourcePool.get();
+    const source = audioSourcePool.get();
 
     source.play({
       source: audioBuffer,
@@ -414,7 +448,7 @@ export class AudioEngine {
       panning,
       volumeDb,
       onEnded: () => {
-        this.audioSourcePool.recycle(source);
+        audioSourcePool.recycle(source);
       },
     });
   }
@@ -425,20 +459,21 @@ export class AudioEngine {
     time: number,
     context: Tone.Context = this.defaultContext,
     destinationNode: Tone.ToneAudioNode = this.audioDestination,
+    audioSourcePool: AudioSourcePool = this.audioSourcePool,
   ) {
     Tone.setContext(context);
     for (const note of notes) {
-      this.playNote(note, time, destinationNode);
+      this.playNote(note, time, destinationNode, audioSourcePool);
     }
   }
 
   public get currentTick() {
-    const transport = Tone.getTransport();
+    const transport = this.defaultContext.transport;
     return (transport.ticks / transport.PPQ) * 4;
   }
 
   public set currentTick(tick: number) {
-    const transport = Tone.getTransport();
+    const transport = this.defaultContext.transport;
     transport.ticks = (tick * transport.PPQ) / 4;
     const newBPM = (this.songManager.tempoSegments[tick] ?? DEFAULT_TEMPO_TPS) * 15;
     console.debug('Setting tick to:', tick);
@@ -451,23 +486,23 @@ export class AudioEngine {
   }
 
   public get isPlaying() {
-    return Tone.getTransport().state === 'started';
+    return this.defaultContext.transport.state === 'started';
   }
 
   public play() {
     Tone.setContext(this.defaultContext);
-    Tone.getContext().resume();
-    Tone.getTransport().start();
+    this.defaultContext.resume();
+    this.defaultContext.transport.start();
   }
 
   public pause() {
     Tone.setContext(this.defaultContext);
-    Tone.getTransport().pause();
+    this.defaultContext.transport.pause();
   }
 
   public stop() {
     Tone.setContext(this.defaultContext);
-    Tone.getTransport().stop();
-    Tone.getTransport().position = 0;
+    this.defaultContext.transport.stop();
+    this.defaultContext.transport.position = 0;
   }
 }
