@@ -1,12 +1,18 @@
 import { Player } from '../player';
+import { IPlayerControlWidget } from './interface';
 
-interface IPlayButton extends HTMLElement {
-  playing: boolean;
-}
+export class Controls {
+  private player: Player;
+  private widgets: Set<IPlayerControlWidget> = new Set();
 
-interface ISeekBar extends HTMLElement {
-  value: number;
-  max: number;
+  constructor(player: Player) {
+    this.player = player;
+  }
+
+  register(widget: IPlayerControlWidget) {
+    this.widgets.add(widget);
+    widget.onConnect(this.player, this);
+  }
 }
 
 export class PlayerControlHandler {

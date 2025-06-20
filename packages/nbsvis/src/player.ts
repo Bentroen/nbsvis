@@ -6,7 +6,7 @@ import { loadCustomInstruments } from './instrument';
 import { loadSongFromUrl } from './song';
 import { Viewer } from './viewer';
 
-type PlayerEvents = {
+export type PlayerEvents = {
   play: void;
   pause: void;
   stop: void;
@@ -14,18 +14,19 @@ type PlayerEvents = {
 };
 
 export class Player {
-  viewer: Viewer;
+  viewer?: Viewer;
   audioEngine: AudioEngine;
   song?: Song;
   private emitter: Emitter<PlayerEvents>;
 
-  constructor(viewer: Viewer) {
+  constructor(viewer?: Viewer) {
     this.viewer = viewer;
     this.audioEngine = new AudioEngine();
     this.emitter = mitt<PlayerEvents>();
 
     if (this.viewer) {
       this.viewer.app.ticker.add(() => {
+        if (!this.viewer) return; // TODO: viewer probably shouldn't stay here with the event system in place
         const currentTick = this.audioEngine.currentTick;
         this.viewer.currentTick = currentTick;
         this.viewer.soundCount = this.audioEngine.soundCount;

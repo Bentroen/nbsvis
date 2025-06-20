@@ -1,52 +1,54 @@
-export class PlayButton extends HTMLElement {
-  private _playing = false;
-  private button: HTMLButtonElement;
+import { IPlayer, IPlayerControlWidget } from '../interface';
+
+export class PlayButton extends HTMLElement implements IPlayerControlWidget {
+  shadow: ShadowRoot;
+  private _state: 'playing' | 'paused' = 'paused';
 
   constructor() {
     super();
-    const shadow = this.attachShadow({ mode: 'open' });
-
-    this.button = document.createElement('button');
-    this.button.textContent = 'Play';
-    shadow.appendChild(this.button);
-
-    // Listen to clicks inside
-    this.button.addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent('toggleplay', { bubbles: true, composed: true }));
-    });
-  }
-
-  get playing() {
-    return this._playing;
-  }
-
-  set playing(value: boolean) {
-    this._playing = value;
-    this.updateVisuals();
-  }
-
-  private updateVisuals() {
-    this.button.textContent = this._playing ? 'Pause' : 'Play';
-    // TODO: swap SVG icons here instead of text
-  }
-
-  private render() {
-    this.shadowRoot!.innerHTML = `
+    this.shadow = this.attachShadow({ mode: 'open' });
+    this.shadow.innerHTML = `
       <style>
         button {
-          all: unset;
-          padding: 0.5rem 1rem;
-          background: #eee;
-          border-radius: 4px;
+          background: none;
+          border: none;
+          color: white;
+          font-size: 1.5rem;
           cursor: pointer;
-        }
-        button:hover {
-          background: #ddd;
+          padding: 0.5rem 1rem;
+          border-radius: 0.5rem;
+          transition: background 0.3s;
+          pointer-events: auto;
         }
       </style>
-      <button>Play</button>
     `;
   }
-}
 
-customElements.define('play-button', PlayButton);
+  get state() {
+    return this._state;
+  }
+  set state(value: 'playing' | 'paused') {
+    this._state = value;
+    const btn = this.shadow.querySelector('button');
+    if (btn) {
+      btn.textContent = value === 'playing' ? 'Pause' : 'Play';
+    }
+  }
+
+  onConnect(player: IPlayer) {
+    this.addEventListener('click', () => {
+      if (player.isPlaying) {
+        player.pause();
+      } else {
+        player.play();
+      }
+    });
+
+    player.on('play', () => {
+      this.state = 'playing';
+    });
+    player.on('pause', () => {
+      this.state = 'paused';
+    });
+  }
+}
