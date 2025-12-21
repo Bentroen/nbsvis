@@ -56,6 +56,12 @@
 - [ ] Documentation
 - [ ] Settings manager + Saving and loading settings from local storage
 - [ ] Publish API documentation + demo GitHub page
+- [ ] Separate projects:
+  - [ ] nbsvis (ships all core functionality, including player and a default piano roll viewer)
+  - [ ] @nbsvis/core (or /player)
+  - [ ] @nbsvis/viewer (depends on @nbsvis/core)
+  - [ ] @nbsvis/controls (depends on @nbsvis/core)
+  - [ ] @nbsvis/view/piano-roll (depends on @nbsvis/viewer)
 
 # Custom visualizers
 
