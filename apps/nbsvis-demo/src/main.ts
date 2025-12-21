@@ -1,34 +1,23 @@
-import { Player, Viewer, PianoRollView, PlayerControlHandler } from '@nbsvis/core';
+import { Player, Viewer, NBSPlayer } from '@nbsvis/core';
+
+import '@nbsvis/core';
 
 // ---------- App ---------- //
 
-const appContainer = document.getElementById('app');
-
-let viewer: Viewer;
-let player: Player;
-
 async function main() {
-  // Append the app canvas to the container
-  if (!appContainer) {
-    throw new Error('App container not found');
+  // Get the nbs-player element
+  const nbsPlayerElement = document.querySelector('nbs-player') as NBSPlayer & {
+    player?: Player;
+    viewer?: Viewer;
+  };
+  if (!nbsPlayerElement) {
+    throw new Error('nbs-player not found');
   }
 
-  viewer = new Viewer(appContainer);
-  await viewer.init();
+  console.log('nbs-player element:', nbsPlayerElement);
 
-  viewer.setView(new PianoRollView());
-
-  player = new Player(viewer);
-  await player.loadSong('megacollab.zip');
-
-  player.on('seek', ({ tick, totalLength }) => {
-    const input = document.getElementById('seek') as HTMLInputElement;
-    if (!input) return;
-    input.value = tick.toString();
-    input.max = totalLength.toString();
-  });
-
-  const controls = new PlayerControlHandler(player);
+  // Wait a bit for the element to initialize
+  await new Promise((resolve) => setTimeout(resolve, 100));
 
   console.log('Done!');
 }
@@ -52,7 +41,23 @@ function setFile(event: Event) {
   file = inputFile;
 }
 
+function getPlayer(): Player | null {
+  const nbsPlayerElement = document.querySelector('nbs-player') as NBSPlayer;
+  return nbsPlayerElement?.playerInstance || null;
+}
+
+function getViewer(): Viewer | null {
+  const nbsPlayerElement = document.querySelector('nbs-player') as NBSPlayer;
+  return nbsPlayerElement?.viewerInstance || null;
+}
+
 async function loadSong() {
+  const player = getPlayer();
+  if (!player) {
+    console.error('Player not available');
+    return;
+  }
+
   if (url && url.startsWith('https://noteblock.world/song/')) {
     console.log('Loading song from URL:', url);
     const songId = url.split('/').pop();
@@ -79,6 +84,11 @@ async function loadSong() {
 }
 
 function togglePlayback() {
+  const player = getPlayer();
+  if (!player) {
+    console.error('Player not available');
+    return;
+  }
   const isPlaying = player.togglePlayback();
   const button = document.getElementById('togglePlay');
   if (!button) return;
@@ -86,16 +96,31 @@ function togglePlayback() {
 }
 
 function stop() {
+  const player = getPlayer();
+  if (!player) {
+    console.error('Player not available');
+    return;
+  }
   player.stop();
 }
 
 function seek(event: Event) {
+  const player = getPlayer();
+  if (!player) {
+    console.error('Player not available');
+    return;
+  }
   const input = event.target as HTMLInputElement;
   const value = parseFloat(input.value);
   player.seek(value);
 }
 
 function resize(width?: number, height?: number) {
+  const viewer = getViewer();
+  if (!viewer) {
+    console.error('Viewer not available');
+    return;
+  }
   viewer.resize(width, height);
 }
 

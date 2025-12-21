@@ -241,7 +241,8 @@ export class PlayerOverlay extends HTMLElement {
   }
 }
 
-customElements.define('player-overlay', PlayerOverlay);
+// Note: player-overlay is now defined in controls/widgets/player-overlay.ts
+// customElements.define('player-overlay', PlayerOverlay);
 
 export class PlayerControlHandler {
   private player: Player;

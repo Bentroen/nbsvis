@@ -37,7 +37,7 @@ customElements.define('play-button', PlayButton);
 
 class SeekBar extends HTMLElement {
   private player: Player | null = null;
-  private inputElement: HTMLInputElement;
+  private inputElement!: HTMLInputElement;
 
   constructor() {
     super();
@@ -105,161 +105,19 @@ export class PlayerBar extends HTMLElement {
 
 customElements.define('player-bar', PlayerBar);
 
-export class PlayerOverlay extends HTMLElement {
-  /*
-   * Player overlay for the player controls.
-   * This is a simple overlay that shows a gradient
-   * and holds widgets that can be attached to the top and bottom.
-   * It is displayed on top of the canvas and is hidden when not in use.
-   */
-
-  private shadow: ShadowRoot | null = null;
-  private hideTimeout: number | undefined;
-
-  connectedCallback() {
-    this.shadow = this.attachShadow({ mode: 'open' });
-    this.init();
-  }
-
-  private init() {
-    const style = document.createElement('style');
-    style.textContent = `
-      :host {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        top: 0;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        pointer-events: none; /* Prevent overlay from blocking interactions */
-        opacity: 1;
-        transition: opacity 0.3s;
-      }
-
-      :host {
-        background: linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.5)) top,
-                    linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.5)) bottom;
-        background-size: 100% 15%, 100% 15%;
-        background-repeat: no-repeat;
-      }
-
-      ::slotted([slot="top-bar"]) {
-        pointer-events: auto; /* Allow interactions with the top bar */
-      }
-
-      ::slotted([slot="bottom-bar"]) {
-        pointer-events: auto; /* Allow interactions with the bottom bar */
-      }
-    `;
-
-    // Alternative for gradient - :before and :after
-
-    //:host::before,
-    //:host::after {
-    //  content: '';
-    //  position: absolute;
-    //  left: 0;
-    //  right: 0;
-    //  pointer-events: none; /* Allow interaction with slotted content */
-    //  z-index: 0; /* Ensure gradients are behind the content */
-    //}
-    //
-    //:host::before {
-    //  top: 0;
-    //  height: 15%; /* Height of the top gradient */
-    //  background: linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.5));
-    //}
-    //
-    //:host::after {
-    //  bottom: 0;
-    //  height: 15%; /* Height of the bottom gradient */
-    //  background: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.5));
-    //}
-
-    //this.setupGradient();
-
-    // Create the top-bar slot
-    const topBarSlot = document.createElement('slot');
-    topBarSlot.name = 'top-bar';
-
-    // Create the bottom-bar slot
-    const bottomBarSlot = document.createElement('slot');
-    bottomBarSlot.name = 'bottom-bar';
-
-    // Append the style and slots directly to the shadow root
-    this.shadowRoot?.append(style, topBarSlot, bottomBarSlot);
-
-    this.setupHover();
-  }
-
-  setupGradient() {
-    // Set up bottom gradient element
-    const bottomGradient = document.createElement('div');
-    bottomGradient.style.position = 'absolute';
-    bottomGradient.style.bottom = '0';
-    bottomGradient.style.left = '0';
-    bottomGradient.style.right = '0';
-    bottomGradient.style.height = '15%'; // Height of the gradient
-    bottomGradient.style.background =
-      'linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.5))';
-    bottomGradient.style.pointerEvents = 'none'; // Disable pointer events to allow interaction with the canvas below
-    this.shadow?.appendChild(bottomGradient);
-
-    // Set up top gradient element
-    const topGradient = document.createElement('div');
-    topGradient.style.position = 'absolute';
-    topGradient.style.top = '0';
-    topGradient.style.left = '0';
-    topGradient.style.right = '0';
-    topGradient.style.height = '15%'; // Height of the gradient
-    topGradient.style.background = 'linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.5))';
-    topGradient.style.pointerEvents = 'none'; // Disable pointer events to allow interaction with the canvas below
-    this.shadow?.appendChild(topGradient);
-  }
-
-  private setupHover() {
-    const parent = this.parentElement;
-    if (!parent) return;
-
-    parent.addEventListener('mousemove', () => this.show());
-    parent.addEventListener('mouseleave', () => this.hideLater());
-  }
-
-  private show() {
-    clearTimeout(this.hideTimeout);
-    this.style.opacity = '1';
-    this.hideLater();
-  }
-
-  private hideLater() {
-    clearTimeout(this.hideTimeout);
-    this.hideTimeout = window.setTimeout(() => {
-      this.style.opacity = '0';
-    }, 3000); // 3 seconds after last movement
-  }
-}
-
-customElements.define('player-overlay', PlayerOverlay);
+// Export default controls
+export { DefaultControls } from './controls/default-controls';
 
 export class PlayerControlHandler {
   private player: Player;
-  private template: HTMLTemplateElement;
 
   constructor(player: Player, options?: { template?: HTMLTemplateElement }) {
     this.player = player;
-    this.template = options?.template || this.createDefaultTemplate();
-    this.init();
+    const template = options?.template || this.createDefaultTemplate();
+    this.init(template);
   }
 
-  init() {
-    // Check for a custom template
-    const customTemplate = document.getElementById('custom-player') as HTMLTemplateElement;
-
-    // Fallback to a default template if no custom template is found
-    const template = customTemplate || this.createDefaultTemplate();
-
+  init(template: HTMLTemplateElement) {
     if (!template) {
       console.error('No template found for player controls.');
       return;

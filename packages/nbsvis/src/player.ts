@@ -11,6 +11,7 @@ export type PlayerEvents = {
   pause: void;
   stop: void;
   seek: { tick: number; totalLength: number };
+  ended: void;
 };
 
 export class Player {
@@ -18,6 +19,7 @@ export class Player {
   audioEngine: AudioEngine;
   song?: Song;
   private emitter: Emitter<PlayerEvents>;
+  private _loop = false;
 
   constructor(viewer?: Viewer) {
     this.viewer = viewer;
@@ -31,6 +33,11 @@ export class Player {
         this.viewer.currentTick = currentTick;
         this.viewer.soundCount = this.audioEngine.soundCount;
         this.emitter.emit('seek', { tick: currentTick, totalLength: this.song?.length ?? 0 }); // TODO: This is a bit hacky; should be part of audio handler
+        
+        // Check if song has ended
+        if (this.song && currentTick >= this.song.length && this.audioEngine.isPlaying) {
+          this.handleSongEnd();
+        }
       });
     } else {
       console.debug('Viewer not initialized, skipping ticker update');
@@ -74,6 +81,10 @@ export class Player {
     return this.audioEngine.isPlaying;
   }
 
+  get currentTick() {
+    return this.audioEngine.currentTick;
+  }
+
   seek(tick: number) {
     this.audioEngine.currentTick = tick;
     this.emitter.emit('seek', { tick, totalLength: this.song?.length ?? 0 });
@@ -85,5 +96,23 @@ export class Player {
 
   off<K extends keyof PlayerEvents>(type: K, handler: (event: PlayerEvents[K]) => void) {
     this.emitter.off(type, handler);
+  }
+
+  private handleSongEnd() {
+    this.emitter.emit('ended');
+    if (this._loop) {
+      this.seek(0);
+      this.play();
+    } else {
+      this.pause();
+    }
+  }
+
+  get loop() {
+    return this._loop;
+  }
+
+  set loop(value: boolean) {
+    this._loop = value;
   }
 }
