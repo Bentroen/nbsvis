@@ -5,10 +5,12 @@ declare const currentFrame: number;
 
 type PlayEvent = {
   type: 'play';
-  sampleId: number;
-  gain: number;
-  pan: number;
-  pitch: number;
+  notes: Array<{
+    sampleId: number;
+    gain: number;
+    pan: number;
+    pitch: number;
+  }>;
 };
 
 type SampleEvent = {
@@ -44,16 +46,16 @@ class MixerProcessor extends AudioWorkletProcessor {
       if (data.type === 'sample') {
         this.samples[data.sampleId] = data.channels;
       } else if (data.type === 'play') {
-        if (this.voices.length >= MAX_VOICES) {
-          this.voices.shift();
+        for (const note of data.notes) {
+          if (this.voices.length >= MAX_VOICES) this.voices.shift();
+          this.voices.push({
+            id: note.sampleId,
+            pos: 0,
+            gain: note.gain,
+            pan: note.pan,
+            pitch: note.pitch,
+          });
         }
-        this.voices.push({
-          id: data.sampleId,
-          pos: 0,
-          gain: data.gain,
-          pan: data.pan,
-          pitch: data.pitch,
-        });
       }
     };
   }
@@ -77,7 +79,6 @@ class MixerProcessor extends AudioWorkletProcessor {
       let advanced = 0;
 
       for (let i = 0; i < outL.length; i++) {
-
         // Linear interpolation (new, non-accumulating):
         const pos = basePos + i * voice.pitch;
         const idx0 = Math.floor(pos);

@@ -190,28 +190,28 @@ export class AudioEngine {
     console.log('Song scheduled.');
   }
 
-  private playNote(note: NoteEvent, time: number) {
-    const { key, instrument, velocity, panning } = note;
-    if (velocity === 0) return;
-
-    const insOffset = 45 - this.instruments[instrument].baseKey + 45;
-    const pitch = 2 ** ((key - insOffset) / 12);
-
-    const gain = velocity * 0.5; // TODO: masterVolume
-
-    const port = this.getPort();
-    port.postMessage({
-      type: 'play',
-      sampleId: instrument,
-      gain,
-      pan: panning,
-      pitch,
-    });
-  }
-
   private playNotes(notes: Array<NoteEvent>, time: number) {
+    const port = this.getPort();
+    const payload: Array<{ sampleId: number; gain: number; pan: number; pitch: number }> = [];
+
     for (const note of notes) {
-      this.playNote(note, time);
+      const { key, instrument, velocity, panning } = note;
+      if (velocity === 0) continue;
+
+      const insOffset = 45 - this.instruments[instrument].baseKey + 45;
+      const pitch = 2 ** ((key - insOffset) / 12);
+      const gain = velocity * 0.5; // TODO: masterVolume
+
+      payload.push({
+        sampleId: instrument,
+        gain,
+        pan: panning,
+        pitch,
+      });
+    }
+
+    if (payload.length > 0) {
+      port.postMessage({ type: 'play', notes: payload });
     }
   }
 
