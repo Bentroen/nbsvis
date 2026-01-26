@@ -86,18 +86,33 @@ class MixerProcessor extends AudioWorkletProcessor {
       const L = sample[0];
       const R = sample[1] ?? L;
 
+      const basePos = voice.pos; // capture start position for this block
+      let advanced = 0;
+
       for (let i = 0; i < outL.length; i++) {
-        // Nearest neighbor interpolation
-        const idx = voice.pos | 0;
-        if (idx >= L.length) {
+
+        // Linear interpolation (new, non-accumulating):
+        const pos = basePos + i * voice.pitch;
+        const idx0 = Math.floor(pos);
+        if (idx0 >= L.length) {
           this.voices.splice(v, 1);
+          advanced = i * voice.pitch; // how far we got this block
           break;
         }
-        outL[i] += L[idx] * voice.gain * (1 - Math.max(0, voice.pan));
-        outR[i] += R[idx] * voice.gain * (1 + Math.min(0, voice.pan));
+        const idx1 = Math.min(idx0 + 1, L.length - 1);
+        const frac = pos - idx0;
+
+        const lSample = L[idx0] * (1 - frac) + L[idx1] * frac;
+        const rSample = R[idx0] * (1 - frac) + R[idx1] * frac;
+
+        outL[i] += lSample * voice.gain * (1 - Math.max(0, voice.pan));
+        outR[i] += rSample * voice.gain * (1 + Math.min(0, voice.pan));
+
+        advanced = (i + 1) * voice.pitch;
       }
 
-      voice.pos = voice.pos + voice.pitch * outL.length;
+      // Advance position once per block to avoid cumulative float drift
+      voice.pos = basePos + advanced;
     }
 
     return true;
