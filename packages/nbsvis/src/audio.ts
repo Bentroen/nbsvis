@@ -96,6 +96,15 @@ export class AudioEngine {
     console.log('Creating mixer node...');
     console.log(nativeCtx);
     this.mixerNode = new AudioWorkletNode(nativeCtx, 'mixer-processor');
+
+    // Add a downstream limiter to prevent clipping
+    const limiter = nativeCtx.createDynamicsCompressor();
+    limiter.threshold.value = -6; // start limiting just below 0 dBFS
+    limiter.knee.value = 0; // hard knee for limiter behavior
+    limiter.ratio.value = 20; // high ratio ≈ limiting
+    limiter.attack.value = 0.003; // fast attack
+    limiter.release.value = 0.05; // short release
+
     this.mixerNode.connect(nativeCtx.destination);
   }
 
