@@ -13,6 +13,11 @@ export default defineConfig({
       ],
     }),
   ],
+  server: {
+    fs: {
+      allow: ['..'], // allow serving from parent dirs (monorepo)
+    },
+  },
   build: {
     target: 'esnext',
   },
