@@ -1,6 +1,7 @@
 import { Song } from '@encode42/nbs.js';
 import * as Tone from 'tone';
 
+import mixerWorkletUrl from './audio/mixer-processor?worker&url';
 import PlayerInstrument, { defaultInstruments } from './instrument';
 import { getTempoChangeEvents, getTempoSegments } from './song';
 
@@ -21,15 +22,18 @@ function decodeAudioData(buffer: ArrayBuffer): Promise<AudioBuffer> {
 }
 
 async function loadAudio(audioSource: string | ArrayBuffer): Promise<AudioBuffer | null> {
-  let arrayBuffer;
   if (!audioSource) return null;
+
+  let arrayBuffer: ArrayBuffer;
   if (typeof audioSource === 'string') {
     const response = await fetch(audioSource);
     arrayBuffer = await response.arrayBuffer();
   } else {
-    arrayBuffer = audioSource;
+    // decodeAudioData detaches the buffer; clone so callers can reuse the original
+    arrayBuffer = audioSource.slice(0);
   }
-  return await decodeAudioData(arrayBuffer);
+
+  return decodeAudioData(arrayBuffer);
 }
 
 function getNoteEvents(song: Song) {
@@ -62,165 +66,83 @@ function getNoteEvents(song: Song) {
   return noteEventsPerTick;
 }
 
-type AudioSourceParams = {
-  source: Tone.ToneAudioBuffer;
-  destinationNode: Tone.ToneAudioNode;
-  time: number;
-  playbackRate: number;
-  volumeDb: number;
-  panning: number;
-  onEnded: () => void;
-};
-
-class AudioSource {
-  static nextId = 0;
-  id: number;
-  sourceNode: Tone.ToneBufferSource;
-  panVolNode: Tone.PanVol;
-
-  constructor() {
-    this.id = AudioSource.nextId++;
-    this.sourceNode = new Tone.ToneBufferSource();
-    this.panVolNode = new Tone.PanVol();
-  }
-
-  play(params: AudioSourceParams) {
-    const { source, destinationNode, time, playbackRate, volumeDb, panning, onEnded } = params;
-
-    this.sourceNode = new Tone.ToneBufferSource({
-      url: source,
-      playbackRate,
-    });
-
-    this.panVolNode = new Tone.PanVol({ volume: volumeDb, pan: panning });
-
-    this.sourceNode.chain(this.panVolNode, destinationNode);
-    this.sourceNode.start(time);
-    this.sourceNode.onended = onEnded;
-  }
-
-  stop() {
-    //this.sourceNode.onended(this.sourceNode);
-    this.sourceNode.onended = () => {};
-    this.sourceNode.stop(Tone.getTransport().now());
-    this.sourceNode.disconnect();
-  }
-}
-
-class AudioSourcePool {
-  private freeSources: Array<AudioSource> = [];
-
-  private activeSources: Array<AudioSource> = [];
-
-  numSources: number;
-
-  constructor(numSources: number) {
-    this.numSources = numSources;
-    for (let i = 0; i < numSources; i++) {
-      this.freeSources.push(new AudioSource());
-    }
-  }
-
-  get activeSourceCount() {
-    return this.activeSources.length;
-  }
-
-  get() {
-    if (this.freeSources.length === 0) {
-      this.freeSource();
-    }
-    const source = this.freeSources.pop();
-    if (!source) throw new Error('No source available in pool (this should not happen!)');
-    this.activeSources.push(source);
-    return source;
-  }
-
-  freeSource() {
-    // Recycle oldest source
-    const source = this.activeSources[0];
-    if (!source) throw new Error('No active source to free (this should not happen!)');
-    this.recycle(source);
-  }
-
-  recycle(source: AudioSource) {
-    source.stop();
-    this.activeSources.splice(this.activeSources.indexOf(source), 1);
-    this.freeSources.push(source);
-  }
-}
-
 export class AudioEngine {
   instruments: Array<PlayerInstrument>;
   song?: Song;
   tempoSegments?: Record<number, number>;
 
-  audioBuffers: Record<number, Tone.ToneAudioBuffer> = {};
+  private mixerNode?: AudioWorkletNode;
+  private initPromise?: Promise<void>;
 
-  audioDestination: Tone.ToneAudioNode;
-
-  audioSourcePool: AudioSourcePool;
-
-  constructor(maxAudioSources: number = MAX_AUDIO_SOURCES) {
+  constructor() {
     this.instruments = [...defaultInstruments];
+  }
 
-    // Master audio chain
-    const masterGain = new Tone.Gain(0.5); // Master volume control
-    const compressor = new Tone.Compressor(-24, 3); // Dynamic range compression
-    const limiter = new Tone.Limiter(-3); // Prevent clipping
-    masterGain.connect(compressor);
-    compressor.connect(limiter);
-    limiter.toDestination();
-    this.audioDestination = masterGain;
+  /**
+   * Lazily prepare the audio worklet and upload instrument samples.
+   */
+  public async init() {
+    if (this.initPromise) return this.initPromise;
+    this.initPromise = this.initialize();
+    return this.initPromise;
+  }
 
-    this.loadSounds();
-
-    this.audioSourcePool = new AudioSourcePool(maxAudioSources);
+  private async initialize() {
+    const nativeCtx = new AudioContext();
+    Tone.setContext(new Tone.Context({ context: nativeCtx }));
+    console.log('Loading worklet from:', mixerWorkletUrl);
+    await nativeCtx.audioWorklet.addModule(mixerWorkletUrl);
+    console.log('Worklet loaded.');
+    console.log('Creating mixer node...');
+    console.log(nativeCtx);
+    this.mixerNode = new AudioWorkletNode(nativeCtx, 'mixer-processor');
+    this.mixerNode.connect(nativeCtx.destination);
   }
 
   private async loadSounds() {
-    await Tone.start(); // Ensure the audio context is running
+    const port = this.getPort();
 
-    const promises = this.instruments.map(async (ins, index) => {
-      if (this.audioBuffers[index]) return; // Skip if already loaded
+    for (const [index, ins] of this.instruments.entries()) {
       const audioBuffer = await loadAudio(ins.audioSource);
-      if (!audioBuffer) return;
-      const buffer = new Tone.ToneAudioBuffer({
-        url: audioBuffer,
-        onload: () => console.log(`Loaded instrument ${ins.name}`),
-      });
+      if (!audioBuffer) continue;
 
-      await Tone.loaded(); // Wait for all samples to load
-      this.audioBuffers[index] = buffer;
-    });
+      const channels: Float32Array[] = [];
+      for (let c = 0; c < audioBuffer.numberOfChannels; c++) {
+        channels.push(audioBuffer.getChannelData(c).slice());
+      }
 
-    await Promise.all(promises);
-    console.debug('All instruments loaded.');
+      port.postMessage(
+        {
+          type: 'sample',
+          sampleId: index,
+          channels,
+        },
+        channels.map((c) => c.buffer),
+      );
+    }
+
+    console.debug('All instruments loaded into worklet.');
+  }
+
+  private getPort(): MessagePort {
+    if (!this.mixerNode) {
+      throw new Error('Audio engine not initialized. Call init() before playback.');
+    }
+    return this.mixerNode.port;
   }
 
   private async resetSounds() {
-    /*
-    Clears all custom instrument sounds from the audio engine, resetting it to the initial state.
-    */
-    this.instruments
-      .filter((ins) => !ins.isBuiltIn)
-      .forEach((ins, index) => {
-        const audioBuffer = this.audioBuffers[index];
-        if (audioBuffer) {
-          audioBuffer.dispose();
-          delete this.audioBuffers[index];
-          console.log(`Disposed custom instrument ${ins.name} (id: ${index})`);
-        }
-      });
-    this.instruments = this.instruments.filter((ins) => ins.isBuiltIn);
+    // Drop any previously added custom instruments
+    this.instruments = [...defaultInstruments];
   }
 
-  public loadSong(song: Song, instruments: Array<PlayerInstrument>) {
-    // Custom sounds
-    this.resetSounds();
-    this.instruments = defaultInstruments.concat(instruments);
-    this.loadSounds();
+  public async loadSong(song: Song, instruments: Array<PlayerInstrument>) {
+    await this.init();
 
-    // Song
+    await this.resetSounds();
+    this.instruments = defaultInstruments.concat(instruments);
+    await this.loadSounds();
+
     this.song = song;
     this.tempoSegments = getTempoSegments(song);
     const noteEvents = getNoteEvents(this.song);
@@ -259,29 +181,23 @@ export class AudioEngine {
 
   private playNote(note: NoteEvent, time: number) {
     const { key, instrument, velocity, panning } = note;
-
     if (velocity === 0) return;
 
-    const audioBuffer = this.audioBuffers[instrument];
-    if (!audioBuffer) return;
-
     const insOffset = 45 - this.instruments[instrument].baseKey + 45;
-    const playbackRate = 2 ** ((key - insOffset) / 12);
+    const pitch = 2 ** ((key - insOffset) / 12);
 
-    const volumeDb = Tone.gainToDb(velocity);
+    const gain = velocity; // keep linear, no dB inside worklet
 
-    const source = this.audioSourcePool.get();
+    const ctxTime = Tone.getContext().rawContext.currentTime + (time - Tone.getTransport().seconds);
 
-    source.play({
-      source: audioBuffer,
-      destinationNode: this.audioDestination,
-      time,
-      playbackRate,
-      panning,
-      volumeDb,
-      onEnded: () => {
-        this.audioSourcePool.recycle(source);
-      },
+    const port = this.getPort();
+    port.postMessage({
+      type: 'play',
+      sampleId: instrument,
+      when: ctxTime,
+      gain,
+      pan: panning,
+      pitch,
     });
   }
 
@@ -306,7 +222,7 @@ export class AudioEngine {
   }
 
   public get soundCount() {
-    return this.audioSourcePool.activeSourceCount;
+    return 0;
   }
 
   public get isPlaying() {
@@ -314,6 +230,7 @@ export class AudioEngine {
   }
 
   public play() {
+    Tone.start(); // user gesture gate
     Tone.getContext().resume();
     Tone.getTransport().start();
   }
