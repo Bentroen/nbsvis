@@ -1,7 +1,7 @@
-import { UserConfig } from 'vite';
+import { defineConfig, UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 
-export default {
+export default defineConfig({
   base: process.env.VITE_BASE_URL || '/',
   plugins: [
     viteStaticCopy({
@@ -16,4 +16,4 @@ export default {
   build: {
     target: 'esnext',
   },
-} satisfies UserConfig;
+} satisfies UserConfig);
