@@ -195,7 +195,7 @@ export class AudioEngine {
     const insOffset = 45 - this.instruments[instrument].baseKey + 45;
     const pitch = 2 ** ((key - insOffset) / 12);
 
-    const gain = velocity; // keep linear, no dB inside worklet
+    const gain = velocity * 0.5; // TODO: masterVolume
 
     const ctxTime = Tone.getContext().rawContext.currentTime + (time - Tone.getTransport().seconds);
 
