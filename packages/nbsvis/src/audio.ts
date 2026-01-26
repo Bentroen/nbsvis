@@ -241,17 +241,18 @@ export class AudioEngine {
   }
 
   public play() {
-    Tone.start(); // user gesture gate
-    Tone.getContext().resume();
+    Tone.start();
+    this.nativeCtx?.resume();
     Tone.getTransport().start();
   }
 
   public pause() {
     Tone.getTransport().pause();
+    this.nativeCtx?.suspend(); // Suspend the audio context to pause the worklet timer
   }
 
   public stop() {
     Tone.getTransport().stop();
-    Tone.getTransport().position = 0;
+    this.nativeCtx?.suspend();
   }
 }
