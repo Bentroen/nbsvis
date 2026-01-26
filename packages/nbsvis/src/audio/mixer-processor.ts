@@ -28,7 +28,7 @@ type Voice = {
   pitch: number;
 };
 
-const MAX_VOICES = 256;
+const MAX_VOICES = 1024;
 
 class MixerProcessor extends AudioWorkletProcessor {
   samples: Record<number, Float32Array[]>;
