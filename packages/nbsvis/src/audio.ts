@@ -199,13 +199,10 @@ export class AudioEngine {
 
     const gain = velocity * 0.5; // TODO: masterVolume
 
-    const ctxTime = Tone.getContext().rawContext.currentTime + (time - Tone.getTransport().seconds);
-
     const port = this.getPort();
     port.postMessage({
       type: 'play',
       sampleId: instrument,
-      when: ctxTime,
       gain,
       pan: panning,
       pitch,

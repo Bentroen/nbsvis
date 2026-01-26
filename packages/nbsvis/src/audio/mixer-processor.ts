@@ -6,7 +6,6 @@ declare const currentFrame: number;
 type PlayEvent = {
   type: 'play';
   sampleId: number;
-  when: number;
   gain: number;
   pan: number;
   pitch: number;
@@ -33,21 +32,28 @@ const MAX_VOICES = 1024;
 class MixerProcessor extends AudioWorkletProcessor {
   samples: Record<number, Float32Array[]>;
   voices: Voice[];
-  queue: PlayEvent[];
   lastVoiceCount = 0;
 
   constructor() {
     super();
     this.samples = {};
     this.voices = [];
-    this.queue = [];
 
     this.port.onmessage = (event: MessageEvent<Message>) => {
       const data = event.data;
       if (data.type === 'sample') {
         this.samples[data.sampleId] = data.channels;
       } else if (data.type === 'play') {
-        this.queue.push(data);
+        if (this.voices.length >= MAX_VOICES) {
+          this.voices.shift();
+        }
+        this.voices.push({
+          id: data.sampleId,
+          pos: 0,
+          gain: data.gain,
+          pan: data.pan,
+          pitch: data.pitch,
+        });
       }
     };
   }
@@ -58,25 +64,6 @@ class MixerProcessor extends AudioWorkletProcessor {
 
     outL.fill(0);
     outR.fill(0);
-
-    const now = currentFrame / sampleRate;
-
-    for (let i = this.queue.length - 1; i >= 0; i--) {
-      const ev = this.queue[i];
-      if (ev.when <= now) {
-        if (this.voices.length >= MAX_VOICES) {
-          this.voices.shift();
-        }
-        this.voices.push({
-          id: ev.sampleId,
-          pos: 0,
-          gain: ev.gain,
-          pan: ev.pan,
-          pitch: ev.pitch,
-        });
-        this.queue.splice(i, 1);
-      }
-    }
 
     for (let v = this.voices.length - 1; v >= 0; v--) {
       const voice = this.voices[v];
