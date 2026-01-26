@@ -72,6 +72,7 @@ export class AudioEngine {
   tempoSegments?: Record<number, number>;
 
   private mixerNode?: AudioWorkletNode;
+  private nativeCtx?: AudioContext;
   private initPromise?: Promise<void>;
 
   constructor() {
@@ -88,24 +89,25 @@ export class AudioEngine {
   }
 
   private async initialize() {
-    const nativeCtx = new AudioContext();
-    Tone.setContext(new Tone.Context({ context: nativeCtx }));
+    this.nativeCtx = new AudioContext();
+    Tone.setContext(new Tone.Context({ context: this.nativeCtx }));
     console.log('Loading worklet from:', mixerWorkletUrl);
-    await nativeCtx.audioWorklet.addModule(mixerWorkletUrl);
+    await this.nativeCtx.audioWorklet.addModule(mixerWorkletUrl);
     console.log('Worklet loaded.');
     console.log('Creating mixer node...');
-    console.log(nativeCtx);
-    this.mixerNode = new AudioWorkletNode(nativeCtx, 'mixer-processor');
+    console.log(this.nativeCtx);
+    this.mixerNode = new AudioWorkletNode(this.nativeCtx, 'mixer-processor');
 
     // Add a downstream limiter to prevent clipping
-    const limiter = nativeCtx.createDynamicsCompressor();
+    const limiter = this.nativeCtx.createDynamicsCompressor();
     limiter.threshold.value = -6; // start limiting just below 0 dBFS
     limiter.knee.value = 0; // hard knee for limiter behavior
     limiter.ratio.value = 20; // high ratio ≈ limiting
     limiter.attack.value = 0.003; // fast attack
     limiter.release.value = 0.05; // short release
 
-    this.mixerNode.connect(nativeCtx.destination);
+    this.mixerNode.connect(limiter);
+    limiter.connect(this.nativeCtx.destination);
   }
 
   private async loadSounds() {
