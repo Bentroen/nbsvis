@@ -14,11 +14,23 @@ export default defineConfig({
     }),
   ],
   server: {
+    headers: {
+      // for SharedArrayBuffer support
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+    },
     fs: {
       allow: ['..'], // allow serving from parent dirs (monorepo)
     },
   },
   build: {
     target: 'esnext',
+  },
+  preview: {
+    headers: {
+      // for SharedArrayBuffer support
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+    },
   },
 } satisfies UserConfig);
