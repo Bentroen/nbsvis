@@ -10,8 +10,8 @@ declare const currentFrame: number;
 declare const currentTime: number;
 
 class MixerProcessor extends AudioWorkletProcessor {
-  transport = new Transport();
   scheduler = new Scheduler();
+  transport = new Transport(this.scheduler, 120);
   voiceManager = new VoiceManager();
 
   constructor(options: AudioWorkletNodeOptions) {

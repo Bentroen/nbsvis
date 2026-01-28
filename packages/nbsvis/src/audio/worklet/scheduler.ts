@@ -21,6 +21,17 @@ class Scheduler {
     return initialTempo;
   }
 
+  /** Find the effective tempo at a given tick */
+  getTempoAt(tick: Tick, fallback: Tempo): Tempo {
+    let lastTempo = fallback;
+    // TODO: optimize last tempo lookup
+    for (const [t, tempo] of Object.entries(this.tempoChanges)) {
+      if (Number(t) > tick) break;
+      lastTempo = tempo;
+    }
+    return lastTempo;
+  }
+
   collectEvents(tick: Tick) {
     const events = [];
 

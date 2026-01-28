@@ -1,8 +1,17 @@
+import Scheduler, { Tempo, Tick } from './scheduler';
+
 class Transport {
   isPlaying = false;
   currentTick = 0;
   currentTempo = 120;
   prevTime = -1;
+
+  constructor(
+    private scheduler: Scheduler,
+    initialTempo: Tempo,
+  ) {
+    this.currentTempo = initialTempo;
+  }
 
   play() {
     this.isPlaying = true;
@@ -18,8 +27,9 @@ class Transport {
     this.prevTime = -1;
   }
 
-  seek(tick: number) {
+  seek(tick: Tick) {
     this.currentTick = tick;
+    this.currentTempo = this.scheduler.getTempoAt(tick, this.currentTempo);
     this.prevTime = -1;
   }
 
