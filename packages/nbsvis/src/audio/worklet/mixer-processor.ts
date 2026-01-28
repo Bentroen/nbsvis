@@ -2,6 +2,7 @@
 
 import { Message } from './event';
 import Scheduler from './scheduler';
+import { SharedState } from './state';
 import Transport from './transport';
 import VoiceManager from './voice-manager';
 
@@ -10,12 +11,16 @@ declare const currentFrame: number;
 declare const currentTime: number;
 
 class MixerProcessor extends AudioWorkletProcessor {
+  state: Int32Array;
   scheduler = new Scheduler();
   transport = new Transport(this.scheduler, 120);
   voiceManager = new VoiceManager();
 
   constructor(options: AudioWorkletNodeOptions) {
     super();
+
+    const shared = options.processorOptions.sharedTickBuffer;
+    this.state = new Int32Array(shared);
 
     this.port.onmessage = (e: MessageEvent<Message>) => {
       const msg = e.data;
@@ -110,6 +115,12 @@ class MixerProcessor extends AudioWorkletProcessor {
       // Advance position once per block to avoid cumulative float drift
       voice.pos = basePos + advanced;
     }
+
+    Atomics.store(this.state, SharedState.FRAME, currentFrame);
+    Atomics.store(this.state, SharedState.TICK, (this.transport.currentTick * 1000) | 0);
+    Atomics.store(this.state, SharedState.BPM, (this.transport.currentTempo * 1000) | 0);
+    Atomics.store(this.state, SharedState.VOICES, this.voiceManager.activeCount);
+    Atomics.store(this.state, SharedState.PLAYING, this.transport.isPlaying ? 1 : 0);
 
     return true;
   }
