@@ -1,7 +1,7 @@
 import { Song } from '@encode42/nbs.js';
-import * as Tone from 'tone';
 
-import mixerWorkletUrl from './audio/mixer-processor?worker&url';
+import mixerWorkletUrl from './audio/worklet/mixer-processor?worker&url';
+import { SharedState } from './audio/worklet/state';
 import PlayerInstrument, { defaultInstruments } from './instrument';
 import { getTempoChangeEvents, getTempoSegments } from './song';
 
@@ -75,6 +75,8 @@ export class AudioEngine {
   tempoSegments?: Record<number, number>;
 
   private mixerNode?: AudioWorkletNode;
+  private sharedTickBuffer?: SharedArrayBuffer;
+  private tickView?: Int32Array;
   private nativeCtx?: AudioContext;
   private initPromise?: Promise<void>;
 
@@ -93,13 +95,24 @@ export class AudioEngine {
 
   private async initialize() {
     this.nativeCtx = new AudioContext();
-    Tone.setContext(new Tone.Context({ context: this.nativeCtx }));
+
+    // Set up shared state buffer
+    this.sharedTickBuffer = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * SharedState.SIZE);
+    this.tickView = new Int32Array(this.sharedTickBuffer);
+
     console.log('Loading worklet from:', mixerWorkletUrl);
     await this.nativeCtx.audioWorklet.addModule(mixerWorkletUrl);
     console.log('Worklet loaded.');
     console.log('Creating mixer node...');
     console.log(this.nativeCtx);
-    this.mixerNode = new AudioWorkletNode(this.nativeCtx, 'mixer-processor');
+
+    this.mixerNode = new AudioWorkletNode(this.nativeCtx, 'mixer-processor', {
+      numberOfOutputs: 1,
+      outputChannelCount: [2],
+      processorOptions: {
+        sharedTickBuffer: this.sharedTickBuffer,
+      },
+    });
 
     // Add a downstream limiter to prevent clipping
     const limiter = this.nativeCtx.createDynamicsCompressor();
@@ -108,6 +121,14 @@ export class AudioEngine {
     limiter.ratio.value = 20; // high ratio ≈ limiting
     limiter.attack.value = 0.003; // fast attack
     limiter.release.value = 0.05; // short release
+
+    // const masterGain = new Tone.Gain(0.5); // Master volume control
+    // const compressor = new Tone.Compressor(-24, 3); // Dynamic range compression
+    // const limiter = new Tone.Limiter(-3); // Prevent clipping
+    // masterGain.connect(compressor);
+    // compressor.connect(limiter);
+    // limiter.toDestination();
+    // this.audioDestination = masterGain;
 
     this.mixerNode.connect(limiter);
     limiter.connect(this.nativeCtx.destination);
@@ -170,90 +191,42 @@ export class AudioEngine {
     tempoChangeEvents: Record<number, number>,
     tempo: number,
   ) {
-    const transport = Tone.getTransport();
-    transport.stop();
-    transport.cancel();
-    transport.position = 0;
+    this.getPort().postMessage({
+      type: 'song',
+      notes: noteEvents,
+      tempoChanges: tempoChangeEvents,
+      ticksPerBeat: 4,
+      initialTempo: tempo,
+    });
 
-    transport.bpm.value = tempo;
-    const secondsPerTick = 60 / tempo / 4; // 4 ticks per beat
-
-    for (const [tickStr, notes] of Object.entries(noteEvents)) {
-      const tick = parseInt(tickStr);
-      transport.schedule((time) => {
-        this.playNotes(notes, time);
-      }, tick * secondsPerTick);
-    }
-
-    for (const [tickStr, newTempo] of Object.entries(tempoChangeEvents)) {
-      const tick = parseInt(tickStr);
-      transport.schedule((time) => {
-        transport.bpm.setValueAtTime(newTempo * 15, time);
-      }, tick * secondsPerTick);
-    }
     console.log('Song scheduled.');
   }
 
-  private playNotes(notes: Array<NoteEvent>, time: number) {
-    const port = this.getPort();
-    const payload: Array<{ sampleId: number; gain: number; pan: number; pitch: number }> = [];
-
-    for (const note of notes) {
-      const { key, instrument, velocity, panning } = note;
-      if (velocity === 0) continue;
-
-      const insOffset = 45 - this.instruments[instrument].baseKey + 45;
-      const pitch = 2 ** ((key - insOffset) / 12);
-      const gain = velocity * 0.5; // TODO: masterVolume
-
-      payload.push({
-        sampleId: instrument,
-        gain,
-        pan: panning,
-        pitch,
-      });
-    }
-
-    if (payload.length > 0) {
-      port.postMessage({ type: 'play', notes: payload });
-    }
-  }
-
   public get currentTick() {
-    const transport = Tone.getTransport();
-    return (transport.ticks / transport.PPQ) * 4;
+    return Atomics.load(this.tickView, SharedState.TICK) / 1000;
   }
 
   public set currentTick(tick: number) {
-    const transport = Tone.getTransport();
-    transport.ticks = (tick * transport.PPQ) / 4;
-    const newBPM = (this.tempoSegments?.[tick] ?? DEFAULT_TEMPO_TPS) * 15;
-    console.debug('Setting tick to:', tick);
-    console.debug('BPM:', newBPM);
-    transport.bpm.value = newBPM;
+    this.getPort().postMessage({ type: 'seek', tick });
   }
 
   public get soundCount() {
-    return 0;
+    return Atomics.load(this.tickView, SharedState.VOICES);
   }
 
   public get isPlaying() {
-    return Tone.getTransport().state === 'started';
+    return Atomics.load(this.tickView, SharedState.PLAYING) === 1;
   }
 
   public play() {
-    Tone.start();
-    this.nativeCtx?.resume();
-    Tone.getTransport().start();
+    this.getPort().postMessage({ type: 'play' });
   }
 
   public pause() {
-    Tone.getTransport().pause();
-    this.nativeCtx?.suspend(); // Suspend the audio context to pause the worklet timer
+    this.getPort().postMessage({ type: 'pause' });
   }
 
   public stop() {
-    Tone.getTransport().stop();
-    this.nativeCtx?.suspend();
+    this.getPort().postMessage({ type: 'stop' });
   }
 }
