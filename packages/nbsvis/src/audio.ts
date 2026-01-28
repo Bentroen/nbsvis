@@ -17,11 +17,14 @@ type NoteEvent = {
   panning: number;
 };
 
-function decodeAudioData(buffer: ArrayBuffer): Promise<AudioBuffer> {
-  return Tone.getContext().decodeAudioData(buffer);
+function decodeAudioData(ctx: AudioContext, buffer: ArrayBuffer): Promise<AudioBuffer> {
+  return ctx.decodeAudioData(buffer);
 }
 
-async function loadAudio(audioSource: string | ArrayBuffer): Promise<AudioBuffer | null> {
+async function loadAudio(
+  ctx: AudioContext,
+  audioSource: string | ArrayBuffer,
+): Promise<AudioBuffer | null> {
   if (!audioSource) return null;
 
   let arrayBuffer: ArrayBuffer;
@@ -33,7 +36,7 @@ async function loadAudio(audioSource: string | ArrayBuffer): Promise<AudioBuffer
     arrayBuffer = audioSource.slice(0);
   }
 
-  return decodeAudioData(arrayBuffer);
+  return decodeAudioData(ctx, arrayBuffer);
 }
 
 function getNoteEvents(song: Song) {
@@ -112,9 +115,10 @@ export class AudioEngine {
 
   private async loadSounds() {
     const port = this.getPort();
+    const ctx = this.nativeCtx!;
 
     for (const [index, ins] of this.instruments.entries()) {
-      const audioBuffer = await loadAudio(ins.audioSource);
+      const audioBuffer = await loadAudio(ctx, ins.audioSource);
       if (!audioBuffer) continue;
 
       const channels: Float32Array[] = [];
