@@ -204,6 +204,7 @@ export class AudioEngine {
   }
 
   public get currentTick() {
+    if (!this.tickView) return 0;
     return Atomics.load(this.tickView, SharedState.TICK) / 1000;
   }
 
@@ -212,14 +213,17 @@ export class AudioEngine {
   }
 
   public get soundCount() {
+    if (!this.tickView) return 0;
     return Atomics.load(this.tickView, SharedState.VOICES);
   }
 
   public get isPlaying() {
+    if (!this.tickView) return false;
     return Atomics.load(this.tickView, SharedState.PLAYING) === 1;
   }
 
   public play() {
+    console.log('Playing');
     this.getPort().postMessage({ type: 'play' });
   }
 
