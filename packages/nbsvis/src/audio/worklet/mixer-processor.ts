@@ -93,11 +93,10 @@ class MixerProcessor extends AudioWorkletProcessor {
       const L = sample[0];
       const R = sample[1] ?? L;
 
-      const basePos = voice.pos; // capture start position for this block
+      const basePos = voice.pos;
       let advanced = 0;
 
       for (let i = 0; i < outL.length; i++) {
-        // Linear interpolation (new, non-accumulating):
         const pos = basePos + i * voice.pitch;
 
         if (pos >= L.length) {
@@ -115,7 +114,6 @@ class MixerProcessor extends AudioWorkletProcessor {
         advanced = (i + 1) * voice.pitch;
       }
 
-      // Advance position once per block to avoid cumulative float drift
       voice.pos = basePos + advanced;
     }
 
