@@ -34,9 +34,7 @@ class Transport {
   }
 
   advance(currentTime: number) {
-    if (!this.isPlaying) return false;
-
-    if (this.prevTime < 0) {
+    if (!this.isPlaying || this.prevTime < 0) {
       this.prevTime = currentTime;
       return false;
     }
