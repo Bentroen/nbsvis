@@ -81,7 +81,7 @@ export function getTempoChangeEvents(song: Song) {
       const note = layer.notes[tickStr];
       if (tempoChangerInstrumentIds.includes(note.instrument)) {
         const tick = parseInt(tickStr);
-        const tempo = note.pitch / 15; // Convert from BPM to t/s
+        const tempo = note.pitch; // TODO: we should work with t/s at this abstraction level - not BPM
         tempoChangeEvents[tick] = tempo;
       }
     }
