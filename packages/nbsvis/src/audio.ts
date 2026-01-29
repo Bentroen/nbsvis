@@ -53,7 +53,7 @@ function getNoteEvents(song: Song) {
 
       // notes -> events
       const sampleId = instrument;
-      const pitch = Math.pow(2, (key - 45) / 12);
+      const pitch = 2 ** (key / 12);
       const gain = velocity;
       const pan = panning;
 
