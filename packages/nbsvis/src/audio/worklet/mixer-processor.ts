@@ -7,8 +7,6 @@ import { SharedState } from './state';
 import Transport from './transport';
 import VoiceManager from './voice-manager';
 
-declare const sampleRate: number;
-declare const currentFrame: number;
 declare const currentTime: number;
 
 // Resampling strategy
