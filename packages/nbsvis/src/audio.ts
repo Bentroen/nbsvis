@@ -44,7 +44,8 @@ function getNoteEvents(song: Song) {
       // song -> notes
       const tick = parseInt(tickStr);
       const instrument = note.instrument;
-      const key = note.key + note.pitch / 100;
+      const instrumentKeyOffset = 45 - song.instruments.loaded[instrument].key + 45;
+      const key = note.key - instrumentKeyOffset + note.pitch / 100;
       const velocity = ((note.velocity / 100) * layer.volume) / 100;
       const panning = (layer.stereo === 0 ? note.panning : (note.panning + layer.stereo) / 2) / 100;
 
