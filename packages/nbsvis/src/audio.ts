@@ -9,8 +9,6 @@ import { getTempoChangeEvents, getTempoSegments } from './song';
 
 export const MAX_AUDIO_SOURCES = MAX_VOICE_COUNT;
 
-const DEFAULT_TEMPO_TPS = new Song().tempo * 15;
-
 function decodeAudioData(ctx: AudioContext, buffer: ArrayBuffer): Promise<AudioBuffer> {
   return ctx.decodeAudioData(buffer);
 }
