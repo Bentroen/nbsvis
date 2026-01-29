@@ -13,7 +13,7 @@ declare const currentTime: number;
 class MixerProcessor extends AudioWorkletProcessor {
   state: Int32Array;
   scheduler = new Scheduler();
-  transport = new Transport(this.scheduler, 120);
+  transport = new Transport(this.scheduler);
   voiceManager = new VoiceManager();
 
   constructor(options: AudioWorkletNodeOptions) {

@@ -1,17 +1,12 @@
-import Scheduler, { Tempo, Tick } from './scheduler';
+import Scheduler, { Tick } from './scheduler';
 
 class Transport {
   isPlaying = false;
   currentTick = 0;
-  currentTempo = 120;
+  currentTempo = -1;
   prevTime = -1;
 
-  constructor(
-    private scheduler: Scheduler,
-    initialTempo: Tempo,
-  ) {
-    this.currentTempo = initialTempo;
-  }
+  constructor(private scheduler: Scheduler) {}
 
   play() {
     this.isPlaying = true;
