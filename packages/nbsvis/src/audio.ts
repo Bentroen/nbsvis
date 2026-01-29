@@ -119,24 +119,33 @@ export class AudioEngine {
       },
     });
 
-    // Add a downstream limiter to prevent clipping
+    // chain: mixer -> compressor -> limiter -> masterGain -> destination
+
+    // Soft compressor to smooth out dynamics
+    const compressor = this.nativeCtx.createDynamicsCompressor();
+    compressor.threshold.value = -24; // threshold in dB
+    compressor.knee.value = 30; // knee in dB
+    compressor.ratio.value = 12; // compression ratio
+    compressor.attack.value = 0.003; // attack time in seconds
+    compressor.release.value = 0.25; // release time in seconds
+
+    // Brick-wall limiter to prevent clipping
     const limiter = this.nativeCtx.createDynamicsCompressor();
-    limiter.threshold.value = -6; // start limiting just below 0 dBFS
-    limiter.knee.value = 0; // hard knee for limiter behavior
-    limiter.ratio.value = 20; // high ratio ≈ limiting
-    limiter.attack.value = 0.003; // fast attack
-    limiter.release.value = 0.05; // short release
+    limiter.threshold.value = -3; // threshold in dB
+    limiter.knee.value = 0; // knee in dB
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.001; // attack time in seconds
+    limiter.release.value = 0.1; // release time in seconds
 
-    // const masterGain = new Tone.Gain(0.5); // Master volume control
-    // const compressor = new Tone.Compressor(-24, 3); // Dynamic range compression
-    // const limiter = new Tone.Limiter(-3); // Prevent clipping
-    // masterGain.connect(compressor);
-    // compressor.connect(limiter);
-    // limiter.toDestination();
-    // this.audioDestination = masterGain;
+    // Gain node for master volume
+    const masterGainNode = this.nativeCtx.createGain();
+    masterGainNode.gain.value = 0.5;
 
-    this.mixerNode.connect(limiter);
-    limiter.connect(this.nativeCtx.destination);
+    // Output chain
+    this.mixerNode.connect(compressor);
+    compressor.connect(limiter);
+    limiter.connect(masterGainNode);
+    masterGainNode.connect(this.nativeCtx.destination);
   }
 
   private async loadSounds() {
