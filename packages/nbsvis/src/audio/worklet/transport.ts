@@ -1,5 +1,7 @@
 import Scheduler, { Tick } from './scheduler';
 
+const TICKS_PER_BEAT = 4;
+
 class Transport {
   isPlaying = false;
   currentTick = 0;
@@ -35,7 +37,7 @@ class Transport {
     }
 
     const delta = currentTime - this.prevTime;
-    this.currentTick += (this.currentTempo / 60) * (delta * 4);
+    this.currentTick += (this.currentTempo / 60) * (delta * TICKS_PER_BEAT);
     this.prevTime = currentTime;
 
     return true;
