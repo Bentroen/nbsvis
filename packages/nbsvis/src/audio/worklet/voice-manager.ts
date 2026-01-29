@@ -1,6 +1,6 @@
 import { NoteEvent } from './scheduler';
 
-export const MAX_VOICES = 1024;
+export const MAX_VOICE_COUNT = 1024;
 
 type Voice = {
   id: number;
@@ -23,7 +23,7 @@ class VoiceManager {
   }
 
   spawn(note: NoteEvent) {
-    if (this.voices.length >= MAX_VOICES) {
+    if (this.voices.length >= MAX_VOICE_COUNT) {
       this.voices.shift(); // basic stealing
     }
     this.voices.push({

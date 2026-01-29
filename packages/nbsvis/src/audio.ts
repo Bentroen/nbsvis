@@ -3,11 +3,11 @@ import { Song } from '@encode42/nbs.js';
 import mixerWorkletUrl from './audio/worklet/mixer-processor?worker&url';
 import { NoteEvent } from './audio/worklet/scheduler';
 import { SharedState } from './audio/worklet/state';
-import { MAX_VOICES } from './audio/worklet/voice-manager';
+import { MAX_VOICE_COUNT } from './audio/worklet/voice-manager';
 import PlayerInstrument, { defaultInstruments } from './instrument';
 import { getTempoChangeEvents, getTempoSegments } from './song';
 
-export const MAX_AUDIO_SOURCES = MAX_VOICES;
+export const MAX_AUDIO_SOURCES = MAX_VOICE_COUNT;
 
 const DEFAULT_TEMPO_TPS = new Song().tempo * 15;
 
