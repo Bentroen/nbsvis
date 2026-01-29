@@ -49,6 +49,8 @@ function getNoteEvents(song: Song) {
       const velocity = ((note.velocity / 100) * layer.volume) / 100;
       const panning = (layer.stereo === 0 ? note.panning : (note.panning + layer.stereo) / 2) / 100;
 
+      if (velocity == 0) continue;
+
       // notes -> events
       const sampleId = instrument;
       const pitch = Math.pow(2, (key - 45) / 12);
