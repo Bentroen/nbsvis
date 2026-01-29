@@ -34,9 +34,6 @@ type SeekEvent = {
 type Message = SongEvent | SampleEvent | PlayEvent | PauseEvent | StopEvent | SeekEvent;
 
 export {
-  type Note,
-  type Tempo,
-  type Tick,
   type SongEvent,
   type SampleEvent,
   type PlayEvent,
