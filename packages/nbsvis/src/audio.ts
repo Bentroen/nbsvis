@@ -1,6 +1,7 @@
 import { Song } from '@encode42/nbs.js';
 
 import mixerWorkletUrl from './audio/worklet/mixer-processor?worker&url';
+import { Note } from './audio/worklet/scheduler';
 import { SharedState } from './audio/worklet/state';
 import PlayerInstrument, { defaultInstruments } from './instrument';
 import { getTempoChangeEvents, getTempoSegments } from './song';
@@ -8,14 +9,6 @@ import { getTempoChangeEvents, getTempoSegments } from './song';
 export const MAX_AUDIO_SOURCES = 256;
 
 const DEFAULT_TEMPO_TPS = new Song().tempo * 15;
-
-type NoteEvent = {
-  tick: number;
-  instrument: number;
-  key: number;
-  velocity: number;
-  panning: number;
-};
 
 function decodeAudioData(ctx: AudioContext, buffer: ArrayBuffer): Promise<AudioBuffer> {
   return ctx.decodeAudioData(buffer);
@@ -40,24 +33,32 @@ async function loadAudio(
 }
 
 function getNoteEvents(song: Song) {
-  const noteEventsPerTick: Record<number, Array<NoteEvent>> = [];
+  const noteEventsPerTick: Record<number, Array<Note>> = {};
 
   for (const layer of song.layers) {
     for (const tickStr in layer.notes) {
       const note = layer.notes[tickStr];
 
+      // TODO: move this logic one abstraction level higher
+      // song -> notes
       const tick = parseInt(tickStr);
       const instrument = note.instrument;
       const key = note.key + note.pitch / 100;
       const velocity = ((note.velocity / 100) * layer.volume) / 100;
       const panning = (layer.stereo === 0 ? note.panning : (note.panning + layer.stereo) / 2) / 100;
 
+      // notes -> events
+      const sampleId = instrument;
+      const pitch = Math.pow(2, (key - 45) / 12);
+      const gain = velocity;
+      const pan = panning;
+
       const noteEvent = {
         tick,
-        instrument,
-        key,
-        velocity,
-        panning,
+        sampleId,
+        pitch,
+        gain,
+        pan,
       };
 
       if (!(tick in noteEventsPerTick)) {

@@ -1,4 +1,5 @@
 export type Note = {
+  tick: number;
   sampleId: number;
   pitch: number;
   gain: number;
