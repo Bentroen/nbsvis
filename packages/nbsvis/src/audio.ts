@@ -1,7 +1,7 @@
 import { Song } from '@encode42/nbs.js';
 
 import mixerWorkletUrl from './audio/worklet/mixer-processor?worker&url';
-import { Note } from './audio/worklet/scheduler';
+import { NoteEvent } from './audio/worklet/scheduler';
 import { SharedState } from './audio/worklet/state';
 import PlayerInstrument, { defaultInstruments } from './instrument';
 import { getTempoChangeEvents, getTempoSegments } from './song';
@@ -33,7 +33,7 @@ async function loadAudio(
 }
 
 function getNoteEvents(song: Song) {
-  const noteEventsPerTick: Record<number, Array<Note>> = {};
+  const noteEventsPerTick: Record<number, Array<NoteEvent>> = {};
 
   for (const layer of song.layers) {
     for (const tickStr in layer.notes) {

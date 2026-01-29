@@ -1,8 +1,8 @@
-import { Note, Tempo, Tick } from './scheduler';
+import { NoteEvent, Tempo, Tick } from './scheduler';
 
 type SongEvent = {
   type: 'song';
-  notes: Record<Tick, Note[]>;
+  notes: Record<Tick, NoteEvent[]>;
   tempoChanges: Record<Tick, Tempo>;
   ticksPerBeat: number;
   initialTempo: Tempo;

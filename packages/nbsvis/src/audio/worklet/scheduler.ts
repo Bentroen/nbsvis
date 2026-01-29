@@ -1,4 +1,4 @@
-export type Note = {
+export type NoteEvent = {
   tick: number;
   sampleId: number;
   pitch: number;
@@ -11,11 +11,15 @@ export type Tempo = number;
 export type Tick = number;
 
 class Scheduler {
-  notes: Record<Tick, Note[]> = {};
+  notes: Record<Tick, NoteEvent[]> = {};
   tempoChanges: Record<Tick, Tempo> = {};
   lastTick = -1;
 
-  loadSong(notes: Record<Tick, Note[]>, tempoChanges: Record<Tick, Tempo>, initialTempo: Tempo) {
+  loadSong(
+    notes: Record<Tick, NoteEvent[]>,
+    tempoChanges: Record<Tick, Tempo>,
+    initialTempo: Tempo,
+  ) {
     this.notes = notes;
     this.tempoChanges = tempoChanges;
     this.lastTick = -1;

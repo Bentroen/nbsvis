@@ -1,4 +1,4 @@
-import { Note } from './scheduler';
+import { NoteEvent } from './scheduler';
 
 const MAX_VOICES = 1024;
 
@@ -22,7 +22,7 @@ class VoiceManager {
     this.samples[id] = channels;
   }
 
-  spawn(note: Note) {
+  spawn(note: NoteEvent) {
     if (this.voices.length >= MAX_VOICES) {
       this.voices.shift(); // basic stealing
     }
