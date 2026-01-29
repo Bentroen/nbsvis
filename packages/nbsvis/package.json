@@ -18,7 +18,7 @@
     }
   },
   "scripts": {
-    "dev": "vite build --watch --mode development",
+    "dev": "vite build --watch --mode development --emptyOutDir=false",
     "build": "tsc && vite build --mode production",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
@@ -33,8 +33,7 @@
     "avl": "^1.6.0",
     "jszip": "^3.10.1",
     "mitt": "^3.0.1",
-    "pixi.js": "^8.8.1",
-    "tone": "^15.0.4"
+    "pixi.js": "^8.8.1"
   },
   "devDependencies": {
     "@jest/types": "^29.6.3",
