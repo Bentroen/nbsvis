@@ -234,7 +234,6 @@ export class AudioEngine {
   }
 
   public play() {
-    console.log('Playing');
     this.getPort().postMessage({ type: 'play' });
   }
 
