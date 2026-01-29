@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 
 import { Message } from './event';
+import { cubicResample } from './resampler';
 import Scheduler from './scheduler';
 import { SharedState } from './state';
 import Transport from './transport';
@@ -10,11 +11,15 @@ declare const sampleRate: number;
 declare const currentFrame: number;
 declare const currentTime: number;
 
+// Resampling strategy
+const DEFAULT_RESAMPLER = cubicResample;
+
 class MixerProcessor extends AudioWorkletProcessor {
   state: Int32Array;
   scheduler = new Scheduler();
   transport = new Transport(this.scheduler);
   voiceManager = new VoiceManager();
+  private readonly resample = DEFAULT_RESAMPLER;
 
   constructor(options: AudioWorkletNodeOptions) {
     super();
@@ -94,17 +99,15 @@ class MixerProcessor extends AudioWorkletProcessor {
       for (let i = 0; i < outL.length; i++) {
         // Linear interpolation (new, non-accumulating):
         const pos = basePos + i * voice.pitch;
-        const idx0 = Math.floor(pos);
-        if (idx0 >= L.length) {
+
+        if (pos >= L.length) {
           this.voiceManager.voices.splice(v, 1);
-          advanced = i * voice.pitch; // how far we got this block
+          advanced = i * voice.pitch;
           break;
         }
-        const idx1 = Math.min(idx0 + 1, L.length - 1);
-        const frac = pos - idx0;
 
-        const lSample = L[idx0] * (1 - frac) + L[idx1] * frac;
-        const rSample = R[idx0] * (1 - frac) + R[idx1] * frac;
+        const lSample = this.resample(L, pos);
+        const rSample = this.resample(R, pos);
 
         outL[i] += lSample * voice.gain * (1 - Math.max(0, voice.pan));
         outR[i] += rSample * voice.gain * (1 + Math.min(0, voice.pan));
