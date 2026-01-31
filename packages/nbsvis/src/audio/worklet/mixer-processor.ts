@@ -62,6 +62,14 @@ class MixerProcessor extends AudioWorkletProcessor {
     };
   }
 
+  private storeState() {
+    Atomics.store(this.state, SharedState.FRAME, currentFrame);
+    Atomics.store(this.state, SharedState.TICK, (this.transport.currentTick * 1000) | 0);
+    Atomics.store(this.state, SharedState.BPM, (this.transport.currentTempo * 1000) | 0);
+    Atomics.store(this.state, SharedState.VOICES, this.voiceManager.activeCount);
+    Atomics.store(this.state, SharedState.PLAYING, this.transport.isPlaying ? 1 : 0);
+  }
+
   process(_: Float32Array[][], outputs: Float32Array[][]): boolean {
     if (this.transport.advance(currentTime)) {
       const tick = Math.floor(this.transport.currentTick);
@@ -82,6 +90,11 @@ class MixerProcessor extends AudioWorkletProcessor {
 
     outL.fill(0);
     outR.fill(0);
+
+    if (!this.transport.isPlaying) {
+      this.storeState();
+      return true;
+    }
 
     for (let v = this.voiceManager.voices.length - 1; v >= 0; v--) {
       const voice = this.voiceManager.voices[v];
@@ -115,11 +128,7 @@ class MixerProcessor extends AudioWorkletProcessor {
       voice.pos = basePos + advanced;
     }
 
-    Atomics.store(this.state, SharedState.FRAME, currentFrame);
-    Atomics.store(this.state, SharedState.TICK, (this.transport.currentTick * 1000) | 0);
-    Atomics.store(this.state, SharedState.BPM, (this.transport.currentTempo * 1000) | 0);
-    Atomics.store(this.state, SharedState.VOICES, this.voiceManager.activeCount);
-    Atomics.store(this.state, SharedState.PLAYING, this.transport.isPlaying ? 1 : 0);
+    this.storeState();
 
     return true;
   }
