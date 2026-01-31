@@ -14,6 +14,12 @@ export default defineConfig({
           ),
           dest: 'assets',
         },
+        {
+          src: normalizePath(
+            path.resolve(__dirname, 'node_modules/coi-serviceworker/coi-serviceworker.js'),
+          ),
+          dest: '',
+        },
       ],
     }),
   ],
