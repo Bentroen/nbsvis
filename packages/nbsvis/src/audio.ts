@@ -233,7 +233,15 @@ export class AudioEngine {
     return Atomics.load(this.tickView, SharedState.PLAYING) === 1;
   }
 
-  public play() {
+  public async play() {
+    await this.init();
+
+    const ctx = this.nativeCtx!;
+
+    if (ctx.state !== 'running') {
+      await ctx.resume();
+    }
+
     this.getPort().postMessage({ type: 'play' });
   }
 
