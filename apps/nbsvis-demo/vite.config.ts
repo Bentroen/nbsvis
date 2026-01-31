@@ -1,4 +1,6 @@
-import { defineConfig, UserConfig } from 'vite';
+import path from 'path';
+
+import { defineConfig, normalizePath, UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig({
@@ -7,7 +9,9 @@ export default defineConfig({
     viteStaticCopy({
       targets: [
         {
-          src: 'node_modules/@nbsvis/core/dist/assets/mixer-processor-*.js',
+          src: normalizePath(
+            path.resolve(__dirname, 'node_modules/@nbsvis/core/dist/assets/mixer-processor-*.js'),
+          ),
           dest: 'assets',
         },
       ],
