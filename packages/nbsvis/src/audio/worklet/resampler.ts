@@ -1,5 +1,10 @@
 export type ResamplerFn = (buffer: Float32Array, pos: number) => number;
 
+export const nearestNeighborResample: ResamplerFn = (buffer: Float32Array, pos: number): number => {
+  const i = Math.round(pos);
+  return buffer[Math.min(i, buffer.length - 1)];
+};
+
 export const linearResample: ResamplerFn = (buffer: Float32Array, pos: number): number => {
   const i0 = Math.floor(pos);
   const i1 = Math.min(i0 + 1, buffer.length - 1);
