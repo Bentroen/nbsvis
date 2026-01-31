@@ -41,6 +41,9 @@ importers:
       '@nbsvis/core':
         specifier: workspace:*
         version: link:../../packages/nbsvis
+      coi-serviceworker:
+        specifier: ^0.1.7
+        version: 0.1.7
     devDependencies:
       typescript:
         specifier: ~5.7.2
@@ -1329,6 +1332,9 @@ packages:
   co@4.6.0:
     resolution: {integrity: sha512-QVb0dM5HvG+uaxitm8wONl7jltx8dqhfU33DcqtOZcLSVIKSDDLDi7+0LbAKiyI8hD9u42m2YxXSkMGWThaecQ==}
     engines: {iojs: '>= 1.0.0', node: '>= 0.12.0'}
+
+  coi-serviceworker@0.1.7:
+    resolution: {integrity: sha512-bjSUqEngCPOkErY2vbyWsaIGCNRODYzlNycaREVw5s12/C8SM+RnRUUeX6pZbTtov6C52ZLY/+tvHK+BDxuUuA==}
 
   collect-v8-coverage@1.0.2:
     resolution: {integrity: sha512-lHl4d5/ONEbLlJvaJNtsF/Lz+WvB07u2ycqTYbdrq7UypDXailES4valYb2eWiJFxZlVmpGekfqoxQhzyFdT4Q==}
@@ -4575,6 +4581,8 @@ snapshots:
       wrap-ansi: 7.0.0
 
   co@4.6.0: {}
+
+  coi-serviceworker@0.1.7: {}
 
   collect-v8-coverage@1.0.2: {}
 

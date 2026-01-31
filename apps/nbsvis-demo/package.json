@@ -9,7 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@nbsvis/core": "workspace:*"
+    "@nbsvis/core": "workspace:*",
+    "coi-serviceworker": "^0.1.7"
   },
   "devDependencies": {
     "typescript": "~5.7.2",
