@@ -40,7 +40,7 @@ export class Player {
     const { song, extraSounds } = await loadSongFromUrl(url);
     const instruments = loadCustomInstruments(song, extraSounds);
     this.song = song;
-    this.audioEngine.loadSong(song, instruments);
+    await this.audioEngine.loadSong(song, instruments);
     this.viewer?.loadSong(song);
   }
 
