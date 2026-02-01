@@ -38,6 +38,7 @@
   "devDependencies": {
     "@jest/types": "^29.6.3",
     "@laynezh/vite-plugin-lib-assets": "^1.1.0",
+    "@types/audioworklet": "^0.0.93",
     "@types/jest": "^29.5.14",
     "globals": "^16.0.0",
     "jest": "^29.7.0",

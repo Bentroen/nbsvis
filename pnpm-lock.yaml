@@ -82,6 +82,9 @@ importers:
       '@laynezh/vite-plugin-lib-assets':
         specifier: ^1.1.0
         version: 1.1.0(vite@6.3.2(@types/node@22.13.11)(lightningcss@1.29.3))
+      '@types/audioworklet':
+        specifier: ^0.0.93
+        version: 0.0.93
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14
@@ -875,6 +878,9 @@ packages:
 
   '@types/argparse@1.0.38':
     resolution: {integrity: sha512-ebDJ9b0e702Yr7pWgB0jzm+CX4Srzz8RcXtLJDJB+BSccqMa36uyH/zUsSYao5+BD1ytv3k3rPYCq4mAE1hsXA==}
+
+  '@types/audioworklet@0.0.93':
+    resolution: {integrity: sha512-OhnOrF6v2qllNXzj2/QA1NDkAKS/0u6VYFjrLDc0X8xXGMzNv6wtpKpFFuT1NmaCN+rkVDOcxLHZpnSjwHcZVA==}
 
   '@types/babel__core@7.20.5':
     resolution: {integrity: sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA==}
@@ -4052,6 +4058,8 @@ snapshots:
     optional: true
 
   '@types/argparse@1.0.38': {}
+
+  '@types/audioworklet@0.0.93': {}
 
   '@types/babel__core@7.20.5':
     dependencies:
