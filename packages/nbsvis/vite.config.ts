@@ -17,7 +17,7 @@ export default defineConfig(({ mode }: UserConfig) => {
     build: {
       target: 'ESNext',
       sourcemap: mode === 'development',
-      minify: mode === 'production' ? 'terser' : false,
+      minify: mode === 'production' ? 'esbuild' : false,
       lib: {
         entry: resolve(__dirname, 'src/index.ts'),
         name: 'nbsvis',
