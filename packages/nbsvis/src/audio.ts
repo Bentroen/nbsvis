@@ -9,6 +9,12 @@ import { getTempoChangeEvents, getTempoSegments } from './song';
 
 export const MAX_AUDIO_SOURCES = MAX_VOICE_COUNT;
 
+function resolveWorkletUrl() {
+  const base = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
+  const relative = mixerWorkletUrl.replace(/^\/+/, '');
+  return new URL(relative, base).toString();
+}
+
 function decodeAudioData(ctx: AudioContext, buffer: ArrayBuffer): Promise<AudioBuffer> {
   return ctx.decodeAudioData(buffer);
 }
@@ -103,6 +109,7 @@ export class AudioEngine {
     this.sharedTickBuffer = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * SharedState.SIZE);
     this.tickView = new Int32Array(this.sharedTickBuffer);
 
+    const mixerWorkletUrl = resolveWorkletUrl();
     console.log('Loading worklet from:', mixerWorkletUrl);
     await this.nativeCtx.audioWorklet.addModule(mixerWorkletUrl);
     console.log('Worklet loaded.');
