@@ -19,7 +19,8 @@ async function main() {
   viewer.setView(new PianoRollView());
 
   player = new Player(viewer);
-  await player.loadSong('megacollab.zip');
+  const base = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
+  await player.loadSong(new URL('megacollab.zip', base).href);
 
   player.on('seek', ({ tick, totalLength }) => {
     const input = document.getElementById('seek') as HTMLInputElement;
