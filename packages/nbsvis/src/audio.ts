@@ -1,9 +1,10 @@
 import { Song } from '@encode42/nbs.js';
 
+import audioWorkerUrl from './audio/worker/audio-worker?worker&url';
+import { NoteEvent } from './audio/worker/scheduler';
+import { SharedState } from './audio/worker/state';
+import { MAX_VOICE_COUNT } from './audio/worker/voice-manager';
 import mixerWorkletUrl from './audio/worklet/mixer-processor?worker&url';
-import { NoteEvent } from './audio/worklet/scheduler';
-import { SharedState } from './audio/worklet/state';
-import { MAX_VOICE_COUNT } from './audio/worklet/voice-manager';
 import PlayerInstrument, { defaultInstruments } from './instrument';
 import { getTempoChangeEvents, getTempoSegments } from './song';
 
@@ -12,6 +13,12 @@ export const MAX_AUDIO_SOURCES = MAX_VOICE_COUNT;
 function resolveWorkletUrl() {
   const base = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
   const relative = mixerWorkletUrl.replace(/^\/+/, '');
+  return new URL(relative, base).toString();
+}
+
+function resolveWorkerUrl() {
+  const base = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
+  const relative = audioWorkerUrl.replace(/^\/+/, '');
   return new URL(relative, base).toString();
 }
 
@@ -109,6 +116,18 @@ export class AudioEngine {
     this.sharedTickBuffer = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * SharedState.SIZE);
     this.tickView = new Int32Array(this.sharedTickBuffer);
 
+    // Set up shared ring buffer
+    const capacity = 8192; // frames
+
+    const ringBufferData = new SharedArrayBuffer(Float32Array.BYTES_PER_ELEMENT * capacity * 2);
+
+    const ringBufferState = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 3);
+
+    const rbState = new Int32Array(ringBufferState);
+    rbState[0] = 0;
+    rbState[1] = 0;
+    rbState[2] = capacity;
+
     const mixerWorkletUrl = resolveWorkletUrl();
     console.log('Loading worklet from:', mixerWorkletUrl);
     await this.nativeCtx.audioWorklet.addModule(mixerWorkletUrl);
@@ -116,11 +135,14 @@ export class AudioEngine {
     console.log('Creating mixer node...');
     console.log(this.nativeCtx);
 
-    this.mixerNode = new AudioWorkletNode(this.nativeCtx, 'mixer-processor', {
+    this.mixerNode = new AudioWorkletNode(this.nativeCtx, 'audio-sink', {
       numberOfOutputs: 1,
       outputChannelCount: [2],
       processorOptions: {
         sharedTickBuffer: this.sharedTickBuffer,
+        ringBufferData,
+        ringBufferState,
+        workerUrl: resolveWorkerUrl(),
       },
     });
 

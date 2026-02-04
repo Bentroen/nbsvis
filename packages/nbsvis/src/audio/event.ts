@@ -1,4 +1,4 @@
-import { NoteEvent, Tempo, Tick } from './scheduler';
+import { NoteEvent, Tempo, Tick } from './worker/scheduler';
 
 type SongEvent = {
   type: 'song';
