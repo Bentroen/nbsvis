@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 
 import { readFromRingBuffer, RingBufferState } from '../buffer';
-import { WorkletMessage } from '../event';
+import { EngineToWorkletMessage } from '../event';
 import { PlaybackState } from './state';
 import PlaybackTransport from './transport';
 import { TempoMapView } from '../tempo';
@@ -24,7 +24,7 @@ class AudioSinkWorklet extends AudioWorkletProcessor {
 
     this.transport = new PlaybackTransport(sampleRate);
 
-    this.port.onmessage = (e: MessageEvent<WorkletMessage>) => {
+    this.port.onmessage = (e: MessageEvent<EngineToWorkletMessage>) => {
       const msg = e.data;
 
       // TODO: extract to method

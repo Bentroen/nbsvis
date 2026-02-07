@@ -1,7 +1,7 @@
 import { Song } from '@encode42/nbs.js';
 
 import { RingBufferState } from './audio/buffer';
-import { EngineMessage, WorkerMessage, WorkletMessage } from './audio/event';
+import { EngineMessage, EngineToWorkerMessage, EngineToWorkletMessage } from './audio/event';
 import { AudioWorkerInitOptions } from './audio/worker/audio-worker';
 import audioWorkerUrl from './audio/worker/audio-worker?worker&url';
 import { NoteEvent } from './audio/worker/scheduler';
@@ -200,14 +200,14 @@ export class AudioEngine {
     masterGainNode.connect(this.nativeCtx.destination);
   }
 
-  private postToWorklet(msg: WorkletMessage, transfer?: Transferable[]) {
+  private postToWorklet(msg: EngineToWorkletMessage, transfer?: Transferable[]) {
     if (!this.mixerNode) {
       throw new Error('Audio engine not initialized.');
     }
     this.mixerNode.port.postMessage(msg, transfer ?? []);
   }
 
-  private postToWorker(msg: WorkerMessage, transfer?: Transferable[]) {
+  private postToWorker(msg: EngineToWorkerMessage, transfer?: Transferable[]) {
     if (!this.worker) {
       throw new Error('Audio engine not initialized.');
     }

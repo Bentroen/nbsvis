@@ -36,11 +36,11 @@ type StartEvent = {
   type: 'start';
 };
 
-type WorkletMessage = SongEvent | PlayEvent | PauseEvent | StopEvent | SeekEvent;
+type EngineToWorkletMessage = SongEvent | PlayEvent | PauseEvent | StopEvent | SeekEvent;
 
-type WorkerMessage = SongEvent | SampleEvent | SeekEvent | StartEvent;
+type EngineToWorkerMessage = SongEvent | SampleEvent | SeekEvent | StartEvent;
 
-type EngineMessage = WorkletMessage | WorkerMessage;
+type EngineMessage = EngineToWorkletMessage | EngineToWorkerMessage;
 
 export {
   type SongEvent,
@@ -49,7 +49,7 @@ export {
   type PauseEvent,
   type StopEvent,
   type SeekEvent,
-  type WorkletMessage,
-  type WorkerMessage,
+  type EngineToWorkletMessage,
+  type EngineToWorkerMessage,
   type EngineMessage,
 };

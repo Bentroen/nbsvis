@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 
 import { resetRingBuffer, ringBufferHasSpace, writeToRingBuffer } from '../buffer';
-import { WorkerMessage } from '../event';
+import { EngineToWorkerMessage } from '../event';
 import { TempoMapView } from '../tempo';
 import { cubicResample, ResamplerFn } from './resampler';
 import Scheduler from './scheduler';
@@ -39,7 +39,7 @@ export class AudioWorker {
     this.voiceManager = new VoiceManager();
   }
 
-  onmessage(event: MessageEvent<WorkerMessage>) {
+  onmessage(event: MessageEvent<EngineToWorkerMessage>) {
     const { data } = event;
     switch (data.type) {
       case 'start':
