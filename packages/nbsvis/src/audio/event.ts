@@ -40,6 +40,8 @@ type WorkletMessage = SongEvent | PlayEvent | PauseEvent | StopEvent | SeekEvent
 
 type WorkerMessage = SongEvent | SampleEvent | SeekEvent | StartEvent;
 
+type EngineMessage = WorkletMessage | WorkerMessage;
+
 export {
   type SongEvent,
   type SampleEvent,
@@ -49,4 +51,5 @@ export {
   type SeekEvent,
   type WorkletMessage,
   type WorkerMessage,
+  type EngineMessage,
 };

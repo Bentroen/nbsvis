@@ -1,5 +1,8 @@
 import { Song } from '@encode42/nbs.js';
 
+import { RingBufferState } from './audio/buffer';
+import { EngineMessage, WorkerMessage, WorkletMessage } from './audio/event';
+import { AudioWorkerInitOptions } from './audio/worker/audio-worker';
 import audioWorkerUrl from './audio/worker/audio-worker?worker&url';
 import { NoteEvent } from './audio/worker/scheduler';
 import { MAX_VOICE_COUNT } from './audio/worker/voice-manager';
@@ -90,6 +93,7 @@ export class AudioEngine {
   song?: Song;
   tempoSegments?: Record<number, number>;
 
+  private worker?: Worker;
   private mixerNode?: AudioWorkletNode;
   private sharedTickBuffer?: SharedArrayBuffer;
   private tickView?: Int32Array;
@@ -133,6 +137,23 @@ export class AudioEngine {
     rbState[RingBufferState.RB_WRITE_INDEX] = 0;
     rbState[RingBufferState.RB_CAPACITY] = capacity;
 
+    // Spawn the DSP worker
+    const workerUrl = resolveWorkerUrl();
+    console.log('Spawning audio worker from:', workerUrl);
+    this.worker = new Worker(workerUrl, { type: 'module' });
+    this.worker.onerror = (error) => {
+      console.error('Audio worker error:', error);
+    };
+
+    // Initialize worker with SharedArrayBuffers
+    console.log('Initializing audio worker...');
+    this.worker.postMessage({
+      type: 'init',
+      ringBufferAudioSAB: ringBufferData,
+      ringBufferStateSAB: ringBufferState,
+      sampleRate: this.nativeCtx.sampleRate,
+    } satisfies AudioWorkerInitOptions & { type: 'init' });
+
     const mixerWorkletUrl = resolveWorkletUrl();
     console.log('Loading worklet from:', mixerWorkletUrl);
     await this.nativeCtx.audioWorklet.addModule(mixerWorkletUrl);
@@ -147,7 +168,6 @@ export class AudioEngine {
         playbackStateSAB: this.sharedTickBuffer,
         ringBufferAudioSAB: ringBufferData,
         ringBufferStateSAB: ringBufferState,
-        workerUrl: resolveWorkerUrl(),
       },
     });
 
@@ -180,8 +200,52 @@ export class AudioEngine {
     masterGainNode.connect(this.nativeCtx.destination);
   }
 
+  private postToWorklet(msg: WorkletMessage, transfer?: Transferable[]) {
+    if (!this.mixerNode) {
+      throw new Error('Audio engine not initialized.');
+    }
+    this.mixerNode.port.postMessage(msg, transfer ?? []);
+  }
+
+  private postToWorker(msg: WorkerMessage, transfer?: Transferable[]) {
+    if (!this.worker) {
+      throw new Error('Audio engine not initialized.');
+    }
+    this.worker.postMessage(msg, transfer ?? []);
+  }
+
+  private dispatch(msg: EngineMessage) {
+    switch (msg.type) {
+      case 'song':
+        this.postToWorker(msg);
+        this.postToWorklet(msg);
+        break;
+
+      case 'sample': {
+        const transfer = msg.channels.map((c) => c.buffer);
+        this.postToWorker(msg, transfer);
+        break;
+      }
+
+      case 'start': {
+        this.postToWorker(msg);
+        break;
+      }
+
+      case 'seek':
+        this.postToWorker(msg);
+        this.postToWorklet(msg);
+        break;
+
+      case 'play':
+      case 'pause':
+      case 'stop':
+        this.postToWorklet(msg);
+        break;
+    }
+  }
+
   private async loadSounds() {
-    const port = this.getPort();
     const ctx = this.nativeCtx!;
 
     for (const [index, ins] of this.instruments.entries()) {
@@ -193,24 +257,14 @@ export class AudioEngine {
         channels.push(audioBuffer.getChannelData(c).slice());
       }
 
-      port.postMessage(
-        {
-          type: 'sample',
-          sampleId: index,
-          channels,
-        },
-        channels.map((c) => c.buffer),
-      );
+      this.dispatch({
+        type: 'sample',
+        sampleId: index,
+        channels,
+      });
     }
 
     console.debug('All instruments loaded into worker.');
-  }
-
-  private getPort(): MessagePort {
-    if (!this.mixerNode) {
-      throw new Error('Audio engine not initialized. Call init() before playback.');
-    }
-    return this.mixerNode.port;
   }
 
   private async resetSounds() {
@@ -230,6 +284,8 @@ export class AudioEngine {
     const noteEvents = getNoteEvents(this.song);
     const tempoChangeEvents = getTempoChangeEvents(this.song);
     this.scheduleSong(noteEvents, tempoChangeEvents, this.song.tempo * 15);
+
+    this.dispatch({ type: 'start' });
   }
 
   private scheduleSong(
@@ -237,7 +293,7 @@ export class AudioEngine {
     tempoChangeEvents: Record<number, number>,
     tempo: number,
   ) {
-    this.getPort().postMessage({
+    this.dispatch({
       type: 'song',
       notes: noteEvents,
       tempoChanges: tempoChangeEvents,
@@ -255,7 +311,7 @@ export class AudioEngine {
 
   public set currentTick(tick: number) {
     // TODO: implement seconds-based seeking
-    this.getPort().postMessage({ type: 'seek', seconds: tick });
+    this.dispatch({ type: 'seek', seconds: tick });
   }
 
   public get soundCount() {
@@ -277,15 +333,15 @@ export class AudioEngine {
       await ctx.resume();
     }
 
-    this.getPort().postMessage({ type: 'play' });
+    this.dispatch({ type: 'play' });
   }
 
   public pause() {
-    this.getPort().postMessage({ type: 'pause' });
+    this.dispatch({ type: 'pause' });
   }
 
   public stop() {
     // TODO: this should stop the worker too
-    this.getPort().postMessage({ type: 'stop' });
+    this.dispatch({ type: 'stop' });
   }
 }

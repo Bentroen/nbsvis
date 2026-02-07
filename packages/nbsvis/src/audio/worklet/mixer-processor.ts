@@ -1,15 +1,12 @@
 /// <reference lib="webworker" />
 
 import { readFromRingBuffer, RingBufferState } from '../buffer';
-import { WorkerMessage, WorkletMessage } from '../event';
+import { WorkletMessage } from '../event';
 import { PlaybackState } from './state';
 import PlaybackTransport from './transport';
 import { TempoMapView } from '../tempo';
-import { AudioWorkerInitOptions } from '../worker/audio-worker';
 
 class AudioSinkWorklet extends AudioWorkletProcessor {
-  private worker: Worker;
-
   private rbAudio: Float32Array;
   private rbState: Int32Array;
   private playbackState: Int32Array;
@@ -19,25 +16,13 @@ class AudioSinkWorklet extends AudioWorkletProcessor {
   constructor(options: AudioWorkletNodeOptions) {
     super();
 
-    const { ringBufferAudioSAB, ringBufferStateSAB, playbackStateSAB, workerUrl } =
-      options.processorOptions;
+    const { ringBufferAudioSAB, ringBufferStateSAB, playbackStateSAB } = options.processorOptions;
 
     this.rbAudio = new Float32Array(ringBufferAudioSAB);
     this.rbState = new Int32Array(ringBufferStateSAB);
     this.playbackState = new Int32Array(playbackStateSAB);
 
     this.transport = new PlaybackTransport(sampleRate);
-
-    // Spawn the DSP worker
-    this.worker = new Worker(workerUrl, { type: 'module' });
-
-    // Initialize worker with SharedArrayBuffers
-    this.worker.postMessage({
-      type: 'init',
-      ringBufferAudioSAB,
-      ringBufferStateSAB,
-      sampleRate,
-    } satisfies AudioWorkerInitOptions & { type: 'init' });
 
     this.port.onmessage = (e: MessageEvent<WorkletMessage>) => {
       const msg = e.data;
@@ -47,13 +32,6 @@ class AudioSinkWorklet extends AudioWorkletProcessor {
         case 'song':
           // TODO: this.transport.stop();
           this.transport.setTempoMap(new TempoMapView(msg.tempoChanges, msg.initialTempo));
-          // forward to worker
-          this.worker.postMessage(msg);
-          break;
-
-        case 'sample':
-          // forward to worker
-          this.worker.postMessage(msg);
           break;
 
         case 'play':
@@ -66,13 +44,11 @@ class AudioSinkWorklet extends AudioWorkletProcessor {
 
         case 'stop':
           this.transport.stop();
-          this.worker.postMessage({ type: 'seek', seconds: 0 } satisfies WorkerMessage);
           Atomics.store(this.rbState, RingBufferState.RB_READ_INDEX, 0);
           break;
 
         case 'seek':
           this.transport.seekToTick(msg.seconds); // TODO: tick, frame or second?
-          this.worker.postMessage(msg);
           Atomics.store(this.rbState, RingBufferState.RB_READ_INDEX, 0);
           break;
       }
