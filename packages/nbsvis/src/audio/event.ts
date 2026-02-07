@@ -1,4 +1,5 @@
-import { NoteEvent, Tempo, Tick } from './worker/scheduler';
+import { Tempo, Tick } from './tempo';
+import { NoteEvent } from './worker/scheduler';
 
 type SongEvent = {
   type: 'song';
@@ -28,10 +29,16 @@ type StopEvent = {
 
 type SeekEvent = {
   type: 'seek';
-  tick: number;
+  seconds: number;
 };
 
-type Message = SongEvent | SampleEvent | PlayEvent | PauseEvent | StopEvent | SeekEvent;
+type StartEvent = {
+  type: 'start';
+};
+
+type WorkletMessage = SongEvent | PlayEvent | PauseEvent | StopEvent | SeekEvent;
+
+type WorkerMessage = SongEvent | SampleEvent | SeekEvent | StartEvent;
 
 export {
   type SongEvent,
@@ -40,5 +47,6 @@ export {
   type PauseEvent,
   type StopEvent,
   type SeekEvent,
-  type Message,
+  type WorkletMessage,
+  type WorkerMessage,
 };

@@ -1,159 +1,157 @@
-import { Message } from '../event';
+/// <reference lib="webworker" />
+
+import { resetRingBuffer, ringBufferHasSpace, writeToRingBuffer } from '../buffer';
+import { WorkerMessage } from '../event';
+import { TempoMapView } from '../tempo';
+import { cubicResample, ResamplerFn } from './resampler';
 import Scheduler from './scheduler';
-import { SharedState } from './state';
-import Transport from './transport';
+import RenderTransport from './transport';
 import VoiceManager from './voice-manager';
-
-const RB_READ = 0;
-const RB_WRITE = 1;
-const RB_CAPACITY = 2;
-
-let playbackState: Int32Array;
-let rbData: Float32Array;
-let rbState: Int32Array;
-
-const scheduler = new Scheduler();
-const transport = new Transport(scheduler);
-const voiceManager = new VoiceManager();
-
-let sampleRate = 48000;
-let playing = false;
 
 const BLOCK_SIZE = 128;
 
-self.onmessage = (e: MessageEvent<Message | any>) => {
-  const msg = e.data;
+const DEFAULT_RESAMPLER = cubicResample;
 
-  switch (msg.type) {
-    case 'init':
-      sampleRate = msg.sampleRate;
-      startRenderLoop();
-      break;
-
-    case 'song':
-      transport.currentTempo = scheduler.loadSong(msg.notes, msg.tempoChanges, msg.initialTempo);
-      break;
-
-    case 'sample':
-      voiceManager.loadSample(msg.sampleId, msg.channels);
-      break;
-
-    case 'play':
-      playing = true;
-      transport.play();
-      break;
-
-    case 'pause':
-      playing = false;
-      transport.pause();
-      break;
-
-    case 'seek':
-      transport.seek(msg.tick);
-      voiceManager.voices.length = 0;
-      resetRingBuffer();
-      break;
-
-    case 'buffer':
-      playbackState = new Int32Array(msg.playbackState);
-      rbData = new Float32Array(msg.data);
-      rbState = new Int32Array(msg.state);
-      Atomics.store(rbState, RB_CAPACITY, msg.capacity);
-      break;
-  }
+export type AudioWorkerInitOptions = {
+  ringBufferAudioSAB: SharedArrayBuffer;
+  ringBufferStateSAB: SharedArrayBuffer;
+  sampleRate: number;
 };
 
-function storeState() {
-  Atomics.store(state, SharedState.TICK, (transport.currentTick * 1000) | 0);
-  Atomics.store(state, SharedState.BPM, (transport.currentTempo * 1000) | 0);
-  Atomics.store(state, SharedState.VOICES, voiceManager.activeCount);
-  Atomics.store(state, SharedState.PLAYING, transport.isPlaying ? 1 : 0);
-}
+export class AudioWorker {
+  rbAudio: Float32Array;
+  rbState: Int32Array;
+  sampleRate: number;
 
-function resetRingBuffer() {
-  Atomics.store(rbState, RB_READ, 0);
-  Atomics.store(rbState, RB_WRITE, 0);
-}
+  transport: RenderTransport;
+  scheduler: Scheduler;
+  voiceManager: VoiceManager;
 
-function startRenderLoop() {
-  function loop() {
-    if (playing) {
-      renderIfPossible();
+  resample: ResamplerFn = DEFAULT_RESAMPLER;
+
+  constructor(init: AudioWorkerInitOptions) {
+    this.rbAudio = new Float32Array(init.ringBufferAudioSAB);
+    this.rbState = new Int32Array(init.ringBufferStateSAB);
+    this.sampleRate = init.sampleRate;
+
+    this.transport = new RenderTransport(this.sampleRate);
+    this.scheduler = new Scheduler();
+    this.voiceManager = new VoiceManager();
+  }
+
+  onmessage(event: MessageEvent<WorkerMessage>) {
+    const { data } = event;
+    switch (data.type) {
+      case 'start':
+        // Start the render loop
+        this.renderLoop();
+        break;
+
+      case 'song':
+        this.scheduler.loadSong(data.notes, data.tempoChanges);
+        this.transport.setTempoMap(new TempoMapView(data.tempoChanges, data.initialTempo));
+        break;
+
+      case 'sample':
+        this.voiceManager.loadSample(data.sampleId, data.channels);
+        break;
+
+      case 'seek':
+        this.transport.seekTick(data.seconds);
+        this.voiceManager.voices.length = 0; // TODO: extract to method
+        resetRingBuffer(this.rbState);
+        break;
     }
-    setTimeout(loop, 0);
-  }
-  loop();
-}
-
-function renderIfPossible() {
-  const read = Atomics.load(rbState, RB_READ);
-  const write = Atomics.load(rbState, RB_WRITE);
-  const capacity = Atomics.load(rbState, RB_CAPACITY);
-
-  const free = capacity - (write - read);
-  if (free < BLOCK_SIZE) return;
-
-  const outL = new Float32Array(BLOCK_SIZE);
-  const outR = new Float32Array(BLOCK_SIZE);
-
-  mixBlock(outL, outR);
-
-  for (let i = 0; i < BLOCK_SIZE; i++) {
-    const frameIndex = (write + i) % capacity;
-    const base = frameIndex * 2;
-
-    rbData[base] = outL[i];
-    rbData[base + 1] = outR[i];
   }
 
-  Atomics.store(rbState, RB_WRITE, write + BLOCK_SIZE);
-}
+  renderLoop() {
+    while (ringBufferHasSpace(this.rbState, BLOCK_SIZE)) {
+      const block = this.renderBlock();
+      writeToRingBuffer(this.rbAudio, this.rbState, block.outL, block.outR);
 
-function mixBlock(outL: Float32Array, outR: Float32Array) {
-  outL.fill(0);
-  outR.fill(0);
+      // metadata (optional buffer)
+      //writeVoiceCount(block.voiceCount);
+    }
 
-  if (!transport.isPlaying) return;
+    setTimeout(() => this.renderLoop(), 0);
+  }
 
-  if (transport.advance(BLOCK_SIZE / sampleRate)) {
-    const tick = Math.floor(transport.currentTick);
-    const events = scheduler.collectEvents(tick);
-
+  renderBlock() {
+    const events = this.scheduler.collectEvents(this.transport.currentTick);
     for (const e of events) {
       if ('tempo' in e) {
-        transport.currentTempo = e.tempo;
+        //this.transport.currentTempo = e.tempo;
       } else {
-        voiceManager.spawn(e);
+        this.voiceManager.spawn(e);
       }
     }
+
+    const outL = new Float32Array(BLOCK_SIZE);
+    const outR = new Float32Array(BLOCK_SIZE);
+    outL.fill(0);
+    outR.fill(0);
+
+    // Mix all active voices
+    this.mixVoices(outL, outR);
+
+    this.transport.advance(BLOCK_SIZE);
+
+    return {
+      outL,
+      outR,
+      voiceCount: this.voiceManager.activeCount,
+    };
   }
 
-  for (let v = voiceManager.voices.length - 1; v >= 0; v--) {
-    const voice = voiceManager.voices[v];
-    const sample = voiceManager.samples[voice.id];
-    if (!sample) continue;
+  // TODO: this could be the responsibility of a Mixer class, or VoiceManager
+  private mixVoices(outL: Float32Array, outR: Float32Array) {
+    for (let v = this.voiceManager.voices.length - 1; v >= 0; v--) {
+      const voice = this.voiceManager.voices[v];
+      const sample = this.voiceManager.samples[voice.id];
+      if (!sample) continue;
 
-    const L = sample[0];
-    const R = sample[1] ?? L;
+      const L = sample[0];
+      const R = sample[1] ?? L;
 
-    let advanced = 0;
+      let advanced = 0;
 
-    for (let i = 0; i < BLOCK_SIZE; i++) {
-      const pos = voice.pos + i * voice.pitch;
-      if (pos >= L.length) {
-        voiceManager.voices.splice(v, 1);
-        break;
+      for (let i = 0; i < BLOCK_SIZE; i++) {
+        const pos = voice.pos + i * voice.pitch;
+        if (pos >= L.length) {
+          this.voiceManager.voices.splice(v, 1);
+          break;
+        }
+
+        // TODO: don't resample both channels if the sample is mono
+        const lSample = this.resample(L, pos);
+        const rSample = this.resample(R, pos);
+
+        outL[i] += lSample * voice.gain * (1 - Math.max(0, voice.pan));
+        outR[i] += rSample * voice.gain * (1 + Math.min(0, voice.pan));
+
+        advanced = (i + 1) * voice.pitch;
       }
 
-      const l = L[Math.floor(pos)];
-      const r = R[Math.floor(pos)];
-
-      outL[i] += l * voice.gain * (1 - Math.max(0, voice.pan));
-      outR[i] += r * voice.gain * (1 + Math.min(0, voice.pan));
-
-      advanced = (i + 1) * voice.pitch;
+      voice.pos += advanced;
     }
-
-    voice.pos += advanced;
   }
 }
+
+// Web Worker entry point
+let worker: AudioWorker | null = null;
+
+self.onmessage = (e: MessageEvent) => {
+  const msg = e.data;
+
+  if (msg.type === 'init') {
+    // Initialize the worker with SharedArrayBuffers and start immediately
+    worker = new AudioWorker({
+      ringBufferAudioSAB: msg.ringBufferAudioSAB,
+      ringBufferStateSAB: msg.ringBufferStateSAB,
+      sampleRate: msg.sampleRate,
+    });
+  } else if (worker) {
+    // Forward other messages to the worker instance
+    worker.onmessage(e);
+  }
+};

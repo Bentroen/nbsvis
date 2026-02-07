@@ -1,3 +1,5 @@
+import { Tempo, Tick } from '../tempo';
+
 export type NoteEvent = {
   tick: number;
   sampleId: number;
@@ -6,38 +8,19 @@ export type NoteEvent = {
   pan: number;
 };
 
-export type Tempo = number;
-
-export type Tick = number;
-
 class Scheduler {
   notes: Record<Tick, NoteEvent[]> = {};
   tempoChanges: Record<Tick, Tempo> = {};
-  lastTick = -1;
+  lastTick: Tick = -1;
 
-  loadSong(
-    notes: Record<Tick, NoteEvent[]>,
-    tempoChanges: Record<Tick, Tempo>,
-    initialTempo: Tempo,
-  ) {
+  loadSong(notes: Record<Tick, NoteEvent[]>, tempoChanges: Record<Tick, Tempo>) {
     this.notes = notes;
     this.tempoChanges = tempoChanges;
     this.lastTick = -1;
-    return initialTempo;
-  }
-
-  /** Find the effective tempo at a given tick */
-  getTempoAt(tick: Tick, fallback: Tempo): Tempo {
-    let lastTempo = fallback;
-    // TODO: optimize last tempo lookup
-    for (const [t, tempo] of Object.entries(this.tempoChanges)) {
-      if (Number(t) > tick) break;
-      lastTempo = tempo;
-    }
-    return lastTempo;
   }
 
   collectEvents(tick: Tick) {
+    tick = Math.floor(tick);
     const events = [];
 
     if (tick !== this.lastTick) {

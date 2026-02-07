@@ -1,47 +1,48 @@
-import Scheduler, { Tick } from './scheduler';
+import { TempoMapView } from '../tempo';
 
-const TICKS_PER_BEAT = 4;
+class RenderTransport {
+  currentFrame = 0;
+  private tempoMap?: TempoMapView;
 
-class Transport {
-  isPlaying = false;
-  currentTick = 0;
-  currentTempo = -1;
-  prevTime = -1;
+  constructor(private sampleRate: number) {}
 
-  constructor(private scheduler: Scheduler) {}
-
-  play() {
-    this.isPlaying = true;
+  setTempoMap(tempoMap: TempoMapView) {
+    this.tempoMap = tempoMap;
   }
 
-  pause() {
-    this.isPlaying = false;
+  /** Advance render position by audio frames */
+  advance(frames: number) {
+    this.currentFrame += frames;
   }
 
-  stop() {
-    this.isPlaying = false;
-    this.currentTick = 0;
-    this.prevTime = -1;
+  /** Seek to a specific tick */
+  seekTick(tick: number) {
+    if (!this.tempoMap) return;
+    const seconds = this.tempoMap.ticksToSeconds(tick);
+    this.currentFrame = seconds * this.sampleRate;
   }
 
-  seek(tick: Tick) {
-    this.currentTick = tick;
-    this.currentTempo = this.scheduler.getTempoAt(tick, this.currentTempo);
-    this.prevTime = -1;
+  /** Seek to a specific frame */
+  seekFrame(frame: number) {
+    this.currentFrame = frame;
   }
 
-  advance(currentTime: number) {
-    if (!this.isPlaying || this.prevTime < 0) {
-      this.prevTime = currentTime;
-      return false;
-    }
+  /** Seek to a specific time in seconds */
+  seekSeconds(seconds: number) {
+    this.currentFrame = seconds * this.sampleRate;
+  }
 
-    const delta = currentTime - this.prevTime;
-    this.currentTick += (this.currentTempo / 60) * (delta * TICKS_PER_BEAT);
-    this.prevTime = currentTime;
+  /** Current tick position (derived) */
+  get currentTick(): number {
+    if (!this.tempoMap) return 0;
+    const seconds = this.currentFrame / this.sampleRate;
+    return this.tempoMap.secondsToTicks(seconds);
+  }
 
-    return true;
+  /** Current time in seconds */
+  get currentSeconds(): number {
+    return this.currentFrame / this.sampleRate;
   }
 }
 
-export default Transport;
+export default RenderTransport;

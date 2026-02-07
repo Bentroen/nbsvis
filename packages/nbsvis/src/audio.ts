@@ -2,9 +2,9 @@ import { Song } from '@encode42/nbs.js';
 
 import audioWorkerUrl from './audio/worker/audio-worker?worker&url';
 import { NoteEvent } from './audio/worker/scheduler';
-import { SharedState } from './audio/worker/state';
 import { MAX_VOICE_COUNT } from './audio/worker/voice-manager';
 import mixerWorkletUrl from './audio/worklet/mixer-processor?worker&url';
+import { PlaybackState } from './audio/worklet/state';
 import PlayerInstrument, { defaultInstruments } from './instrument';
 import { getTempoChangeEvents, getTempoSegments } from './song';
 
@@ -113,20 +113,25 @@ export class AudioEngine {
     this.nativeCtx = new AudioContext();
 
     // Set up shared state buffer
-    this.sharedTickBuffer = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * SharedState.SIZE);
+    this.sharedTickBuffer = new SharedArrayBuffer(
+      Int32Array.BYTES_PER_ELEMENT * PlaybackState.SIZE,
+    );
     this.tickView = new Int32Array(this.sharedTickBuffer);
 
     // Set up shared ring buffer
+    // 128 frames × 2 channels × 64 blocks = 8192 frames
     const capacity = 8192; // frames
 
     const ringBufferData = new SharedArrayBuffer(Float32Array.BYTES_PER_ELEMENT * capacity * 2);
 
-    const ringBufferState = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 3);
+    const ringBufferState = new SharedArrayBuffer(
+      Int32Array.BYTES_PER_ELEMENT * RingBufferState.SIZE,
+    );
 
     const rbState = new Int32Array(ringBufferState);
-    rbState[0] = 0;
-    rbState[1] = 0;
-    rbState[2] = capacity;
+    rbState[RingBufferState.RB_READ_INDEX] = 0;
+    rbState[RingBufferState.RB_WRITE_INDEX] = 0;
+    rbState[RingBufferState.RB_CAPACITY] = capacity;
 
     const mixerWorkletUrl = resolveWorkletUrl();
     console.log('Loading worklet from:', mixerWorkletUrl);
@@ -139,9 +144,9 @@ export class AudioEngine {
       numberOfOutputs: 1,
       outputChannelCount: [2],
       processorOptions: {
-        sharedTickBuffer: this.sharedTickBuffer,
-        ringBufferData,
-        ringBufferState,
+        playbackStateSAB: this.sharedTickBuffer,
+        ringBufferAudioSAB: ringBufferData,
+        ringBufferStateSAB: ringBufferState,
         workerUrl: resolveWorkerUrl(),
       },
     });
@@ -198,7 +203,7 @@ export class AudioEngine {
       );
     }
 
-    console.debug('All instruments loaded into worklet.');
+    console.debug('All instruments loaded into worker.');
   }
 
   private getPort(): MessagePort {
@@ -245,21 +250,22 @@ export class AudioEngine {
 
   public get currentTick() {
     if (!this.tickView) return 0;
-    return Atomics.load(this.tickView, SharedState.TICK) / 1000;
+    return Atomics.load(this.tickView, PlaybackState.TICK) / 1000;
   }
 
   public set currentTick(tick: number) {
-    this.getPort().postMessage({ type: 'seek', tick });
+    // TODO: implement seconds-based seeking
+    this.getPort().postMessage({ type: 'seek', seconds: tick });
   }
 
   public get soundCount() {
     if (!this.tickView) return 0;
-    return Atomics.load(this.tickView, SharedState.VOICES);
+    return Atomics.load(this.tickView, PlaybackState.VOICES);
   }
 
   public get isPlaying() {
     if (!this.tickView) return false;
-    return Atomics.load(this.tickView, SharedState.PLAYING) === 1;
+    return Atomics.load(this.tickView, PlaybackState.PLAYING) === 1;
   }
 
   public async play() {
@@ -279,6 +285,7 @@ export class AudioEngine {
   }
 
   public stop() {
+    // TODO: this should stop the worker too
     this.getPort().postMessage({ type: 'stop' });
   }
 }
