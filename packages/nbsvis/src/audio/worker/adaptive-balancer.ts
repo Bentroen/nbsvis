@@ -1,244 +1,220 @@
-import { BalancerContext, BalancerDecision, BalancerMetrics, IBalancer } from './balancer';
+import { IBalancer, BalancerContext, BalancerMetrics, BalancerDecision } from './balancer';
 import { cubicResample, linearResample, nearestNeighborResample, ResamplerFn } from './resampler';
 
-const RESAMPLERS: ResamplerFn[] = [
-  nearestNeighborResample, // 0 – emergency
-  linearResample, // 1 – degraded
-  cubicResample, // 2 – full quality
-];
+type ResamplerLevel = 0 | 1 | 2;
+// 0 = nearest, 1 = linear, 2 = cubic
 
 export class AdaptiveLoadBalancer implements IBalancer {
-  // ==== Configuration ====
+  private active = false;
 
-  private readonly MIN_VOICES = 64;
-  private readonly MAX_VOICES_HARD = 4096;
+  private sampleRate = 48000;
+  private blockDuration = 0;
 
-  private readonly GROW_STEP = 8;
-  private readonly FAST_GROW_STEP = 32;
-  private readonly SHRINK_STEP = 16;
+  private processStart = 0;
+  private loadEMA = 0;
 
-  private readonly SLOW_GROW_INTERVAL = 240;
-  private readonly SHRINK_INTERVAL = 30;
+  private framesSinceChange = 0;
 
-  private readonly TIGHT_VOICE_PRESSURE = 0.85;
-  private readonly HIGH_VOICE_PRESSURE = 0.7;
+  private resamplerLevel: ResamplerLevel = 2; // start at cubic
+  private minVoices = 64;
+  private defaultVoices = 256;
+  private maxVoices = this.defaultVoices;
+  private hardMaxVoices = 4096;
 
-  private readonly CRITICAL_BUFFER_FILL = 0.2;
-  private readonly LOW_BUFFER_FILL = 0.35;
-  private readonly HEALTHY_BUFFER_FILL = 0.6;
+  // ---- Tunable constants ----
+  private readonly CRITICAL_FILL = 0.25;
+  private readonly WARNING_FILL = 0.4;
+  private readonly OVERFILL = 0.6;
 
-  // ==== Runtime state ====
-
-  private active = true;
-  private sampleRate!: number;
-  private lastProcessTime = 0;
-
-  // Smoothed CPU pressure (0..∞)
-  private emaLoad = 0;
-  private peakLoad = 0;
-
-  private qualityLevel = 2; // start at cubic
-  private maxVoices = 256;
-
-  private warmupBlocks = 0;
-  private lastPolicyChangeFrame = 0;
-  private breakerCooldown = 0;
-  private breakerStrikes = 0;
-  private lastBreakerFrame = 0;
-  private lastGrowFrame = 0;
-  private lastShrinkFrame = 0;
+  private readonly COOLDOWN_FRAMES = 30;
+  private readonly EMA_ALPHA = 0.1;
+  private readonly CRITICAL_FRAMES = 5;
+  private readonly WARNING_FRAMES = 10;
+  private criticalFrames = 0;
+  private warningFrames = 0;
 
   init(ctx: BalancerContext): void {
     this.sampleRate = ctx.sampleRate;
+    this.blockDuration = 128 / this.sampleRate;
   }
 
-  setActive(active: boolean) {
-    if (!this.active && active) {
-      console.log('AdaptiveLoadBalancer activated');
-      this.lastProcessTime = 0;
-      this.warmupBlocks = 5; // ignore first ~5 blocks
-      this.emaLoad = 1;
-      this.peakLoad = 1;
-    }
-
+  setActive(active: boolean): void {
     this.active = active;
   }
 
   beginProcess(): void {
     if (!this.active) return;
-    this.lastProcessTime = performance.now() / 1000;
+    this.processStart = performance.now();
   }
 
   endProcess(metrics: BalancerMetrics): BalancerDecision | null {
     if (!this.active) return null;
-    const now = performance.now() / 1000;
 
-    if (this.warmupBlocks > 0) {
-      console.log('Warmup blocks left:', this.warmupBlocks, ', skipping load measurement');
-      this.warmupBlocks--;
-      return null;
-    }
+    const now = performance.now();
+    const renderTime = (now - this.processStart) / 1000;
+    const load = renderTime / this.blockDuration;
 
-    if (this.lastProcessTime !== 0) {
-      // Expected time between process() calls
-      const expected = metrics.blockSize / this.sampleRate;
+    // EMA smoothing
+    this.loadEMA = this.loadEMA * (1 - this.EMA_ALPHA) + load * this.EMA_ALPHA;
 
-      // Clamp delta to avoid huge spikes
-      const maxDelta = expected * 4;
-      const delta = now - this.lastProcessTime;
-      const clampedDelta = Math.min(delta, maxDelta);
+    this.framesSinceChange++;
 
-      // >1 = falling behind, <1 = healthy
-      const load = clampedDelta / expected;
+    const bufferFill = metrics.bufferFill;
 
-      //console.log(
-      //  `Block processed in ${clampedDelta.toFixed(4)}s (expected ${expected.toFixed(4)}s), load=${load.toFixed(2)}`,
-      //);
-
-      // === Load estimators ===
-
-      // EMA: smooth but reactive
-      this.emaLoad = this.emaLoad * 0.9 + load * 0.1;
-
-      // Peak: catch bursts
-      this.peakLoad = Math.max(this.peakLoad * 0.8, load);
+    // ---- 1. Critical zone ----
+    if (bufferFill < this.CRITICAL_FILL) {
+      this.criticalFrames++;
 
       console.log(
-        'Load:',
-        load.toFixed(2),
-        'EMA Load:',
-        this.emaLoad.toFixed(2),
-        'Peak Load:',
-        this.peakLoad.toFixed(2),
+        '🔴 Critical buffer fill:',
+        bufferFill.toFixed(2),
+        'Load EMA:',
+        this.loadEMA.toFixed(2),
+        'Max voices:',
+        metrics.maxVoices,
+        'Resampler:',
+        this.resamplerLevel,
       );
+
+      if (this.criticalFrames >= this.CRITICAL_FRAMES) {
+        return this.emergencyDrop(metrics);
+      }
+    } else {
+      this.criticalFrames = 0;
     }
 
-    if (this.breakerCooldown > 0) {
-      this.breakerCooldown--;
+    // ---- 2. Warning zone ----
+    if (bufferFill < this.WARNING_FILL) {
+      this.warningFrames++;
+
+      console.log(
+        '🟡 Warning buffer fill:',
+        bufferFill.toFixed(2),
+        'Load EMA:',
+        this.loadEMA.toFixed(2),
+        'Max voices:',
+        metrics.maxVoices,
+        'Resampler:',
+        this.resamplerLevel,
+      );
+
+      if (this.warningFrames >= this.WARNING_FRAMES) {
+        return this.degrade(metrics);
+      }
+    } else {
+      this.warningFrames = 0;
     }
 
-    // === Decide policy ===
-    const decision = this.evaluatePolicy(metrics);
+    // ---- 3. Overfill zone (slow recovery) ----
+    if (
+      bufferFill > this.OVERFILL &&
+      this.framesSinceChange > this.COOLDOWN_FRAMES &&
+      this.loadEMA < 1.2
+    ) {
+      console.log(
+        '🟢 Overfill buffer fill:',
+        bufferFill.toFixed(2),
+        'Load EMA:',
+        this.loadEMA.toFixed(2),
+        'Max voices:',
+        metrics.maxVoices,
+        'Resampler:',
+        this.resamplerLevel,
+      );
+      return this.upgrade(metrics);
+    }
 
-    this.lastProcessTime = now;
-
-    return decision;
+    console.log(
+      '⚪ Regular buffer fill:',
+      bufferFill.toFixed(2),
+      'Load EMA:',
+      this.loadEMA.toFixed(2),
+      'Max voices:',
+      metrics.maxVoices,
+      'Resampler:',
+      this.resamplerLevel,
+    );
+    return null;
   }
 
-  private evaluatePolicy(metrics: BalancerMetrics): BalancerDecision | null {
-    const decision: BalancerDecision = {};
-    const { frame, activeVoices, maxVoices, bufferFill } = metrics;
-    const voicePressure = maxVoices > 0 ? activeVoices / maxVoices : 0;
-    const cpuRoom = this.emaLoad < 0.85;
-    const bufferHealthy = bufferFill >= this.HEALTHY_BUFFER_FILL;
-    const bufferTight = bufferFill <= this.LOW_BUFFER_FILL;
+  // --------------------------------------------------
+  // Decision helpers
+  // --------------------------------------------------
 
-    // --------------------------------------------------
-    // 🔴 Circuit breaker – emergency protection
-    // --------------------------------------------------
-    if (
-      this.breakerCooldown === 0 &&
-      this.peakLoad > 1.2 &&
-      bufferFill < this.CRITICAL_BUFFER_FILL
-    ) {
-      if (frame - this.lastBreakerFrame > 240) {
-        this.breakerStrikes = 0;
-      }
-      this.breakerStrikes = Math.min(this.breakerStrikes + 1, 4);
+  private emergencyDrop(metrics: BalancerMetrics): BalancerDecision {
+    this.framesSinceChange = 0;
 
-      const killRatio = Math.min(0.5, 0.2 + this.breakerStrikes * 0.1);
-      decision.killVoicesRatio = killRatio;
-      this.downgradeQuality(decision);
+    const newMaxVoices = Math.max(this.minVoices, Math.floor(metrics.maxVoices * 0.7));
 
-      const reducedMax = Math.max(this.MIN_VOICES, Math.floor(this.maxVoices * 0.8));
-      if (reducedMax < this.maxVoices) {
-        this.maxVoices = reducedMax;
-        decision.maxVoices = this.maxVoices;
-      }
+    this.maxVoices = newMaxVoices;
+    this.resamplerLevel = 0;
 
-      this.lastPolicyChangeFrame = frame;
-      this.breakerCooldown = 60 + this.breakerStrikes * 30;
-      this.lastBreakerFrame = frame;
-      this.peakLoad = 1; // reset peak
-      return decision;
+    return {
+      maxVoices: newMaxVoices,
+      resampler: nearestNeighborResample,
+      killVoicesRatio: 0.2,
+    };
+  }
+
+  private degrade(metrics: BalancerMetrics): BalancerDecision | null {
+    this.framesSinceChange = 0;
+
+    // First lower resampler
+    if (this.resamplerLevel > 0) {
+      this.resamplerLevel--;
+      return {
+        resampler: this.getResampler(),
+      };
     }
 
-    if (this.breakerCooldown > 0) {
-      return null;
-    }
+    // Then reduce voices slightly
+    const newMaxVoices = Math.max(this.minVoices, Math.floor(metrics.maxVoices * 0.9));
 
-    // --------------------------------------------------
-    // 🟠 Sustained overload – degrade quality
-    // --------------------------------------------------
-    if (this.emaLoad > 0.98 && bufferTight) {
-      this.downgradeQuality(decision);
-      this.shrinkVoices(decision, frame);
-      this.lastPolicyChangeFrame = frame;
-      return decision;
-    }
-
-    // --------------------------------------------------
-    // 🟡 High load – stop growing, maybe shrink
-    // --------------------------------------------------
-    if (this.emaLoad > 0.9 && bufferFill < this.HEALTHY_BUFFER_FILL) {
-      this.shrinkVoices(decision, frame);
-      return decision;
-    }
-
-    // --------------------------------------------------
-    // 🟢 Healthy – cautiously grow & recover
-    // --------------------------------------------------
-    if (cpuRoom && bufferHealthy) {
-      if (voicePressure >= this.TIGHT_VOICE_PRESSURE) {
-        this.growVoices(decision, frame, this.FAST_GROW_STEP, 0);
-      } else if (voicePressure >= this.HIGH_VOICE_PRESSURE) {
-        this.growVoices(decision, frame, this.GROW_STEP, this.SLOW_GROW_INTERVAL);
-      }
-
-      this.recoverQuality(frame, decision);
-      return decision;
+    if (newMaxVoices !== metrics.maxVoices) {
+      this.maxVoices = newMaxVoices;
+      return {
+        maxVoices: newMaxVoices,
+      };
     }
 
     return null;
   }
 
-  // ==== Voice pool policies ====
+  private upgrade(metrics: BalancerMetrics): BalancerDecision | null {
+    this.framesSinceChange = 0;
 
-  private growVoices(decision: BalancerDecision, frame: number, step: number, minInterval: number) {
-    if (frame - this.lastGrowFrame < minInterval) return;
-    if (this.maxVoices < this.MAX_VOICES_HARD) {
-      this.maxVoices = Math.min(this.maxVoices + step, this.MAX_VOICES_HARD);
-      decision.maxVoices = this.maxVoices;
-      this.lastGrowFrame = frame;
+    // First increase voices
+    const utilization = metrics.activeVoices / metrics.maxVoices;
+
+    // Only increase voices if we're actually using them
+    if (utilization > 0.85) {
+      const newMaxVoices = Math.min(this.hardMaxVoices, Math.floor(metrics.maxVoices * 1.1));
+
+      if (newMaxVoices !== metrics.maxVoices) {
+        this.maxVoices = newMaxVoices;
+        return { maxVoices: newMaxVoices };
+      }
     }
+
+    // Then upgrade resampler
+    if (this.resamplerLevel < 2) {
+      this.resamplerLevel++;
+      return {
+        resampler: this.getResampler(),
+      };
+    }
+
+    return null;
   }
 
-  private shrinkVoices(decision: BalancerDecision, frame: number) {
-    if (frame - this.lastShrinkFrame < this.SHRINK_INTERVAL) return;
-    if (this.maxVoices > this.MIN_VOICES) {
-      this.maxVoices = Math.max(this.maxVoices - this.SHRINK_STEP, this.MIN_VOICES);
-      decision.maxVoices = this.maxVoices;
-      this.lastShrinkFrame = frame;
-    }
-  }
-
-  // ==== Quality policies ====
-
-  private downgradeQuality(decision: BalancerDecision) {
-    if (this.qualityLevel > 0) {
-      this.qualityLevel--;
-      decision.resampler = RESAMPLERS[this.qualityLevel];
-    }
-  }
-
-  private recoverQuality(frame: number, decision: BalancerDecision) {
-    // hysteresis: only recover every ~200 blocks
-    if (frame - this.lastPolicyChangeFrame < 200) return;
-
-    if (this.qualityLevel < 2) {
-      this.qualityLevel++;
-      decision.resampler = RESAMPLERS[this.qualityLevel];
-      this.lastPolicyChangeFrame = frame;
+  private getResampler(): ResamplerFn {
+    switch (this.resamplerLevel) {
+      case 0:
+        return nearestNeighborResample;
+      case 1:
+        return linearResample;
+      default:
+        return cubicResample;
     }
   }
 }
