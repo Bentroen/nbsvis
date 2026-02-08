@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import { resetRingBuffer, ringBufferHasSpace, writeToRingBuffer } from '../buffer';
+import { RingBufferState, resetRingBuffer, ringBufferHasSpace, writeToRingBuffer } from '../buffer';
 import { EngineToWorkerMessage } from '../event';
 import { TempoMapView } from '../tempo';
 import { AdaptiveLoadBalancer } from './adaptive-balancer';
@@ -106,7 +106,7 @@ export class AudioWorker {
     this.applyBalancerDecision();
 
     this.transport.advance(BLOCK_SIZE);
-    this.renderFrame += BLOCK_SIZE;
+    this.renderFrame += 1;
 
     return {
       outL,
@@ -149,7 +149,13 @@ export class AudioWorker {
   }
 
   private applyBalancerDecision() {
-    const decision = this.balancer.endProcess(this.renderFrame, BLOCK_SIZE);
+    const decision = this.balancer.endProcess({
+      frame: this.renderFrame,
+      blockSize: BLOCK_SIZE,
+      activeVoices: this.voiceManager.activeCount,
+      maxVoices: this.voiceManager.maxVoiceCount,
+      bufferFill: this.getBufferFill(),
+    });
     if (decision) {
       console.log('Balancer decision:', decision);
       if (decision.resampler) {
@@ -162,6 +168,15 @@ export class AudioWorker {
         this.voiceManager.killRatio(decision.killVoicesRatio);
       }
     }
+  }
+
+  private getBufferFill(): number {
+    const read = Atomics.load(this.rbState, RingBufferState.RB_READ_INDEX);
+    const write = Atomics.load(this.rbState, RingBufferState.RB_WRITE_INDEX);
+    const capacity = Atomics.load(this.rbState, RingBufferState.RB_CAPACITY);
+    if (capacity <= 0) return 0;
+    const filled = write - read;
+    return Math.max(0, Math.min(1, filled / capacity));
   }
 }
 

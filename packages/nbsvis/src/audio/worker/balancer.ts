@@ -11,6 +11,14 @@ export interface BalancerDecision {
   killVoicesRatio?: number; // 0..1
 }
 
+export interface BalancerMetrics {
+  frame: number;
+  blockSize: number;
+  activeVoices: number;
+  maxVoices: number;
+  bufferFill: number; // 0..1
+}
+
 export interface IBalancer {
   /** Called once on processor construction */
   init(ctx: BalancerContext): void;
@@ -19,8 +27,8 @@ export interface IBalancer {
   setActive(active: boolean): void;
 
   /** Called at the beginning of process() */
-  beginProcess(frame: number): void;
+  beginProcess(): void;
 
   /** Called at the end of process() */
-  endProcess(frame: number, blockSize: number): BalancerDecision | null;
+  endProcess(metrics: BalancerMetrics): BalancerDecision | null;
 }

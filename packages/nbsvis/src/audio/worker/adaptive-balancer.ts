@@ -1,4 +1,4 @@
-import { IBalancer, BalancerContext, BalancerDecision } from './balancer';
+import { BalancerContext, BalancerDecision, BalancerMetrics, IBalancer } from './balancer';
 import { cubicResample, linearResample, nearestNeighborResample, ResamplerFn } from './resampler';
 
 const RESAMPLERS: ResamplerFn[] = [
@@ -14,7 +14,18 @@ export class AdaptiveLoadBalancer implements IBalancer {
   private readonly MAX_VOICES_HARD = 4096;
 
   private readonly GROW_STEP = 8;
+  private readonly FAST_GROW_STEP = 32;
   private readonly SHRINK_STEP = 16;
+
+  private readonly SLOW_GROW_INTERVAL = 240;
+  private readonly SHRINK_INTERVAL = 30;
+
+  private readonly TIGHT_VOICE_PRESSURE = 0.85;
+  private readonly HIGH_VOICE_PRESSURE = 0.7;
+
+  private readonly CRITICAL_BUFFER_FILL = 0.2;
+  private readonly LOW_BUFFER_FILL = 0.35;
+  private readonly HEALTHY_BUFFER_FILL = 0.6;
 
   // ==== Runtime state ====
 
@@ -32,6 +43,10 @@ export class AdaptiveLoadBalancer implements IBalancer {
   private warmupBlocks = 0;
   private lastPolicyChangeFrame = 0;
   private breakerCooldown = 0;
+  private breakerStrikes = 0;
+  private lastBreakerFrame = 0;
+  private lastGrowFrame = 0;
+  private lastShrinkFrame = 0;
 
   init(ctx: BalancerContext): void {
     this.sampleRate = ctx.sampleRate;
@@ -54,7 +69,7 @@ export class AdaptiveLoadBalancer implements IBalancer {
     this.lastProcessTime = performance.now() / 1000;
   }
 
-  endProcess(frame: number, blockSize: number): BalancerDecision | null {
+  endProcess(metrics: BalancerMetrics): BalancerDecision | null {
     if (!this.active) return null;
     const now = performance.now() / 1000;
 
@@ -66,7 +81,7 @@ export class AdaptiveLoadBalancer implements IBalancer {
 
     if (this.lastProcessTime !== 0) {
       // Expected time between process() calls
-      const expected = blockSize / this.sampleRate;
+      const expected = metrics.blockSize / this.sampleRate;
 
       // Clamp delta to avoid huge spikes
       const maxDelta = expected * 4;
@@ -103,34 +118,61 @@ export class AdaptiveLoadBalancer implements IBalancer {
     }
 
     // === Decide policy ===
-    const decision = this.evaluatePolicy(frame);
+    const decision = this.evaluatePolicy(metrics);
 
     this.lastProcessTime = now;
 
     return decision;
   }
 
-  private evaluatePolicy(frame: number): BalancerDecision | null {
+  private evaluatePolicy(metrics: BalancerMetrics): BalancerDecision | null {
     const decision: BalancerDecision = {};
+    const { frame, activeVoices, maxVoices, bufferFill } = metrics;
+    const voicePressure = maxVoices > 0 ? activeVoices / maxVoices : 0;
+    const cpuRoom = this.emaLoad < 0.85;
+    const bufferHealthy = bufferFill >= this.HEALTHY_BUFFER_FILL;
+    const bufferTight = bufferFill <= this.LOW_BUFFER_FILL;
 
     // --------------------------------------------------
     // 🔴 Circuit breaker – emergency protection
     // --------------------------------------------------
-    if (this.peakLoad > 1.2) {
-      decision.killVoicesRatio = 0.25; // kill 25% immediately
+    if (
+      this.breakerCooldown === 0 &&
+      this.peakLoad > 1.2 &&
+      bufferFill < this.CRITICAL_BUFFER_FILL
+    ) {
+      if (frame - this.lastBreakerFrame > 240) {
+        this.breakerStrikes = 0;
+      }
+      this.breakerStrikes = Math.min(this.breakerStrikes + 1, 4);
+
+      const killRatio = Math.min(0.5, 0.2 + this.breakerStrikes * 0.1);
+      decision.killVoicesRatio = killRatio;
       this.downgradeQuality(decision);
+
+      const reducedMax = Math.max(this.MIN_VOICES, Math.floor(this.maxVoices * 0.8));
+      if (reducedMax < this.maxVoices) {
+        this.maxVoices = reducedMax;
+        decision.maxVoices = this.maxVoices;
+      }
+
       this.lastPolicyChangeFrame = frame;
-      this.breakerCooldown = 60; // skip further changes for 60 blocks
+      this.breakerCooldown = 60 + this.breakerStrikes * 30;
+      this.lastBreakerFrame = frame;
       this.peakLoad = 1; // reset peak
       return decision;
+    }
+
+    if (this.breakerCooldown > 0) {
+      return null;
     }
 
     // --------------------------------------------------
     // 🟠 Sustained overload – degrade quality
     // --------------------------------------------------
-    if (this.emaLoad > 0.85) {
+    if (this.emaLoad > 0.98 && bufferTight) {
       this.downgradeQuality(decision);
-      this.shrinkVoices(decision);
+      this.shrinkVoices(decision, frame);
       this.lastPolicyChangeFrame = frame;
       return decision;
     }
@@ -138,16 +180,21 @@ export class AdaptiveLoadBalancer implements IBalancer {
     // --------------------------------------------------
     // 🟡 High load – stop growing, maybe shrink
     // --------------------------------------------------
-    if (this.emaLoad > 0.7) {
-      this.shrinkVoices(decision);
+    if (this.emaLoad > 0.9 && bufferFill < this.HEALTHY_BUFFER_FILL) {
+      this.shrinkVoices(decision, frame);
       return decision;
     }
 
     // --------------------------------------------------
     // 🟢 Healthy – cautiously grow & recover
     // --------------------------------------------------
-    if (this.emaLoad < 0.5) {
-      this.growVoices(decision);
+    if (cpuRoom && bufferHealthy) {
+      if (voicePressure >= this.TIGHT_VOICE_PRESSURE) {
+        this.growVoices(decision, frame, this.FAST_GROW_STEP, 0);
+      } else if (voicePressure >= this.HIGH_VOICE_PRESSURE) {
+        this.growVoices(decision, frame, this.GROW_STEP, this.SLOW_GROW_INTERVAL);
+      }
+
       this.recoverQuality(frame, decision);
       return decision;
     }
@@ -157,17 +204,21 @@ export class AdaptiveLoadBalancer implements IBalancer {
 
   // ==== Voice pool policies ====
 
-  private growVoices(decision: BalancerDecision) {
+  private growVoices(decision: BalancerDecision, frame: number, step: number, minInterval: number) {
+    if (frame - this.lastGrowFrame < minInterval) return;
     if (this.maxVoices < this.MAX_VOICES_HARD) {
-      this.maxVoices += this.GROW_STEP;
+      this.maxVoices = Math.min(this.maxVoices + step, this.MAX_VOICES_HARD);
       decision.maxVoices = this.maxVoices;
+      this.lastGrowFrame = frame;
     }
   }
 
-  private shrinkVoices(decision: BalancerDecision) {
+  private shrinkVoices(decision: BalancerDecision, frame: number) {
+    if (frame - this.lastShrinkFrame < this.SHRINK_INTERVAL) return;
     if (this.maxVoices > this.MIN_VOICES) {
-      this.maxVoices -= this.SHRINK_STEP;
+      this.maxVoices = Math.max(this.maxVoices - this.SHRINK_STEP, this.MIN_VOICES);
       decision.maxVoices = this.maxVoices;
+      this.lastShrinkFrame = frame;
     }
   }
 
