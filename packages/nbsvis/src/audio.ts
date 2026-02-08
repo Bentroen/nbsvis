@@ -5,13 +5,10 @@ import { EngineMessage, EngineToWorkerMessage, EngineToWorkletMessage } from './
 import { AudioWorkerInitOptions } from './audio/worker/audio-worker';
 import audioWorkerUrl from './audio/worker/audio-worker?worker&url';
 import { NoteEvent } from './audio/worker/scheduler';
-import { MAX_VOICE_COUNT } from './audio/worker/voice-manager';
 import workletUrl from './audio/worklet/audio-sink-processor?worker&url';
 import { PlaybackState } from './audio/worklet/state';
 import PlayerInstrument, { defaultInstruments } from './instrument';
 import { getTempoChangeEvents, getTempoSegments } from './song';
-
-export const MAX_AUDIO_SOURCES = MAX_VOICE_COUNT;
 
 function resolveWorkletUrl() {
   const base = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
@@ -317,6 +314,11 @@ export class AudioEngine {
   public get soundCount() {
     if (!this.tickView) return 0;
     return Atomics.load(this.tickView, PlaybackState.VOICES);
+  }
+
+  public get maxSoundCount() {
+    if (!this.tickView) return 0;
+    return Atomics.load(this.tickView, PlaybackState.MAX_VOICES);
   }
 
   public get isPlaying() {

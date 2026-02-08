@@ -1,8 +1,6 @@
 import { Song } from '@encode42/nbs.js';
 import { Application, Container, Text, TextureStyle, Ticker } from 'pixi.js';
 
-import { MAX_AUDIO_SOURCES } from '../audio';
-
 // TODO: is this needed?
 TextureStyle.defaultOptions.scaleMode = 'nearest';
 
@@ -20,6 +18,7 @@ export class Viewer {
 
   currentTick: number = 0;
   soundCount: number = 0;
+  maxSoundCount: number = 0;
 
   constructor(container: HTMLElement) {
     this.app = new Application();
@@ -74,11 +73,12 @@ export class Viewer {
     this.app.ticker.add(() => {
       label.text = `Tick: ${this.currentTick.toFixed(2)}`;
       fpsLabel.text = `${Math.round(this.app.ticker.FPS)} FPS`;
-      soundCountLabel.text = `Sounds: ${this.soundCount} / ${MAX_AUDIO_SOURCES}`;
+      soundCountLabel.text = `Sounds: ${this.soundCount} / ${this.maxSoundCount}`;
 
       if (this.view) {
         this.view.currentTick = this.currentTick;
         this.view.soundCount = this.soundCount;
+        this.view.maxSoundCount = this.maxSoundCount;
       }
     });
   }
@@ -131,6 +131,8 @@ export abstract class BaseView {
   public currentTick: number = 0;
 
   public soundCount: number = 0;
+
+  public maxSoundCount: number = 0;
 
   constructor() {
     this.stage = new Container();

@@ -5,6 +5,8 @@ export enum PlaybackState {
   VOICES = 3,
   PLAYING = 4,
   UNDERRUN_COUNT = 5,
+  MAX_VOICES = 6,
+
   // future-proof padding
   SIZE = 8,
 }

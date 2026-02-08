@@ -3,6 +3,7 @@
 import { resetRingBuffer, ringBufferHasSpace, writeToRingBuffer } from '../buffer';
 import { EngineToWorkerMessage } from '../event';
 import { TempoMapView } from '../tempo';
+import { AdaptiveLoadBalancer } from './adaptive-balancer';
 import { cubicResample, ResamplerFn } from './resampler';
 import Scheduler from './scheduler';
 import { BaseTransport as RenderTransport } from '../transport';
@@ -26,6 +27,8 @@ export class AudioWorker {
   transport: RenderTransport;
   scheduler: Scheduler;
   voiceManager: VoiceManager;
+  balancer: AdaptiveLoadBalancer;
+  renderFrame = 0;
 
   resample: ResamplerFn = DEFAULT_RESAMPLER;
 
@@ -36,7 +39,11 @@ export class AudioWorker {
 
     this.transport = new RenderTransport(this.sampleRate);
     this.scheduler = new Scheduler();
-    this.voiceManager = new VoiceManager();
+    this.voiceManager = new VoiceManager(256);
+
+    this.balancer = new AdaptiveLoadBalancer();
+    this.balancer.init({ sampleRate: this.sampleRate });
+    this.balancer.setActive(true);
   }
 
   onmessage(event: MessageEvent<EngineToWorkerMessage>) {
@@ -77,6 +84,8 @@ export class AudioWorker {
   }
 
   renderBlock() {
+    this.balancer.beginProcess();
+
     const events = this.scheduler.collectEvents(this.transport.currentTick);
     for (const e of events) {
       if ('tempo' in e) {
@@ -94,7 +103,10 @@ export class AudioWorker {
     // Mix all active voices
     this.mixVoices(outL, outR);
 
+    this.applyBalancerDecision();
+
     this.transport.advance(BLOCK_SIZE);
+    this.renderFrame += BLOCK_SIZE;
 
     return {
       outL,
@@ -133,6 +145,22 @@ export class AudioWorker {
       }
 
       voice.pos += advanced;
+    }
+  }
+
+  private applyBalancerDecision() {
+    const decision = this.balancer.endProcess(this.renderFrame, BLOCK_SIZE);
+    if (decision) {
+      console.log('Balancer decision:', decision);
+      if (decision.resampler) {
+        this.resample = decision.resampler;
+      }
+      if (decision.maxVoices !== undefined) {
+        this.voiceManager.maxVoiceCount = decision.maxVoices;
+      }
+      if (decision.killVoicesRatio) {
+        this.voiceManager.killRatio(decision.killVoicesRatio);
+      }
     }
   }
 }

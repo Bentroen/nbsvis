@@ -1,7 +1,5 @@
 import { NoteEvent } from './scheduler';
 
-export const MAX_VOICE_COUNT = 1024;
-
 type Voice = {
   id: number;
   pos: number;
@@ -13,6 +11,11 @@ type Voice = {
 class VoiceManager {
   samples: Record<number, Float32Array[]> = {};
   voices: Voice[] = [];
+  maxVoiceCount: number;
+
+  constructor(maxVoiceCount: number) {
+    this.maxVoiceCount = maxVoiceCount;
+  }
 
   get activeCount() {
     return this.voices.length;
@@ -23,7 +26,7 @@ class VoiceManager {
   }
 
   spawn(note: NoteEvent) {
-    if (this.voices.length >= MAX_VOICE_COUNT) {
+    if (this.voices.length >= this.maxVoiceCount) {
       this.voices.shift(); // basic stealing
     }
     this.voices.push({
@@ -33,6 +36,11 @@ class VoiceManager {
       pan: note.pan,
       pitch: note.pitch,
     });
+  }
+
+  killRatio(ratio: number) {
+    const killCount = Math.floor(this.voices.length * ratio);
+    this.voices.splice(0, killCount);
   }
 }
 
