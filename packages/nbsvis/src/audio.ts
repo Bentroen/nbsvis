@@ -120,8 +120,8 @@ export class AudioEngine {
     this.tickView = new Int32Array(this.sharedTickBuffer);
 
     // Set up shared ring buffer
-    // 128 frames × 2 channels × 64 blocks = 8192 frames
-    const capacity = 8192; // frames
+    // 128 frames × 2 channels × 128 blocks = 32768 frames
+    const capacity = 32768; // frames
 
     const ringBufferData = new SharedArrayBuffer(Float32Array.BYTES_PER_ELEMENT * capacity * 2);
 
