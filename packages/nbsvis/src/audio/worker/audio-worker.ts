@@ -5,7 +5,7 @@ import { EngineToWorkerMessage } from '../event';
 import { TempoMapView } from '../tempo';
 import { cubicResample, ResamplerFn } from './resampler';
 import Scheduler from './scheduler';
-import RenderTransport from './transport';
+import { BaseTransport as RenderTransport } from '../transport';
 import VoiceManager from './voice-manager';
 
 const BLOCK_SIZE = 128;
@@ -57,7 +57,7 @@ export class AudioWorker {
         break;
 
       case 'seek':
-        this.transport.seekTick(data.seconds);
+        this.transport.seekToTick(data.seconds);
         this.voiceManager.voices.length = 0; // TODO: extract to method
         resetRingBuffer(this.rbState);
         break;

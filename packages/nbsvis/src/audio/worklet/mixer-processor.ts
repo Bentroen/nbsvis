@@ -57,7 +57,7 @@ class AudioSinkWorklet extends AudioWorkletProcessor {
 
   private writeState() {
     Atomics.store(this.playbackState, PlaybackState.PLAYING, this.transport.isPlaying ? 1 : 0);
-    Atomics.store(this.playbackState, PlaybackState.FRAME, this.transport.currentFrame);
+    Atomics.store(this.playbackState, PlaybackState.FRAME, this.transport.framePosition);
     Atomics.store(this.playbackState, PlaybackState.TICK, this.transport.currentTick * 1000);
   }
 

@@ -1,10 +1,10 @@
-import { TempoMapView } from '../tempo';
+import { TempoMapView, Tick } from './tempo';
 
-class RenderTransport {
-  currentFrame = 0;
-  private tempoMap?: TempoMapView;
+export class BaseTransport {
+  protected currentFrame = 0;
+  protected tempoMap?: TempoMapView;
 
-  constructor(private sampleRate: number) {}
+  constructor(protected sampleRate: number) {}
 
   setTempoMap(tempoMap: TempoMapView) {
     this.tempoMap = tempoMap;
@@ -16,24 +16,19 @@ class RenderTransport {
   }
 
   /** Seek to a specific tick */
-  seekTick(tick: number) {
+  seekToTick(tick: Tick) {
     if (!this.tempoMap) return;
     const seconds = this.tempoMap.ticksToSeconds(tick);
     this.currentFrame = seconds * this.sampleRate;
   }
 
-  /** Seek to a specific frame */
-  seekFrame(frame: number) {
-    this.currentFrame = frame;
-  }
-
   /** Seek to a specific time in seconds */
-  seekSeconds(seconds: number) {
+  seekToSeconds(seconds: number) {
     this.currentFrame = seconds * this.sampleRate;
   }
 
   /** Current tick position (derived) */
-  get currentTick(): number {
+  get currentTick(): Tick {
     if (!this.tempoMap) return 0;
     const seconds = this.currentFrame / this.sampleRate;
     return this.tempoMap.secondsToTicks(seconds);
@@ -43,6 +38,9 @@ class RenderTransport {
   get currentSeconds(): number {
     return this.currentFrame / this.sampleRate;
   }
-}
 
-export default RenderTransport;
+  /** Current frame position */
+  get framePosition(): number {
+    return this.currentFrame;
+  }
+}
