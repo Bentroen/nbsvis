@@ -6,7 +6,7 @@ import { PlaybackState } from './state';
 import PlaybackTransport from './transport';
 import { TempoMapView } from '../tempo';
 
-class AudioSinkWorklet extends AudioWorkletProcessor {
+class AudioSinkProcessor extends AudioWorkletProcessor {
   private rbAudio: Float32Array;
   private rbState: Int32Array;
   private playbackState: Int32Array;
@@ -105,4 +105,4 @@ class AudioSinkWorklet extends AudioWorkletProcessor {
 }
 
 // TODO: import this name from a variable to avoid desync (magic string)
-registerProcessor('audio-sink', AudioSinkWorklet);
+registerProcessor('audio-sink', AudioSinkProcessor);

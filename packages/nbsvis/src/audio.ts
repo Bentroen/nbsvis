@@ -6,7 +6,7 @@ import { AudioWorkerInitOptions } from './audio/worker/audio-worker';
 import audioWorkerUrl from './audio/worker/audio-worker?worker&url';
 import { NoteEvent } from './audio/worker/scheduler';
 import { MAX_VOICE_COUNT } from './audio/worker/voice-manager';
-import mixerWorkletUrl from './audio/worklet/mixer-processor?worker&url';
+import workletUrl from './audio/worklet/audio-sink-processor?worker&url';
 import { PlaybackState } from './audio/worklet/state';
 import PlayerInstrument, { defaultInstruments } from './instrument';
 import { getTempoChangeEvents, getTempoSegments } from './song';
@@ -15,7 +15,7 @@ export const MAX_AUDIO_SOURCES = MAX_VOICE_COUNT;
 
 function resolveWorkletUrl() {
   const base = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
-  const relative = mixerWorkletUrl.replace(/^\/+/, '');
+  const relative = workletUrl.replace(/^\/+/, '');
   return new URL(relative, base).toString();
 }
 
