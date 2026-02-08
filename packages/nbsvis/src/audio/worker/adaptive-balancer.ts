@@ -59,6 +59,11 @@ export class AdaptiveLoadBalancer implements IBalancer {
 
     this.framesSinceChange++;
 
+    const decision = this.evaluate(metrics);
+    return decision;
+  }
+
+  private evaluate(metrics: BalancerMetrics): BalancerDecision | null {
     const bufferFill = metrics.bufferFill;
 
     // ---- 1. Critical zone ----
