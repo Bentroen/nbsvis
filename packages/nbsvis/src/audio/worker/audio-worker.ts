@@ -30,6 +30,9 @@ export class AudioWorker {
   balancer: AdaptiveLoadBalancer;
   renderFrame = 0;
 
+  outL = new Float32Array(BLOCK_SIZE);
+  outR = new Float32Array(BLOCK_SIZE);
+
   resample: ResamplerFn = DEFAULT_RESAMPLER;
 
   constructor(init: AudioWorkerInitOptions) {
@@ -95,22 +98,19 @@ export class AudioWorker {
       }
     }
 
-    const outL = new Float32Array(BLOCK_SIZE);
-    const outR = new Float32Array(BLOCK_SIZE);
-    outL.fill(0);
-    outR.fill(0);
+    this.outL.fill(0);
+    this.outR.fill(0);
 
     // Mix all active voices
-    this.mixVoices(outL, outR);
-
+    this.mixVoices(this.outL, this.outR);
     this.applyBalancerDecision();
 
     this.transport.advance(BLOCK_SIZE);
     this.renderFrame += 1;
 
     return {
-      outL,
-      outR,
+      outL: this.outL,
+      outR: this.outR,
       voiceCount: this.voiceManager.activeCount,
     };
   }
