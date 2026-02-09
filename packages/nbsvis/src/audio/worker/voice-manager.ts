@@ -38,6 +38,12 @@ class VoiceManager {
     });
   }
 
+  trimVoices(maxVoices: number) {
+    if (this.voices.length > maxVoices) {
+      this.voices.splice(0, this.voices.length - maxVoices);
+    }
+  }
+
   killRatio(ratio: number) {
     const killCount = Math.floor(this.voices.length * ratio);
     this.voices.splice(0, killCount);
