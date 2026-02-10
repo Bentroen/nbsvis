@@ -29,6 +29,9 @@ export class AdaptiveLoadBalancer implements IBalancer {
   private readonly OVERFILL = 0.6;
 
   private readonly COOLDOWN_FRAMES = 30;
+  private readonly WARNING_COOLDOWN_FRAMES = 5;
+  private readonly CRITICAL_COOLDOWN_FRAMES = 2;
+
   private readonly EMA_ALPHA = 0.1;
   private readonly CRITICAL_FRAMES = 5;
   private readonly WARNING_FRAMES = 10;
@@ -98,7 +101,10 @@ export class AdaptiveLoadBalancer implements IBalancer {
       );
 
       if (this.criticalFrames >= this.CRITICAL_FRAMES) {
-        return this.emergencyDrop(metrics);
+        if (this.framesSinceChange >= this.CRITICAL_COOLDOWN_FRAMES) {
+          return this.emergencyDrop(metrics);
+        }
+        return null;
       }
     } else {
       this.criticalFrames = 0;
@@ -122,7 +128,10 @@ export class AdaptiveLoadBalancer implements IBalancer {
       );
 
       if (this.warningFrames >= this.WARNING_FRAMES) {
-        return this.degrade(metrics);
+        if (this.framesSinceChange >= this.WARNING_COOLDOWN_FRAMES) {
+          return this.degrade(metrics);
+        }
+        return null;
       }
     } else {
       this.warningFrames = 0;
