@@ -106,6 +106,7 @@ export class AdaptiveLoadBalancer implements IBalancer {
         }
         return null;
       }
+      return null;
     } else {
       this.criticalFrames = 0;
     }
@@ -133,16 +134,13 @@ export class AdaptiveLoadBalancer implements IBalancer {
         }
         return null;
       }
+      return null;
     } else {
       this.warningFrames = 0;
     }
 
     // ---- 3. Overfill zone (slow recovery) ----
-    if (
-      bufferFill > this.OVERFILL &&
-      this.framesSinceChange > this.COOLDOWN_FRAMES &&
-      this.loadEMA < 1.2
-    ) {
+    if (bufferFill > this.OVERFILL && this.loadEMA < 1.2) {
       console.log(
         '🟢 Overfill buffer fill:',
         bufferFill.toFixed(2),
@@ -155,7 +153,10 @@ export class AdaptiveLoadBalancer implements IBalancer {
         'Resampler:',
         this.resamplerLevel,
       );
-      return this.upgrade(metrics);
+      if (this.framesSinceChange >= this.COOLDOWN_FRAMES) {
+        return this.upgrade(metrics);
+      }
+      return null;
     }
 
     console.log(
