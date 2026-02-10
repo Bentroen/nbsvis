@@ -39,6 +39,7 @@ class VoiceManager {
   }
 
   trimVoices(maxVoices: number) {
+    this.maxVoiceCount = maxVoices;
     if (this.voices.length > maxVoices) {
       this.voices.splice(0, this.voices.length - maxVoices);
     }

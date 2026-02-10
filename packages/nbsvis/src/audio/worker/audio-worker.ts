@@ -166,7 +166,6 @@ export class AudioWorker {
         this.resample = decision.resampler;
       }
       if (decision.maxVoices !== undefined) {
-        this.voiceManager.maxVoiceCount = decision.maxVoices;
         this.voiceManager.trimVoices(decision.maxVoices);
       }
       if (decision.killVoicesRatio) {
