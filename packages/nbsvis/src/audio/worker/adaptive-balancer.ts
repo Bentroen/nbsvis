@@ -12,6 +12,8 @@ export class AdaptiveLoadBalancer implements IBalancer {
 
   private processStart = 0;
   private loadEMA = 0;
+  private previousBufferFill = 0;
+  private bufferDeltaEMA = 0;
 
   private framesSinceChange = 0;
 
@@ -32,6 +34,7 @@ export class AdaptiveLoadBalancer implements IBalancer {
   private readonly WARNING_FRAMES = 10;
   private criticalFrames = 0;
   private warningFrames = 0;
+  private readonly BUFFER_EMA_ALPHA = 0.2;
 
   init(ctx: BalancerContext): void {
     this.sampleRate = ctx.sampleRate;
@@ -66,13 +69,26 @@ export class AdaptiveLoadBalancer implements IBalancer {
   private evaluate(metrics: BalancerMetrics): BalancerDecision | null {
     const bufferFill = metrics.bufferFill;
 
+    const bufferDelta = bufferFill - this.previousBufferFill;
+    this.previousBufferFill = bufferFill;
+
+    this.bufferDeltaEMA =
+      this.bufferDeltaEMA * (1 - this.BUFFER_EMA_ALPHA) + bufferDelta * this.BUFFER_EMA_ALPHA;
+
+    const isDraining = this.bufferDeltaEMA < -0.005;
+    const isCollapsing = this.bufferDeltaEMA < -0.02;
+
+    const isHighLoad = this.loadEMA > 1.05;
+
     // ---- 1. Critical zone ----
-    if (bufferFill < this.CRITICAL_FILL) {
+    if (bufferFill < this.CRITICAL_FILL || isCollapsing) {
       this.criticalFrames++;
 
       console.log(
         '🔴 Critical buffer fill:',
         bufferFill.toFixed(2),
+        'Δ:',
+        this.bufferDeltaEMA.toFixed(3),
         'Load EMA:',
         this.loadEMA.toFixed(2),
         'Max voices:',
@@ -89,12 +105,14 @@ export class AdaptiveLoadBalancer implements IBalancer {
     }
 
     // ---- 2. Warning zone ----
-    if (bufferFill < this.WARNING_FILL) {
+    if (bufferFill < this.WARNING_FILL && (isDraining || isHighLoad)) {
       this.warningFrames++;
 
       console.log(
         '🟡 Warning buffer fill:',
         bufferFill.toFixed(2),
+        'Δ:',
+        this.bufferDeltaEMA.toFixed(3),
         'Load EMA:',
         this.loadEMA.toFixed(2),
         'Max voices:',
@@ -119,6 +137,8 @@ export class AdaptiveLoadBalancer implements IBalancer {
       console.log(
         '🟢 Overfill buffer fill:',
         bufferFill.toFixed(2),
+        'Δ:',
+        this.bufferDeltaEMA.toFixed(3),
         'Load EMA:',
         this.loadEMA.toFixed(2),
         'Max voices:',
@@ -132,6 +152,8 @@ export class AdaptiveLoadBalancer implements IBalancer {
     console.log(
       '⚪ Regular buffer fill:',
       bufferFill.toFixed(2),
+      'Δ:',
+      this.bufferDeltaEMA.toFixed(3),
       'Load EMA:',
       this.loadEMA.toFixed(2),
       'Max voices:',
