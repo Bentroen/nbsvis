@@ -122,24 +122,22 @@ export class AudioWorker {
       const sample = this.voiceManager.samples[voice.id];
       if (!sample) continue;
 
-      const L = sample[0];
-      const R = sample[1] ?? L;
+      const s = sample[0];
 
       let advanced = 0;
 
       for (let i = 0; i < BLOCK_SIZE; i++) {
         const pos = voice.pos + i * voice.pitch;
-        if (pos >= L.length) {
+        if (pos >= s.length) {
           this.voiceManager.voices.splice(v, 1);
           break;
         }
 
-        // TODO: don't resample both channels if the sample is mono
-        const lSample = this.resample(L, pos);
-        const rSample = this.resample(R, pos);
+        // TODO: take both channels into account if the sample is stereo
+        const resampled = this.resample(s, pos);
 
-        outL[i] += lSample * voice.gain * (1 - Math.max(0, voice.pan));
-        outR[i] += rSample * voice.gain * (1 + Math.min(0, voice.pan));
+        outL[i] += resampled * voice.gain * (1 - Math.max(0, voice.pan));
+        outR[i] += resampled * voice.gain * (1 + Math.min(0, voice.pan));
 
         advanced = (i + 1) * voice.pitch;
       }
