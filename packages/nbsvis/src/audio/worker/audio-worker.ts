@@ -60,6 +60,8 @@ export class AudioWorker {
       case 'song':
         this.scheduler.loadSong(data.notes, data.tempoChanges);
         this.transport.setTempoMap(new TempoMapView(data.tempoChanges, data.initialTempo));
+        this.transport.seekToTick(0);
+        this.resetRender();
         break;
 
       case 'sample':
@@ -68,10 +70,14 @@ export class AudioWorker {
 
       case 'seek':
         this.transport.seekToTick(data.seconds);
-        this.voiceManager.voices.length = 0; // TODO: extract to method
-        resetRingBuffer(this.rbState);
+        this.resetRender();
         break;
     }
+  }
+
+  resetRender() {
+    this.voiceManager.resetVoices();
+    resetRingBuffer(this.rbState);
   }
 
   renderLoop() {

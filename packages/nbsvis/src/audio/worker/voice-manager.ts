@@ -44,6 +44,11 @@ class VoiceManager {
     }
   }
 
+  resetVoices() {
+    //clear existing voices array instead of assigning a new one
+    this.voices.length = 0;
+  }
+
   killRatio(ratio: number) {
     const killCount = Math.floor(this.voices.length * ratio);
     this.voices.splice(0, killCount);
