@@ -1,5 +1,5 @@
 import { Song } from '@encode42/nbs.js';
-import { Application, Container, Text, TextureStyle, Ticker } from 'pixi.js';
+import { Application, BitmapText, Container, TextureStyle, Ticker } from 'pixi.js';
 
 import { MAX_AUDIO_SOURCES } from '../audio';
 
@@ -54,19 +54,19 @@ export class Viewer {
 
   private draw() {
     // Add label showing current FPS
-    const fpsLabel = new Text();
+    const fpsLabel = new BitmapText({ style: { fill: 'black' } });
     fpsLabel.x = 10;
     fpsLabel.y = 10;
     this.app.stage.addChild(fpsLabel);
 
     // Add label showing current tick
-    const label = new Text();
+    const label = new BitmapText({ style: { fill: 'black' } });
     label.x = 10;
     label.y = 40;
     this.app.stage.addChild(label);
 
     // Add label showing current sound count
-    const soundCountLabel = new Text();
+    const soundCountLabel = new BitmapText({ style: { fill: 'black' } });
     soundCountLabel.x = 10;
     soundCountLabel.y = 70;
     this.app.stage.addChild(soundCountLabel);
