@@ -18,26 +18,26 @@ export class AdaptiveLoadBalancer implements IBalancer {
   private framesSinceChange = 0;
 
   private resamplerLevel: ResamplerLevel = 2; // start at cubic
-  private minVoices = 64;
+  private minVoices = 256;
   private defaultVoices = 256;
   private maxVoices = this.defaultVoices;
   private hardMaxVoices = 4096;
 
   // ---- Tunable constants ----
-  private readonly CRITICAL_FILL = 0.25;
+  private readonly CRITICAL_FILL = 0.2;
   private readonly WARNING_FILL = 0.4;
-  private readonly OVERFILL = 0.6;
+  private readonly OVERFILL = 0.75;
 
-  private readonly COOLDOWN_FRAMES = 30;
-  private readonly WARNING_COOLDOWN_FRAMES = 5;
-  private readonly CRITICAL_COOLDOWN_FRAMES = 2;
+  private readonly COOLDOWN_FRAMES = 15;
+  private readonly WARNING_COOLDOWN_FRAMES = 3;
+  private readonly CRITICAL_COOLDOWN_FRAMES = 1;
 
   private readonly EMA_ALPHA = 0.1;
   private readonly CRITICAL_FRAMES = 5;
-  private readonly WARNING_FRAMES = 10;
+  private readonly WARNING_FRAMES = 5;
   private criticalFrames = 0;
   private warningFrames = 0;
-  private readonly BUFFER_EMA_ALPHA = 0.2;
+  private readonly BUFFER_EMA_ALPHA = 0.4;
 
   init(ctx: BalancerContext): void {
     this.sampleRate = ctx.sampleRate;
@@ -78,13 +78,15 @@ export class AdaptiveLoadBalancer implements IBalancer {
     this.bufferDeltaEMA =
       this.bufferDeltaEMA * (1 - this.BUFFER_EMA_ALPHA) + bufferDelta * this.BUFFER_EMA_ALPHA;
 
+    const isRefilling = this.bufferDeltaEMA > 0.005;
     const isDraining = this.bufferDeltaEMA < -0.005;
     const isCollapsing = this.bufferDeltaEMA < -0.02;
 
-    const isHighLoad = this.loadEMA > 1.05;
+    const isHighLoad = this.loadEMA > 1.03;
+    const isExtremeLoad = this.loadEMA > 2.0;
 
     // ---- 1. Critical zone ----
-    if (bufferFill < this.CRITICAL_FILL || isCollapsing) {
+    if (bufferFill < this.CRITICAL_FILL || isCollapsing || isExtremeLoad) {
       this.criticalFrames++;
 
       console.log(
@@ -112,7 +114,7 @@ export class AdaptiveLoadBalancer implements IBalancer {
     }
 
     // ---- 2. Warning zone ----
-    if (bufferFill < this.WARNING_FILL && (isDraining || isHighLoad)) {
+    if (bufferFill < this.WARNING_FILL || isDraining || isHighLoad) {
       this.warningFrames++;
 
       console.log(
@@ -140,7 +142,7 @@ export class AdaptiveLoadBalancer implements IBalancer {
     }
 
     // ---- 3. Overfill zone (slow recovery) ----
-    if (bufferFill > this.OVERFILL && this.loadEMA < 1.2) {
+    if (bufferFill > this.OVERFILL && this.loadEMA < 0.9) {
       console.log(
         '🟢 Overfill buffer fill:',
         bufferFill.toFixed(2),
@@ -197,7 +199,7 @@ export class AdaptiveLoadBalancer implements IBalancer {
     this.framesSinceChange = 0;
 
     // First lower resampler
-    if (this.resamplerLevel > 0) {
+    if (this.resamplerLevel > 1) {
       this.resamplerLevel--;
       return {
         resampler: this.getResampler(),
@@ -205,7 +207,7 @@ export class AdaptiveLoadBalancer implements IBalancer {
     }
 
     // Then reduce voices slightly
-    const newMaxVoices = Math.max(this.minVoices, Math.floor(metrics.maxVoices * 0.9));
+    const newMaxVoices = Math.max(this.minVoices, Math.floor(metrics.maxVoices * 0.99));
 
     if (newMaxVoices !== metrics.maxVoices) {
       this.maxVoices = newMaxVoices;
@@ -220,12 +222,20 @@ export class AdaptiveLoadBalancer implements IBalancer {
   private upgrade(metrics: BalancerMetrics): BalancerDecision | null {
     this.framesSinceChange = 0;
 
-    // First increase voices
+    // Get out of the damn worst resampler before anything else
+    if (this.resamplerLevel < 1) {
+      this.resamplerLevel++;
+      return {
+        resampler: this.getResampler(),
+      };
+    }
+
+    // Then increase voices
     const utilization = metrics.activeVoices / metrics.maxVoices;
 
     // Only increase voices if we're actually using them
     if (utilization > 0.85) {
-      const newMaxVoices = Math.min(this.hardMaxVoices, Math.floor(metrics.maxVoices * 1.1));
+      const newMaxVoices = Math.min(this.hardMaxVoices, Math.floor(metrics.maxVoices + 1));
 
       if (newMaxVoices !== metrics.maxVoices) {
         this.maxVoices = newMaxVoices;
