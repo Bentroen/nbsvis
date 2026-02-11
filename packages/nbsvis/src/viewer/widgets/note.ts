@@ -209,6 +209,7 @@ export class NoteManager {
   private removeTick(tick: number) {
     const rowContainer = this.visibleRows[tick];
     this.container.removeChild(rowContainer);
+    rowContainer.destroy({ children: true });
     delete this.visibleRows[tick];
   }
 
