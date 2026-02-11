@@ -114,44 +114,17 @@ class NoteItem {
     return `${keyLabels[key]}${octave}`;
   }
 
-  getSprite(keyPositions: Array<number>): Container {
-    // Container for everything
+  getSprite(keyPositions: Array<number>): Sprite {
     const x = this.getXPos(keyPositions);
-    const y = 0;
-    const container = new Container();
-    container.position.set(x, y);
-    container.alpha = 0.5 + this.velocity * 0.5;
-
-    // Background rectangle
-    const rect = new Graphics().rect(0, 0, BLOCK_SIZE, BLOCK_SIZE);
-    rect.fill(instrumentColors[this.instrument % 16]);
-    container.addChild(rect);
-
-    // Note block texture
     const sprite = new Sprite(noteBlockTexture);
+
+    sprite.position.set(x, 0);
     sprite.width = BLOCK_SIZE;
     sprite.height = BLOCK_SIZE;
-    sprite.blendMode = 'hard-light';
-    sprite.alpha = 0.67; // Global alpha
-    container.addChild(sprite);
+    sprite.alpha = 0.5 + this.velocity * 0.5;
+    sprite.tint = instrumentColors[this.instrument % 16];
 
-    // Text style
-    //const textStyle = new TextStyle({
-    //  fontSize: 12 * (BLOCK_SIZE / 32),
-    //  //fill: 'white',
-    //  align: 'center',
-    //});
-
-    this.getKeyLabel();
-
-    // Text
-    //const label = new Text({ text: this.getKeyLabel() }); //style: textStyle });
-    //label.anchor.set(0.5, 0.5);
-    //label.position.set(BLOCK_SIZE / 2, BLOCK_SIZE / 2);
-    //label.alpha = 1;
-    //container.addChild(label);
-
-    return container;
+    return sprite;
   }
 }
 
