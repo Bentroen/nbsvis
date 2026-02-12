@@ -166,7 +166,9 @@ export class NoteManager {
   private screenHeight = 600;
 
   private activeNotes: Map<NoteItem, Sprite> = new Map();
-  private currentVisibleTicks: Set<number> = new Set();
+
+  private oldStartTick = 0;
+  private oldEndTick = 0;
   private spritePool!: SpritePool;
 
   distanceScale = 0.5;
@@ -260,7 +262,8 @@ export class NoteManager {
     }
     this.activeNotes.clear();
 
-    this.currentVisibleTicks.clear();
+    this.oldStartTick = 0;
+    this.oldEndTick = 0;
 
     this.updateNoteSize(totalWidth);
     this.update(-1);
@@ -283,40 +286,25 @@ export class NoteManager {
     const visibleHeight = screenHeight - pianoHeight;
     const visibleRowCount = Math.floor(visibleHeight / BLOCK_SIZE) * (1 / this.distanceScale);
 
-    const newVisibleTicks = new Set<number>();
-    for (let i = 0; i < visibleRowCount; i++) {
-      newVisibleTicks.add(floorTick + i);
-    }
+    const oldStart = this.oldStartTick;
+    const oldEnd = this.oldEndTick;
 
-    const oldVisibleTicks = this.currentVisibleTicks;
+    const newStart = floorTick;
+    const newEnd = floorTick + visibleRowCount;
 
-    // Diff to find what needs to be updated
-    const ticksToAdd: number[] = [];
-    const ticksToRemove: number[] = [];
-
-    for (const tick of newVisibleTicks) {
-      if (!oldVisibleTicks.has(tick)) {
-        ticksToAdd.push(tick);
-      }
-    }
-
-    for (const tick of oldVisibleTicks) {
-      if (!newVisibleTicks.has(tick)) {
-        ticksToRemove.push(tick);
-      }
-    }
-
-    // Apply changes
-    for (const t of ticksToAdd) {
-      this.activateTick(t);
-    }
-
-    for (const t of ticksToRemove) {
+    // Remove old head
+    for (let t = oldStart; t < newStart; t++) {
       this.deactivateTick(t);
     }
 
+    // Add new tail
+    for (let t = oldEnd; t < newEnd; t++) {
+      this.activateTick(t);
+    }
+
     // Store new state
-    this.currentVisibleTicks = newVisibleTicks;
+    this.oldStartTick = newStart;
+    this.oldEndTick = newEnd;
     this.currentTick = tick;
 
     // Return which keys should be played at this tick
