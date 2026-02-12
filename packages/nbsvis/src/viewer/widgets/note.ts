@@ -222,7 +222,7 @@ export class NoteManager {
         sprite = this.spritePool.acquire();
       } catch {
         console.warn('Sprite pool exhausted! Consider increasing the pool size.');
-        continue;
+        break;
       }
 
       const x = this.keyPositions[note.key] - BLOCK_SIZE / 2;
