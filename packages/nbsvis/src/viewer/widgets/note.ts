@@ -292,19 +292,24 @@ export class NoteManager {
     const newStart = floorTick;
     const newEnd = floorTick + visibleRowCount;
 
-    // Remove old head
-    for (let t = oldStart; t < newStart; t++) {
-      this.deactivateTick(t);
+    // Remove anything no longer visible
+    for (let t = oldStart; t < oldEnd; t++) {
+      if (t < newStart || t >= newEnd) {
+        this.deactivateTick(t);
+      }
     }
 
-    // Add new tail
-    for (let t = oldEnd; t < newEnd; t++) {
-      this.activateTick(t);
+    // Add anything newly visible
+    for (let t = newStart; t < newEnd; t++) {
+      if (t < oldStart || t >= oldEnd) {
+        this.activateTick(t);
+      }
     }
 
     // Store new state
     this.oldStartTick = newStart;
     this.oldEndTick = newEnd;
+
     this.currentTick = tick;
 
     // Return which keys should be played at this tick
