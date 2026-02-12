@@ -1,8 +1,9 @@
 import { Note, Song } from '@encode42/nbs.js';
-import { Assets, Container, Graphics, Sprite, Texture } from 'pixi.js';
+import { Assets, Container, Sprite, Texture } from 'pixi.js';
 
 import { WHITE_KEY_COUNT } from './piano';
 import assetPaths from '../../assets';
+import SpritePool from '../util/sprite';
 
 // TODO: how to refactor this to abstract away the complexity?
 // The goal: push as many 'as generic as possible' utils out of this and
@@ -76,6 +77,34 @@ export function loadNotes(song: Song) {
   return notesPerTick;
 }
 
+export function estimateMaxVisibleNotes(
+  notesPerTick: Record<number, NoteItem[]>,
+  visibleTickCount: number,
+): number {
+  const ticks = Object.keys(notesPerTick)
+    .map(Number)
+    .sort((a, b) => a - b);
+
+  let maxNotes = 0;
+
+  for (let i = 0; i < ticks.length; i++) {
+    let total = 0;
+
+    for (let j = 0; j < visibleTickCount; j++) {
+      const tick = ticks[i] + j;
+      const notes = notesPerTick[tick];
+      if (notes) total += notes.length;
+    }
+
+    if (total > maxNotes) {
+      maxNotes = total;
+    }
+  }
+
+  // Add 30% safety margin
+  return Math.ceil(maxNotes * 1.3);
+}
+
 class NoteItem {
   tick: number;
   instrument: number;
@@ -135,7 +164,10 @@ export class NoteManager {
   private keyPositions: Array<number>;
   private pianoHeight = 200;
   private screenHeight = 600;
-  private visibleRows: Record<number, Container> = {};
+
+  private activeNotes: Map<NoteItem, Sprite> = new Map();
+  private currentVisibleTicks: Set<number> = new Set();
+  private spritePool!: SpritePool;
 
   distanceScale = 0.5;
 
@@ -146,6 +178,18 @@ export class NoteManager {
 
   public setSong(song: Song) {
     this.notes = loadNotes(song);
+
+    // TODO: duplicated code with update()
+    const visibleHeight = this.screenHeight - this.pianoHeight;
+    const visibleRowCount = Math.floor(visibleHeight / BLOCK_SIZE) * (1 / this.distanceScale);
+
+    const visibleTickCount = Math.ceil(visibleRowCount);
+
+    const poolSize = estimateMaxVisibleNotes(this.notes, visibleTickCount);
+
+    console.log('Sprite pool size:', poolSize);
+
+    this.spritePool = new SpritePool(poolSize, noteBlockTexture, this.container);
   }
 
   public setKeyPositions(keyPositions: Array<number>) {
@@ -166,24 +210,38 @@ export class NoteManager {
 
   private addNoteSprite(note: NoteItem, container: Container) {
     const sprite = note.getSprite(this.keyPositions);
-    container.addChildAt(sprite, 0);
+    container.addChild(sprite);
   }
 
-  private addTick(tick: number) {
-    const rowContainer = new Container();
-    rowContainer.y = -tick * BLOCK_SIZE * this.distanceScale;
-    this.container.addChildAt(rowContainer, 0);
-    this.visibleRows[tick] = rowContainer;
+  private activateTick(tick: number) {
     for (const note of this.getNotesAtTick(tick)) {
-      this.addNoteSprite(note, rowContainer);
+      let sprite: Sprite;
+      try {
+        sprite = this.spritePool.acquire();
+      } catch {
+        console.warn('Sprite pool exhausted! Consider increasing the pool size.');
+        continue;
+      }
+
+      const x = this.keyPositions[note.key] - BLOCK_SIZE / 2;
+      sprite.position.set(x, -tick * BLOCK_SIZE * this.distanceScale);
+      sprite.width = BLOCK_SIZE;
+      sprite.height = BLOCK_SIZE;
+      sprite.alpha = 0.5 + note.velocity * 0.5;
+      sprite.tint = instrumentColors[note.instrument % 16];
+
+      this.activeNotes.set(note, sprite);
     }
   }
 
-  private removeTick(tick: number) {
-    const rowContainer = this.visibleRows[tick];
-    this.container.removeChild(rowContainer);
-    rowContainer.destroy({ children: true });
-    delete this.visibleRows[tick];
+  private deactivateTick(tick: number) {
+    for (const note of this.getNotesAtTick(tick)) {
+      const sprite = this.activeNotes.get(note);
+      if (!sprite) continue;
+
+      this.spritePool.release(sprite);
+      this.activeNotes.delete(note);
+    }
   }
 
   public updateNoteSize(totalWidth: number) {
@@ -196,8 +254,14 @@ export class NoteManager {
   }
 
   public redraw(totalWidth: number) {
-    this.container.removeChildren();
-    this.visibleRows = {};
+    // Return all active sprites to the pool
+    for (const sprite of this.activeNotes.values()) {
+      this.spritePool.release(sprite);
+    }
+    this.activeNotes.clear();
+
+    this.currentVisibleTicks.clear();
+
     this.updateNoteSize(totalWidth);
     this.update(-1);
   }
@@ -215,24 +279,44 @@ export class NoteManager {
       return [];
     }
 
-    // Calculate ticks that are currently visible
-    const visibleTicks = new Set<number>(Object.keys(this.visibleRows).map(Number));
-
-    // Calculate ticks that should be seen after the update
+    // Calculate ticks that should be visible
     const visibleHeight = screenHeight - pianoHeight;
     const visibleRowCount = Math.floor(visibleHeight / BLOCK_SIZE) * (1 / this.distanceScale);
-    const newTicks = new Set<number>();
+
+    const newVisibleTicks = new Set<number>();
     for (let i = 0; i < visibleRowCount; i++) {
-      newTicks.add(Math.floor(tick) + i);
+      newVisibleTicks.add(floorTick + i);
     }
 
+    const oldVisibleTicks = this.currentVisibleTicks;
+
     // Diff to find what needs to be updated
-    const ticksToAdd = newTicks.difference(visibleTicks);
-    const ticksToRemove = visibleTicks.difference(newTicks);
+    const ticksToAdd: number[] = [];
+    const ticksToRemove: number[] = [];
 
-    ticksToAdd.forEach((tick) => this.addTick(tick));
-    ticksToRemove.forEach((tick) => this.removeTick(tick));
+    for (const tick of newVisibleTicks) {
+      if (!oldVisibleTicks.has(tick)) {
+        ticksToAdd.push(tick);
+      }
+    }
 
+    for (const tick of oldVisibleTicks) {
+      if (!newVisibleTicks.has(tick)) {
+        ticksToRemove.push(tick);
+      }
+    }
+
+    // Apply changes
+    for (const t of ticksToAdd) {
+      this.activateTick(t);
+    }
+
+    for (const t of ticksToRemove) {
+      this.deactivateTick(t);
+    }
+
+    // Store new state
+    this.currentVisibleTicks = newVisibleTicks;
     this.currentTick = tick;
 
     // Return which keys should be played at this tick
