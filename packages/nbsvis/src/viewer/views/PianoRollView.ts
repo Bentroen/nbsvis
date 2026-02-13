@@ -1,5 +1,5 @@
 import { Song } from '@encode42/nbs.js';
-import { Container } from 'pixi.js';
+import { Container, ParticleContainer, ParticleProperties } from 'pixi.js';
 
 import { BaseView } from '../viewer';
 import { NoteManager } from '../widgets/note';
@@ -8,15 +8,21 @@ import { PianoManager } from '../widgets/piano';
 export class PianoRollView extends BaseView {
   pianoManager: PianoManager = new PianoManager(new Container());
   pianoContainer: Container = new Container();
-  noteManager: NoteManager = new NoteManager(new Container(), []);
-  noteContainer: Container = new Container();
+  noteManager: NoteManager = new NoteManager(new ParticleContainer(), []);
+  noteContainer: ParticleContainer = new ParticleContainer();
 
   draw() {
     this.pianoContainer = new Container();
     this.pianoManager = new PianoManager(this.pianoContainer);
     this.pianoContainer.position.set(0, this.stage.height - this.pianoContainer.height - 10);
 
-    this.noteContainer = new Container();
+    this.noteContainer = new ParticleContainer({
+      dynamicProperties: {
+        position: false,
+        rotation: false,
+      } satisfies ParticleProperties,
+      roundPixels: true,
+    });
 
     const keyPositions = this.pianoManager.keyPositions;
     this.noteManager = new NoteManager(this.noteContainer, keyPositions);
