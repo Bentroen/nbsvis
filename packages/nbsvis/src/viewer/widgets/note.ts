@@ -157,13 +157,15 @@ export class NoteManager {
 
   private oldStartTick = 0;
   private oldEndTick = 0;
-  private spritePool!: SpritePool;
+  private spritePool: SpritePool;
 
   distanceScale = 0.5;
 
   constructor(container: Container, keyPositions: Array<number>) {
     this.container = container;
     this.keyPositions = keyPositions;
+
+    this.spritePool = new SpritePool(0, noteBlockTexture, this.container);
   }
 
   public setSong(song: Song) {
