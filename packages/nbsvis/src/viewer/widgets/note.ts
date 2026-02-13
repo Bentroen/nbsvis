@@ -130,19 +130,6 @@ class NoteItem {
     const octave = Math.floor((this.key + 9) / 12);
     return `${keyLabels[key]}${octave}`;
   }
-
-  getSprite(keyPositions: Array<number>): Sprite {
-    const x = this.getXPos(keyPositions);
-    const sprite = new Sprite(noteBlockTexture);
-
-    sprite.position.set(x, 0);
-    sprite.width = BLOCK_SIZE;
-    sprite.height = BLOCK_SIZE;
-    sprite.alpha = 0.5 + this.velocity * 0.5;
-    sprite.tint = instrumentColors[this.instrument % 16];
-
-    return sprite;
-  }
 }
 
 export class NoteManager {
@@ -200,11 +187,6 @@ export class NoteManager {
 
   private getNotesAtTick(tick: number) {
     return this.notes[tick] || [];
-  }
-
-  private addNoteSprite(note: NoteItem, container: Container) {
-    const sprite = note.getSprite(this.keyPositions);
-    container.addChild(sprite);
   }
 
   private activateTick(tick: number) {
