@@ -109,7 +109,7 @@ class NoteItem {
     this.velocity = note.velocity / 100;
   }
 
-  private getXPos(keyPositions: Array<number>): number {
+  getXPos(keyPositions: Array<number>): number {
     let x = keyPositions[this.key];
     if (this.pitch !== 0) {
       // Halfway between its actual key and the key it's gliding to
@@ -199,7 +199,7 @@ export class NoteManager {
         break;
       }
 
-      sprite.x = this.keyPositions[note.key] - BLOCK_SIZE / 2;
+      sprite.x = note.getXPos(this.keyPositions);
       sprite.y = -tick * BLOCK_SIZE * this.distanceScale;
       sprite.scaleX = BLOCK_SIZE / 16;
       sprite.scaleY = BLOCK_SIZE / 16;
