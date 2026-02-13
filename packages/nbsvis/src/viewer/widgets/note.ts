@@ -1,5 +1,5 @@
 import { Note, Song } from '@encode42/nbs.js';
-import { Assets, Container, Sprite, Texture } from 'pixi.js';
+import { Assets, Particle, ParticleContainer, Texture } from 'pixi.js';
 
 import { WHITE_KEY_COUNT } from './piano';
 import assetPaths from '../../assets';
@@ -135,12 +135,12 @@ class NoteItem {
 export class NoteManager {
   private notes: Record<number, Array<NoteItem>> = {};
   private currentTick = 0;
-  private container: Container;
+  private container: ParticleContainer;
   private keyPositions: Array<number>;
   private pianoHeight = 200;
   private screenHeight = 600;
 
-  private activeNotes: Map<NoteItem, Sprite> = new Map();
+  private activeNotes: Map<NoteItem, Particle> = new Map();
 
   private oldStartTick = 0;
   private oldEndTick = 0;
@@ -148,7 +148,7 @@ export class NoteManager {
 
   distanceScale = 0.5;
 
-  constructor(container: Container, keyPositions: Array<number>) {
+  constructor(container: ParticleContainer, keyPositions: Array<number>) {
     this.container = container;
     this.keyPositions = keyPositions;
 
@@ -191,7 +191,7 @@ export class NoteManager {
 
   private activateTick(tick: number) {
     for (const note of this.getNotesAtTick(tick)) {
-      let sprite: Sprite;
+      let sprite: Particle;
       try {
         sprite = this.spritePool.acquire();
       } catch {
@@ -199,10 +199,10 @@ export class NoteManager {
         break;
       }
 
-      const x = this.keyPositions[note.key] - BLOCK_SIZE / 2;
-      sprite.position.set(x, -tick * BLOCK_SIZE * this.distanceScale);
-      sprite.width = BLOCK_SIZE;
-      sprite.height = BLOCK_SIZE;
+      sprite.x = this.keyPositions[note.key] - BLOCK_SIZE / 2;
+      sprite.y = -tick * BLOCK_SIZE * this.distanceScale;
+      sprite.scaleX = BLOCK_SIZE / 16;
+      sprite.scaleY = BLOCK_SIZE / 16;
       sprite.alpha = 0.5 + note.velocity * 0.5;
       sprite.tint = instrumentColors[note.instrument % 16];
 
@@ -285,6 +285,9 @@ export class NoteManager {
     this.oldEndTick = newEnd;
 
     this.currentTick = tick;
+
+    // Re-upload particle properties to GPU
+    this.container.update();
 
     // Return which keys should be played at this tick
     const keysToPlay = this.getNotesAtTick(floorTick).map((note) => note.key);
