@@ -81,28 +81,16 @@ export function estimateMaxVisibleNotes(
   notesPerTick: Record<number, NoteItem[]>,
   visibleTickCount: number,
 ): number {
-  const ticks = Object.keys(notesPerTick)
-    .map(Number)
-    .sort((a, b) => a - b);
+  const totalNotes = Object.values(notesPerTick).reduce((sum, notes) => sum + notes.length, 0);
+  const totalTicks = Object.keys(notesPerTick).length;
 
-  let maxNotes = 0;
+  const avgNotesPerTick = totalNotes / totalTicks;
+  const estimatedVisibleNotes = avgNotesPerTick * visibleTickCount;
 
-  for (let i = 0; i < ticks.length; i++) {
-    let total = 0;
+  // Add 50% safety margin
+  const initialPoolSize = Math.ceil(estimatedVisibleNotes * 1.5);
 
-    for (let j = 0; j < visibleTickCount; j++) {
-      const tick = ticks[i] + j;
-      const notes = notesPerTick[tick];
-      if (notes) total += notes.length;
-    }
-
-    if (total > maxNotes) {
-      maxNotes = total;
-    }
-  }
-
-  // Add 30% safety margin
-  return Math.ceil(maxNotes * 1.3);
+  return initialPoolSize;
 }
 
 class NoteItem {
