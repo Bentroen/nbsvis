@@ -43,6 +43,14 @@ class SpritePool {
     this.pool.push(sprite);
     return sprite;
   }
+
+  destroy() {
+    for (const sprite of this.pool) {
+      this.container.removeChild(sprite);
+      sprite.destroy();
+    }
+    this.pool.length = 0;
+  }
 }
 
 export default SpritePool;
