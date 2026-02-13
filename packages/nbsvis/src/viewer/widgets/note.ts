@@ -177,6 +177,8 @@ export class NoteManager {
 
     const visibleTickCount = Math.ceil(visibleRowCount);
 
+    this.spritePool.destroy();
+
     const poolSize = estimateMaxVisibleNotes(this.notes, visibleTickCount);
 
     console.log('Sprite pool size:', poolSize);
