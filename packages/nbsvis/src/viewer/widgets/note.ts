@@ -191,13 +191,7 @@ export class NoteManager {
 
   private activateTick(tick: number) {
     for (const note of this.getNotesAtTick(tick)) {
-      let sprite: Particle;
-      try {
-        sprite = this.spritePool.acquire();
-      } catch {
-        console.warn('Sprite pool exhausted! Consider increasing the pool size.');
-        break;
-      }
+      const sprite = this.spritePool.acquire();
 
       sprite.x = note.getXPos(this.keyPositions);
       sprite.y = -tick * BLOCK_SIZE * this.distanceScale;
