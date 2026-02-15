@@ -19,7 +19,7 @@ class SpritePool {
     }
     const sprite = this.pool.pop();
     if (!sprite) {
-      throw new Error('Failed to acquire sprite from pool');
+      throw new Error('SpritePool invariant violated: pop() returned undefined after expand()');
     }
     return sprite;
   }
