@@ -53,8 +53,8 @@ impl Engine {
             self.voices.remove(0); // basic voice stealing
         }
 
-        let gain_l = gain * (1.0 - pan);
-        let gain_r = gain * pan;
+        let gain_l = gain * (1.0 - pan) * 0.5;
+        let gain_r = gain * (1.0 + pan) * 0.5;
 
         self.voices.push(Voice {
             sample_id,
