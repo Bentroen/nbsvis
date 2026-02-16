@@ -15,7 +15,7 @@ const BLOCK_SIZE = 128;
 const DEFAULT_RESAMPLER = cubicResample;
 
 const MAX_VOICES = 2048;
-const VOICE_STRIDE = 5;
+const VOICE_STRIDE = 6;
 
 export type AudioWorkerInitOptions = {
   ringBufferAudioSAB: SharedArrayBuffer;
@@ -41,6 +41,9 @@ export class AudioWorker {
 
   voiceData: Float32Array = new Float32Array(MAX_VOICES * VOICE_STRIDE);
   sampleData: Float32Array = new Float32Array(0);
+  sampleAtlas = new Float32Array(0);
+  sampleOffsets: number[] = [];
+  sampleLengths: number[] = [];
 
   resample: ResamplerFn = DEFAULT_RESAMPLER;
 
@@ -81,10 +84,24 @@ export class AudioWorker {
         this.resetRender();
         break;
 
-      case 'sample':
+      case 'sample': {
         this.voiceManager.loadSample(data.sampleId, data.channels);
         this.sampleData = data.channels[0];
+
+        const mono = data.channels[0];
+        const oldAtlas = this.sampleAtlas;
+
+        const newAtlas = new Float32Array(oldAtlas.length + mono.length);
+        newAtlas.set(oldAtlas, 0);
+        newAtlas.set(mono, oldAtlas.length);
+
+        this.sampleAtlas = newAtlas;
+
+        this.sampleOffsets[data.sampleId] = oldAtlas.length;
+        this.sampleLengths[data.sampleId] = mono.length;
+
         break;
+      }
 
       case 'seek':
         this.transport.seekToTick(data.seconds);
@@ -118,11 +135,15 @@ export class AudioWorker {
       const v = voices[i];
       const base = i * VOICE_STRIDE;
 
+      const offset = this.sampleOffsets[v.id] ?? 0;
+      const length = this.sampleLengths[v.id] ?? 0;
+
       this.voiceData[base + 0] = v.pos;
       this.voiceData[base + 1] = v.pitch;
       this.voiceData[base + 2] = v.gain;
       this.voiceData[base + 3] = v.pan;
-      this.voiceData[base + 4] = 0; // sample offset (simple case)
+      this.voiceData[base + 4] = offset;
+      this.voiceData[base + 5] = length;
     }
 
     return count;
@@ -145,16 +166,23 @@ export class AudioWorker {
 
     // Mix all active voices
     if (this.wasmReady) {
+      console.log('mixing with WASM');
       const voiceCount = this.packVoices();
 
-      mix_voices(this.voiceData, this.sampleData, this.outL, this.outR, voiceCount, BLOCK_SIZE);
+      mix_voices(this.voiceData, this.sampleAtlas, this.outL, this.outR, voiceCount, BLOCK_SIZE);
 
       for (let i = 0; i < voiceCount; i++) {
         const base = i * VOICE_STRIDE;
-        this.voiceManager.voices[i].pos = this.voiceData[base + 0];
+        const pos = this.voiceData[base + 0];
+        const len = this.voiceData[base + 5];
+
+        if (pos >= len) {
+          this.voiceManager.voices.splice(i, 1);
+        }
       }
     } else {
-      this.mixVoices(this.outL, this.outR); // fallback JS
+      console.log('mixing with JS');
+      //this.mixVoices(this.outL, this.outR); // fallback JS
     }
     this.applyBalancerDecision();
 
