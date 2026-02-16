@@ -3,6 +3,7 @@ import { Assets, Particle, ParticleContainer, Texture } from 'pixi.js';
 
 import { WHITE_KEY_COUNT } from './piano';
 import assetPaths from '../../assets';
+import { NoteData, NoteRenderer, RenderContext } from '../util/note';
 import SpritePool from '../util/sprite';
 
 // TODO: how to refactor this to abstract away the complexity?
@@ -56,17 +57,27 @@ function normalizeKeyAndPitch(note: Note): { key: number; pitch: number } {
 }
 
 export function loadNotes(song: Song) {
-  const notesPerTick: Record<number, Array<NoteItem>> = {};
+  const notesPerTick: Record<number, Array<NoteData>> = {};
 
   for (const layer of song.layers) {
     for (const tickStr in layer.notes) {
       const note = layer.notes[tickStr];
       const tick = parseInt(tickStr);
-      const noteItem = new NoteItem(note, tick);
+
+      const { key, pitch } = normalizeKeyAndPitch(note);
+
+      const noteData: NoteData = {
+        tick,
+        instrument: note.instrument,
+        key,
+        pitch,
+        velocity: note.velocity / 100,
+      };
+
       if (!(tick in notesPerTick)) {
         notesPerTick[tick] = [];
       }
-      notesPerTick[tick].push(noteItem);
+      notesPerTick[tick].push(noteData);
     }
   }
 
@@ -78,7 +89,7 @@ export function loadNotes(song: Song) {
 }
 
 export function estimateMaxVisibleNotes(
-  notesPerTick: Record<number, NoteItem[]>,
+  notesPerTick: Record<number, NoteData[]>,
   visibleTickCount: number,
 ): number {
   const totalNotes = Object.values(notesPerTick).reduce((sum, notes) => sum + notes.length, 0);
@@ -93,54 +104,45 @@ export function estimateMaxVisibleNotes(
   return initialPoolSize;
 }
 
-class NoteItem {
-  tick: number;
-  instrument: number;
-  key: number;
-  pitch: number;
-  velocity: number;
+export function calculateNoteX(note: NoteData, keyPositions: number[], blockSize: number): number {
+  let x = keyPositions[note.key];
 
-  constructor(note: Note, tick: number) {
-    this.tick = tick;
-    const { key, pitch } = normalizeKeyAndPitch(note);
-    this.instrument = note.instrument;
-    this.key = key;
-    this.pitch = pitch;
-    this.velocity = note.velocity / 100;
+  if (note.pitch !== 0) {
+    const dir = note.pitch > 0 ? 1 : -1;
+    const target = keyPositions[note.key + dir];
+    const distance = x - target;
+    x -= Math.abs(note.pitch) * distance;
   }
 
-  getXPos(keyPositions: Array<number>): number {
-    let x = keyPositions[this.key];
-    if (this.pitch !== 0) {
-      // Halfway between its actual key and the key it's gliding to
-      const pitchingDirection = this.pitch > 0 ? 1 : -1;
-      const pitchingToNote = this.key + pitchingDirection;
-      const pitchingToX = keyPositions[pitchingToNote];
-      const pitchingDistance = x - pitchingToX;
-      const pitchingAmount = Math.abs(this.pitch) * pitchingDistance;
-      const pitchingX = x - pitchingAmount;
-      x = pitchingX;
-    }
-    x -= BLOCK_SIZE / 2;
-    return x;
-  }
+  return x - blockSize / 2;
+}
 
-  private getKeyLabel(): string {
-    const key = (this.key + 9) % 12;
-    const octave = Math.floor((this.key + 9) / 12);
-    return `${keyLabels[key]}${octave}`;
+export function getKeyLabel(note: NoteData): string {
+  const key = (note.key + 9) % 12;
+  const octave = Math.floor((note.key + 9) / 12);
+  return `${keyLabels[key]}${octave}`;
+}
+
+export class DefaultNoteRenderer implements NoteRenderer {
+  apply(sprite: Particle, note: NoteData, ctx: RenderContext): void {
+    sprite.x = calculateNoteX(note, ctx.keyPositions, ctx.blockSize);
+    sprite.y = -note.tick * ctx.blockSize * ctx.distanceScale;
+    sprite.scaleX = ctx.blockSize / 16;
+    sprite.scaleY = ctx.blockSize / 16;
+    sprite.alpha = 0.5 + note.velocity * 0.5;
+    sprite.tint = instrumentColors[note.instrument % 16];
   }
 }
 
 export class NoteManager {
-  private notes: Record<number, Array<NoteItem>> = {};
+  private notes: Record<number, Array<NoteData>> = {};
   private currentTick = 0;
   private container: ParticleContainer;
   private keyPositions: Array<number>;
   private pianoHeight = 200;
   private screenHeight = 600;
 
-  private activeNotes: Map<NoteItem, Particle> = new Map();
+  private activeNotes: Map<NoteData, Particle> = new Map();
 
   private oldStartTick = 0;
   private oldEndTick = 0;
@@ -148,9 +150,16 @@ export class NoteManager {
 
   distanceScale = 0.5;
 
-  constructor(container: ParticleContainer, keyPositions: Array<number>) {
+  private renderer: NoteRenderer;
+
+  constructor(
+    container: ParticleContainer,
+    keyPositions: Array<number>,
+    renderer: NoteRenderer = new DefaultNoteRenderer(),
+  ) {
     this.container = container;
     this.keyPositions = keyPositions;
+    this.renderer = renderer;
 
     this.spritePool = new SpritePool(0, noteBlockTexture, this.container);
   }
@@ -193,12 +202,11 @@ export class NoteManager {
     for (const note of this.getNotesAtTick(tick)) {
       const sprite = this.spritePool.acquire();
 
-      sprite.x = note.getXPos(this.keyPositions);
-      sprite.y = -tick * BLOCK_SIZE * this.distanceScale;
-      sprite.scaleX = BLOCK_SIZE / 16;
-      sprite.scaleY = BLOCK_SIZE / 16;
-      sprite.alpha = 0.5 + note.velocity * 0.5;
-      sprite.tint = instrumentColors[note.instrument % 16];
+      this.renderer.apply(sprite, note, {
+        keyPositions: this.keyPositions,
+        blockSize: BLOCK_SIZE,
+        distanceScale: this.distanceScale,
+      });
 
       this.activeNotes.set(note, sprite);
     }
