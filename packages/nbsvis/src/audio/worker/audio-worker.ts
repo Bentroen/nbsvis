@@ -4,18 +4,12 @@ import { RingBufferState, resetRingBuffer, ringBufferHasSpace, writeToRingBuffer
 import { EngineToWorkerMessage } from '../event';
 import { TempoMapView } from '../tempo';
 import { AdaptiveLoadBalancer } from './adaptive-balancer';
-import { cubicResample, ResamplerFn } from './resampler';
+import { cubicResample } from './resampler';
 import Scheduler from './scheduler';
 import init, { Engine } from '../../../wasm/pkg/audio_wasm.js';
 import { BaseTransport as RenderTransport } from '../transport';
-import VoiceManager from './voice-manager';
 
 const BLOCK_SIZE = 128;
-
-const DEFAULT_RESAMPLER = cubicResample;
-
-const MAX_VOICES = 2048;
-const VOICE_STRIDE = 6;
 
 export type AudioWorkerInitOptions = {
   ringBufferAudioSAB: SharedArrayBuffer;
@@ -30,7 +24,6 @@ export class AudioWorker {
 
   transport: RenderTransport;
   scheduler: Scheduler;
-  voiceManager: VoiceManager;
   balancer: AdaptiveLoadBalancer;
   renderFrame = 0;
 
@@ -41,13 +34,9 @@ export class AudioWorker {
 
   engine!: Engine; // WASM engine instance
 
-  voiceData: Float32Array = new Float32Array(MAX_VOICES * VOICE_STRIDE);
-  sampleData: Float32Array = new Float32Array(0);
   sampleAtlas = new Float32Array(0);
   sampleOffsets: number[] = [];
   sampleLengths: number[] = [];
-
-  resample: ResamplerFn = DEFAULT_RESAMPLER;
 
   constructor(init: AudioWorkerInitOptions) {
     this.rbAudio = new Float32Array(init.ringBufferAudioSAB);
@@ -56,7 +45,6 @@ export class AudioWorker {
 
     this.transport = new RenderTransport(this.sampleRate);
     this.scheduler = new Scheduler();
-    this.voiceManager = new VoiceManager(256);
 
     this.balancer = new AdaptiveLoadBalancer();
     this.balancer.init({ sampleRate: this.sampleRate });
@@ -88,20 +76,17 @@ export class AudioWorker {
         break;
 
       case 'sample': {
-        this.voiceManager.loadSample(data.sampleId, data.channels);
-        this.sampleData = data.channels[0];
-
-        const mono = data.channels[0];
+        const sampleData = data.channels[0];
         const oldAtlas = this.sampleAtlas;
 
-        const newAtlas = new Float32Array(oldAtlas.length + mono.length);
+        const newAtlas = new Float32Array(oldAtlas.length + sampleData.length);
         newAtlas.set(oldAtlas, 0);
-        newAtlas.set(mono, oldAtlas.length);
+        newAtlas.set(sampleData, oldAtlas.length);
 
         this.sampleAtlas = newAtlas;
 
         this.sampleOffsets[data.sampleId] = oldAtlas.length;
-        this.sampleLengths[data.sampleId] = mono.length;
+        this.sampleLengths[data.sampleId] = sampleData.length;
 
         const offsets = new Uint32Array(this.sampleOffsets);
         const lengths = new Uint32Array(this.sampleLengths);
@@ -119,7 +104,6 @@ export class AudioWorker {
   }
 
   resetRender() {
-    this.voiceManager.resetVoices();
     resetRingBuffer(this.rbState);
   }
 
@@ -143,7 +127,6 @@ export class AudioWorker {
       if ('tempo' in e) {
         //this.transport.currentTempo = e.tempo;
       } else {
-        this.voiceManager.spawn(e);
         this.engine.spawn(e.sampleId, e.gain, e.pan, e.pitch);
       }
     }
@@ -163,62 +146,43 @@ export class AudioWorker {
     this.transport.advance(BLOCK_SIZE);
     this.renderFrame += 1;
 
+    const metrics = this.engine.get_metrics();
+
     return {
       outL: this.outL,
       outR: this.outR,
-      voiceCount: this.voiceManager.activeCount,
+      voiceCount: metrics.active_voices,
     };
   }
 
-  // TODO: this could be the responsibility of a Mixer class, or VoiceManager
-  private mixVoices(outL: Float32Array, outR: Float32Array) {
-    for (let v = this.voiceManager.voices.length - 1; v >= 0; v--) {
-      const voice = this.voiceManager.voices[v];
-      const sample = this.voiceManager.samples[voice.id];
-      if (!sample) continue;
-
-      const s = sample[0];
-
-      let advanced = 0;
-
-      for (let i = 0; i < BLOCK_SIZE; i++) {
-        const pos = voice.pos + i * voice.pitch;
-        if (pos >= s.length) {
-          this.voiceManager.voices.splice(v, 1);
-          break;
-        }
-
-        // TODO: take both channels into account if the sample is stereo
-        const resampled = this.resample(s, pos);
-
-        outL[i] += resampled * voice.gain * (1 - Math.max(0, voice.pan));
-        outR[i] += resampled * voice.gain * (1 + Math.min(0, voice.pan));
-
-        advanced = (i + 1) * voice.pitch;
-      }
-
-      voice.pos += advanced;
-    }
-  }
-
   private applyBalancerDecision() {
+    const metrics = this.engine.get_metrics();
+
     const decision = this.balancer.endProcess({
       frame: this.renderFrame,
       blockSize: BLOCK_SIZE,
-      activeVoices: this.voiceManager.activeCount,
-      maxVoices: this.voiceManager.maxVoiceCount,
+      activeVoices: metrics.active_voices,
+      maxVoices: metrics.max_voices,
       bufferFill: this.getBufferFill(),
     });
-    if (decision) {
-      console.log('Balancer decision:', decision);
-      if (decision.resampler) {
-        this.resample = decision.resampler;
-      }
-      if (decision.maxVoices !== undefined) {
-        this.voiceManager.trimVoices(decision.maxVoices);
-      }
-      if (decision.killVoicesRatio) {
-        this.voiceManager.killRatio(decision.killVoicesRatio);
+
+    if (!decision) return;
+
+    if (decision.maxVoices !== undefined) {
+      this.engine.set_max_voices(decision.maxVoices);
+    }
+
+    if (decision.killVoicesRatio !== undefined) {
+      this.engine.kill_ratio(decision.killVoicesRatio);
+    }
+
+    if (decision.resampler !== undefined) {
+      // map function to numeric mode
+      if (decision.resampler === cubicResample) {
+        this.engine.set_resampler(2);
+      } else {
+        // add mapping for others if needed
+        this.engine.set_resampler(1);
       }
     }
   }
