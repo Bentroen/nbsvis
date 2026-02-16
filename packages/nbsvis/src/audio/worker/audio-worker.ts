@@ -103,6 +103,11 @@ export class AudioWorker {
         this.sampleOffsets[data.sampleId] = oldAtlas.length;
         this.sampleLengths[data.sampleId] = mono.length;
 
+        const offsets = new Uint32Array(this.sampleOffsets);
+        const lengths = new Uint32Array(this.sampleLengths);
+
+        this.engine.set_sample_atlas(this.sampleAtlas, offsets, lengths);
+
         break;
       }
 
@@ -148,11 +153,7 @@ export class AudioWorker {
 
     // Mix all active voices
     if (this.wasmReady) {
-      const sampleLength = this.sampleData.length;
-      console.log('render', this.sampleData.length);
-      if (sampleLength > 0) {
-        this.engine.render(this.outL, this.outR, this.sampleData, sampleLength);
-      }
+      this.engine.render(this.outL, this.outR);
     } else {
       console.log('mixing with JS');
       //this.mixVoices(this.outL, this.outR); // fallback JS
