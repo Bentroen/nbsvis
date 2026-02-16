@@ -6,12 +6,16 @@ import { TempoMapView } from '../tempo';
 import { AdaptiveLoadBalancer } from './adaptive-balancer';
 import { cubicResample, ResamplerFn } from './resampler';
 import Scheduler from './scheduler';
+import initWasm, { mix_voices } from '../../../wasm/pkg/audio_wasm.js';
 import { BaseTransport as RenderTransport } from '../transport';
 import VoiceManager from './voice-manager';
 
 const BLOCK_SIZE = 128;
 
 const DEFAULT_RESAMPLER = cubicResample;
+
+const MAX_VOICES = 2048;
+const VOICE_STRIDE = 5;
 
 export type AudioWorkerInitOptions = {
   ringBufferAudioSAB: SharedArrayBuffer;
@@ -33,6 +37,11 @@ export class AudioWorker {
   outL = new Float32Array(BLOCK_SIZE);
   outR = new Float32Array(BLOCK_SIZE);
 
+  wasmReady = false;
+
+  voiceData: Float32Array = new Float32Array(MAX_VOICES * VOICE_STRIDE);
+  sampleData: Float32Array = new Float32Array(0);
+
   resample: ResamplerFn = DEFAULT_RESAMPLER;
 
   constructor(init: AudioWorkerInitOptions) {
@@ -47,6 +56,14 @@ export class AudioWorker {
     this.balancer = new AdaptiveLoadBalancer();
     this.balancer.init({ sampleRate: this.sampleRate });
     this.balancer.setActive(true);
+
+    this.initWasm();
+  }
+
+  async initWasm() {
+    await initWasm();
+    this.wasmReady = true;
+    console.log('WASM mixer ready');
   }
 
   onmessage(event: MessageEvent<EngineToWorkerMessage>) {
@@ -66,6 +83,7 @@ export class AudioWorker {
 
       case 'sample':
         this.voiceManager.loadSample(data.sampleId, data.channels);
+        this.sampleData = data.channels[0];
         break;
 
       case 'seek':
@@ -92,6 +110,24 @@ export class AudioWorker {
     setTimeout(() => this.renderLoop(), 0);
   }
 
+  private packVoices() {
+    const voices = this.voiceManager.voices;
+    const count = Math.min(voices.length, MAX_VOICES);
+
+    for (let i = 0; i < count; i++) {
+      const v = voices[i];
+      const base = i * VOICE_STRIDE;
+
+      this.voiceData[base + 0] = v.pos;
+      this.voiceData[base + 1] = v.pitch;
+      this.voiceData[base + 2] = v.gain;
+      this.voiceData[base + 3] = v.pan;
+      this.voiceData[base + 4] = 0; // sample offset (simple case)
+    }
+
+    return count;
+  }
+
   renderBlock() {
     this.balancer.beginProcess();
 
@@ -108,7 +144,18 @@ export class AudioWorker {
     this.outR.fill(0);
 
     // Mix all active voices
-    this.mixVoices(this.outL, this.outR);
+    if (this.wasmReady) {
+      const voiceCount = this.packVoices();
+
+      mix_voices(this.voiceData, this.sampleData, this.outL, this.outR, voiceCount, BLOCK_SIZE);
+
+      for (let i = 0; i < voiceCount; i++) {
+        const base = i * VOICE_STRIDE;
+        this.voiceManager.voices[i].pos = this.voiceData[base + 0];
+      }
+    } else {
+      this.mixVoices(this.outL, this.outR); // fallback JS
+    }
     this.applyBalancerDecision();
 
     this.transport.advance(BLOCK_SIZE);
