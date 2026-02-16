@@ -6,7 +6,7 @@ import { TempoMapView } from '../tempo';
 import { AdaptiveLoadBalancer } from './adaptive-balancer';
 import { cubicResample, ResamplerFn } from './resampler';
 import Scheduler from './scheduler';
-import initWasm, { mix_voices } from '../../../wasm/pkg/audio_wasm.js';
+import init, { Engine } from '../../../wasm/pkg/audio_wasm.js';
 import { BaseTransport as RenderTransport } from '../transport';
 import VoiceManager from './voice-manager';
 
@@ -39,6 +39,8 @@ export class AudioWorker {
 
   wasmReady = false;
 
+  engine!: Engine; // WASM engine instance
+
   voiceData: Float32Array = new Float32Array(MAX_VOICES * VOICE_STRIDE);
   sampleData: Float32Array = new Float32Array(0);
   sampleAtlas = new Float32Array(0);
@@ -64,7 +66,8 @@ export class AudioWorker {
   }
 
   async initWasm() {
-    await initWasm();
+    await init(); // loads and initializes the wasm
+    this.engine = new Engine(1024); // max voices
     this.wasmReady = true;
     console.log('WASM mixer ready');
   }
@@ -127,28 +130,6 @@ export class AudioWorker {
     setTimeout(() => this.renderLoop(), 0);
   }
 
-  private packVoices() {
-    const voices = this.voiceManager.voices;
-    const count = Math.min(voices.length, MAX_VOICES);
-
-    for (let i = 0; i < count; i++) {
-      const v = voices[i];
-      const base = i * VOICE_STRIDE;
-
-      const offset = this.sampleOffsets[v.id] ?? 0;
-      const length = this.sampleLengths[v.id] ?? 0;
-
-      this.voiceData[base + 0] = v.pos;
-      this.voiceData[base + 1] = v.pitch;
-      this.voiceData[base + 2] = v.gain;
-      this.voiceData[base + 3] = v.pan;
-      this.voiceData[base + 4] = offset;
-      this.voiceData[base + 5] = length;
-    }
-
-    return count;
-  }
-
   renderBlock() {
     this.balancer.beginProcess();
 
@@ -158,6 +139,7 @@ export class AudioWorker {
         //this.transport.currentTempo = e.tempo;
       } else {
         this.voiceManager.spawn(e);
+        this.engine.spawn(e.sampleId, e.gain, e.pan, e.pitch);
       }
     }
 
@@ -166,19 +148,10 @@ export class AudioWorker {
 
     // Mix all active voices
     if (this.wasmReady) {
-      console.log('mixing with WASM');
-      const voiceCount = this.packVoices();
-
-      mix_voices(this.voiceData, this.sampleAtlas, this.outL, this.outR, voiceCount, BLOCK_SIZE);
-
-      for (let i = 0; i < voiceCount; i++) {
-        const base = i * VOICE_STRIDE;
-        const pos = this.voiceData[base + 0];
-        const len = this.voiceData[base + 5];
-
-        if (pos >= len) {
-          this.voiceManager.voices.splice(i, 1);
-        }
+      const sampleLength = this.sampleData.length;
+      console.log('render', this.sampleData.length);
+      if (sampleLength > 0) {
+        this.engine.render(this.outL, this.outR, this.sampleData, sampleLength);
       }
     } else {
       console.log('mixing with JS');

@@ -1,50 +1,105 @@
 use wasm_bindgen::prelude::*;
 
+#[derive(Clone)]
+struct Voice {
+    sample_id: usize,
+    position: f32,
+    gain_l: f32,
+    gain_r: f32,
+    step: f32,
+}
+
+#[wasm_bindgen(start)]
+pub fn init() {
+    console_error_panic_hook::set_once();
+}
+
 #[wasm_bindgen]
-pub fn mix_voices(
-    voices: &mut [f32],
-    samples: &[f32],
-    out_l: &mut [f32],
-    out_r: &mut [f32],
-    voice_count: usize,
-    block_size: usize,
-) {
-    let stride = 6;
+pub struct Engine {
+    voices: Vec<Voice>,
+    max_voices: usize,
+}
 
-    for v in 0..voice_count {
-        let base = v * stride;
+#[wasm_bindgen]
+impl Engine {
+    #[wasm_bindgen(constructor)]
+    pub fn new(max_voices: usize) -> Engine {
+        Engine {
+            voices: Vec::with_capacity(max_voices),
+            max_voices,
+        }
+    }
 
-        let mut pos = voices[base];
-        let pitch = voices[base + 1];
-        let gain = voices[base + 2];
-        let pan = voices[base + 3];
-        let sample_offset = voices[base + 4] as usize;
-        let sample_length = voices[base + 5] as usize;
-
-        for i in 0..block_size {
-            let p = pos as usize;
-
-            if p >= sample_length {
-                break;
-            }
-
-            let frac = pos - p as f32;
-
-            let s0 = samples[sample_offset + p];
-            let s1 = if p + 1 < sample_length {
-                samples[sample_offset + p + 1]
-            } else {
-                0.0
-            };
-
-            let sample = s0 + (s1 - s0) * frac;
-
-            out_l[i] += sample * gain * (1.0 - pan.max(0.0));
-            out_r[i] += sample * gain * (1.0 + pan.min(0.0));
-
-            pos += pitch;
+    pub fn spawn(
+        &mut self,
+        sample_id: usize,
+        gain: f32,
+        pan: f32,
+        pitch: f32,
+    ) {
+        if self.voices.len() >= self.max_voices {
+            self.voices.remove(0); // basic voice stealing
         }
 
-        voices[base] = pos;
+        let gain_l = gain * (1.0 - pan);
+        let gain_r = gain * pan;
+
+        self.voices.push(Voice {
+            sample_id,
+            position: 0.0,
+            gain_l,
+            gain_r,
+            step: pitch,
+        });
+    }
+
+    pub fn reset(&mut self) {
+        self.voices.clear();
+    }
+
+    pub fn trim(&mut self, max: usize) {
+        self.max_voices = max;
+        if self.voices.len() > max {
+            self.voices.drain(0..(self.voices.len() - max));
+        }
+    }
+
+    pub fn active_count(&self) -> usize {
+        self.voices.len()
+    }
+
+    pub fn render(
+        &mut self,
+        output_l: &mut [f32],
+        output_r: &mut [f32],
+        sample_data: &[f32],
+        sample_length: usize,
+    ) {
+        let frames = output_l.len();
+
+        for voice in &mut self.voices {
+            let mut pos = voice.position;
+
+            for i in 0..frames {
+                let idx = pos as usize;
+
+                if sample_length == 0 || idx >= sample_length {
+                    break;
+                }
+
+                let s = sample_data[idx];
+
+                output_l[i] += s * voice.gain_l;
+                output_r[i] += s * voice.gain_r;
+
+                pos += voice.step;
+            }
+
+            voice.position = pos;
+        }
+
+        // Remove finished voices
+        self.voices
+            .retain(|v| (v.position as usize) < sample_length);
     }
 }
