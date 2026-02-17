@@ -1,4 +1,4 @@
-use crate::resampler::{sample, ResamplerMode};
+use crate::resampler::{resample, ResamplerMode};
 use crate::voice::Voice;
 use wasm_bindgen::prelude::*;
 
@@ -133,13 +133,11 @@ impl Engine {
             let mut pos = voice.position;
 
             for i in 0..frames {
-                let idx = pos as usize;
-
-                if idx >= length {
+                if pos as usize >= length {
                     break;
                 }
 
-                let s = self.sample_atlas[offset + idx];
+                let s = resample(self.resampler, sample, pos);
 
                 output_l[i] += s * voice.gain_l;
                 output_r[i] += s * voice.gain_r;
