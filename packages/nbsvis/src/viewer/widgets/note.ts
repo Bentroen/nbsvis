@@ -1,9 +1,10 @@
 import { Note, Song } from '@encode42/nbs.js';
-import { Assets, Particle, ParticleContainer, Texture } from 'pixi.js';
+import { Assets, Particle, ParticleContainer, Renderer, Texture } from 'pixi.js';
 
 import { WHITE_KEY_COUNT } from './piano';
 import assetPaths from '../../assets';
 import { NoteData, NoteRenderer, RenderContext } from '../util/note';
+import { NoteTextureAtlas } from '../util/note-texture';
 import SpritePool from '../util/sprite';
 
 // TODO: how to refactor this to abstract away the complexity?
@@ -124,13 +125,18 @@ export function getKeyLabel(note: NoteData): string {
 }
 
 export class DefaultNoteRenderer implements NoteRenderer {
+  constructor(private textureAtlas: NoteTextureAtlas) {}
+
   apply(sprite: Particle, note: NoteData, ctx: RenderContext): void {
+    sprite.texture = this.textureAtlas.getTexture(note.instrument);
+
     sprite.x = calculateNoteX(note, ctx.keyPositions, ctx.blockSize);
     sprite.y = -note.tick * ctx.blockSize * ctx.distanceScale;
+
     sprite.scaleX = ctx.blockSize / 16;
     sprite.scaleY = ctx.blockSize / 16;
+
     sprite.alpha = 0.5 + note.velocity * 0.5;
-    sprite.tint = instrumentColors[note.instrument % 16];
   }
 }
 
@@ -151,17 +157,23 @@ export class NoteManager {
   distanceScale = 0.5;
 
   private renderer: NoteRenderer;
+  private textureAtlas: NoteTextureAtlas;
 
-  constructor(
-    container: ParticleContainer,
-    keyPositions: Array<number>,
-    renderer: NoteRenderer = new DefaultNoteRenderer(),
-  ) {
+  constructor(renderer: Renderer, container: ParticleContainer, keyPositions: Array<number>) {
     this.container = container;
     this.keyPositions = keyPositions;
-    this.renderer = renderer;
 
-    this.spritePool = new SpritePool(0, noteBlockTexture, this.container);
+    // TODO: move this to dependency injection
+    this.textureAtlas = new NoteTextureAtlas(
+      renderer,
+      BLOCK_SIZE / 2,
+      noteBlockTexture,
+      instrumentColors,
+    );
+
+    this.renderer = new DefaultNoteRenderer(this.textureAtlas);
+
+    this.spritePool = new SpritePool(0, this.textureAtlas.getTexture(0), this.container);
   }
 
   public setSong(song: Song) {
@@ -179,7 +191,7 @@ export class NoteManager {
 
     console.log('Sprite pool size:', poolSize);
 
-    this.spritePool = new SpritePool(poolSize, noteBlockTexture, this.container);
+    this.spritePool = new SpritePool(poolSize, this.textureAtlas.getTexture(0), this.container);
   }
 
   public setKeyPositions(keyPositions: Array<number>) {
