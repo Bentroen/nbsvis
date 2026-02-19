@@ -133,8 +133,8 @@ export class DefaultNoteRenderer implements NoteRenderer {
     sprite.x = calculateNoteX(note, ctx.keyPositions, ctx.blockSize);
     sprite.y = -note.tick * ctx.blockSize * ctx.distanceScale;
 
-    sprite.scaleX = ctx.blockSize / 16;
-    sprite.scaleY = ctx.blockSize / 16;
+    sprite.scaleX = ctx.blockSize / this.textureAtlas.textureSize;
+    sprite.scaleY = ctx.blockSize / this.textureAtlas.textureSize;
 
     sprite.alpha = 0.5 + note.velocity * 0.5;
   }
@@ -164,12 +164,7 @@ export class NoteManager {
     this.keyPositions = keyPositions;
 
     // TODO: move this to dependency injection
-    this.textureAtlas = new NoteTextureAtlas(
-      renderer,
-      BLOCK_SIZE / 2,
-      noteBlockTexture,
-      instrumentColors,
-    );
+    this.textureAtlas = new NoteTextureAtlas(renderer, noteBlockTexture, instrumentColors);
 
     this.renderer = new DefaultNoteRenderer(this.textureAtlas);
 
