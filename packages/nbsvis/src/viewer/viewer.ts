@@ -1,5 +1,5 @@
 import { Song } from '@encode42/nbs.js';
-import { Application, BitmapText, Container, TextureStyle, Ticker } from 'pixi.js';
+import { Application, BitmapText, Container, Renderer, TextureStyle, Ticker } from 'pixi.js';
 
 import { MAX_AUDIO_SOURCES } from '../audio';
 
@@ -127,12 +127,18 @@ export abstract class BaseView {
 
   public ticker: Ticker;
 
+  protected context: { renderer: Renderer };
+
   // TODO: make this part of a Context object
   public currentTick: number = 0;
 
   public soundCount: number = 0;
 
-  constructor() {
+  public maxSoundCount: number = 0;
+
+  constructor(context: { renderer: Renderer }) {
+    this.context = context;
+
     this.stage = new Container();
     this.ticker = new Ticker();
     this.ticker.autoStart = true;
