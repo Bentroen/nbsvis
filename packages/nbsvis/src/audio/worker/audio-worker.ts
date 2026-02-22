@@ -140,7 +140,7 @@ export class AudioWorker {
 // Web Worker entry point
 let worker: AudioWorker | null = null;
 
-self.onmessage = (e: MessageEvent) => {
+self.onmessage = (e: MessageEvent<EngineToWorkerMessage>) => {
   const msg = e.data;
 
   if (msg.type === 'init') {
