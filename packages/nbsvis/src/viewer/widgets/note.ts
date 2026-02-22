@@ -1,8 +1,11 @@
 import { Note, Song } from '@encode42/nbs.js';
-import { Assets, Container, Graphics, Sprite, Texture } from 'pixi.js';
+import { Assets, Particle, ParticleContainer, Renderer, Texture } from 'pixi.js';
 
 import { WHITE_KEY_COUNT } from './piano';
 import assetPaths from '../../assets';
+import { NoteData, NoteRenderer, RenderContext } from '../util/note';
+import { NoteTextureAtlas } from '../util/note-texture';
+import SpritePool from '../util/sprite';
 
 // TODO: how to refactor this to abstract away the complexity?
 // The goal: push as many 'as generic as possible' utils out of this and
@@ -55,17 +58,27 @@ function normalizeKeyAndPitch(note: Note): { key: number; pitch: number } {
 }
 
 export function loadNotes(song: Song) {
-  const notesPerTick: Record<number, Array<NoteItem>> = {};
+  const notesPerTick: Record<number, Array<NoteData>> = {};
 
   for (const layer of song.layers) {
     for (const tickStr in layer.notes) {
       const note = layer.notes[tickStr];
       const tick = parseInt(tickStr);
-      const noteItem = new NoteItem(note, tick);
+
+      const { key, pitch } = normalizeKeyAndPitch(note);
+
+      const noteData: NoteData = {
+        tick,
+        instrument: note.instrument,
+        key,
+        pitch,
+        velocity: note.velocity / 100,
+      };
+
       if (!(tick in notesPerTick)) {
         notesPerTick[tick] = [];
       }
-      notesPerTick[tick].push(noteItem);
+      notesPerTick[tick].push(noteData);
     }
   }
 
@@ -76,103 +89,104 @@ export function loadNotes(song: Song) {
   return notesPerTick;
 }
 
-class NoteItem {
-  tick: number;
-  instrument: number;
-  key: number;
-  pitch: number;
-  velocity: number;
+export function estimateMaxVisibleNotes(
+  notesPerTick: Record<number, NoteData[]>,
+  visibleTickCount: number,
+): number {
+  const totalNotes = Object.values(notesPerTick).reduce((sum, notes) => sum + notes.length, 0);
+  const totalTicks = Object.keys(notesPerTick).length;
 
-  constructor(note: Note, tick: number) {
-    this.tick = tick;
-    const { key, pitch } = normalizeKeyAndPitch(note);
-    this.instrument = note.instrument;
-    this.key = key;
-    this.pitch = pitch;
-    this.velocity = note.velocity / 100;
+  const avgNotesPerTick = totalNotes / totalTicks;
+  const estimatedVisibleNotes = avgNotesPerTick * visibleTickCount;
+
+  // Add 50% safety margin
+  const initialPoolSize = Math.ceil(estimatedVisibleNotes * 1.5);
+
+  return initialPoolSize;
+}
+
+export function calculateNoteX(note: NoteData, keyPositions: number[], blockSize: number): number {
+  let x = keyPositions[note.key];
+
+  if (note.pitch !== 0) {
+    const dir = note.pitch > 0 ? 1 : -1;
+    const target = keyPositions[note.key + dir];
+    const distance = x - target;
+    x -= Math.abs(note.pitch) * distance;
   }
 
-  private getXPos(keyPositions: Array<number>): number {
-    let x = keyPositions[this.key];
-    if (this.pitch !== 0) {
-      // Halfway between its actual key and the key it's gliding to
-      const pitchingDirection = this.pitch > 0 ? 1 : -1;
-      const pitchingToNote = this.key + pitchingDirection;
-      const pitchingToX = keyPositions[pitchingToNote];
-      const pitchingDistance = x - pitchingToX;
-      const pitchingAmount = Math.abs(this.pitch) * pitchingDistance;
-      const pitchingX = x - pitchingAmount;
-      x = pitchingX;
-    }
-    x -= BLOCK_SIZE / 2;
-    return x;
-  }
+  return x - blockSize / 2;
+}
 
-  private getKeyLabel(): string {
-    const key = (this.key + 9) % 12;
-    const octave = Math.floor((this.key + 9) / 12);
-    return `${keyLabels[key]}${octave}`;
-  }
+export function getKeyLabel(note: NoteData): string {
+  const key = (note.key + 9) % 12;
+  const octave = Math.floor((note.key + 9) / 12);
+  return `${keyLabels[key]}${octave}`;
+}
 
-  getSprite(keyPositions: Array<number>): Container {
-    // Container for everything
-    const x = this.getXPos(keyPositions);
-    const y = 0;
-    const container = new Container();
-    container.position.set(x, y);
-    container.alpha = 0.5 + this.velocity * 0.5;
+export class DefaultNoteRenderer implements NoteRenderer {
+  constructor(private textureAtlas: NoteTextureAtlas) {}
 
-    // Background rectangle
-    const rect = new Graphics().rect(0, 0, BLOCK_SIZE, BLOCK_SIZE);
-    rect.fill(instrumentColors[this.instrument % 16]);
-    container.addChild(rect);
+  apply(sprite: Particle, note: NoteData, ctx: RenderContext): void {
+    sprite.texture = this.textureAtlas.getTexture(note.instrument);
 
-    // Note block texture
-    const sprite = new Sprite(noteBlockTexture);
-    sprite.width = BLOCK_SIZE;
-    sprite.height = BLOCK_SIZE;
-    sprite.blendMode = 'hard-light';
-    sprite.alpha = 0.67; // Global alpha
-    container.addChild(sprite);
+    sprite.x = calculateNoteX(note, ctx.keyPositions, ctx.blockSize);
+    sprite.y = -note.tick * ctx.blockSize * ctx.distanceScale;
 
-    // Text style
-    //const textStyle = new TextStyle({
-    //  fontSize: 12 * (BLOCK_SIZE / 32),
-    //  //fill: 'white',
-    //  align: 'center',
-    //});
+    sprite.scaleX = ctx.blockSize / this.textureAtlas.textureSize;
+    sprite.scaleY = ctx.blockSize / this.textureAtlas.textureSize;
 
-    this.getKeyLabel();
-
-    // Text
-    //const label = new Text({ text: this.getKeyLabel() }); //style: textStyle });
-    //label.anchor.set(0.5, 0.5);
-    //label.position.set(BLOCK_SIZE / 2, BLOCK_SIZE / 2);
-    //label.alpha = 1;
-    //container.addChild(label);
-
-    return container;
+    sprite.alpha = 0.5 + note.velocity * 0.5;
   }
 }
 
 export class NoteManager {
-  private notes: Record<number, Array<NoteItem>> = {};
+  private notes: Record<number, Array<NoteData>> = {};
   private currentTick = 0;
-  private container: Container;
+  private container: ParticleContainer;
   private keyPositions: Array<number>;
   private pianoHeight = 200;
   private screenHeight = 600;
-  private visibleRows: Record<number, Container> = {};
+
+  private activeNotes: Map<NoteData, Particle> = new Map();
+
+  private oldStartTick = 0;
+  private oldEndTick = 0;
+  private spritePool: SpritePool;
 
   distanceScale = 0.5;
 
-  constructor(container: Container, keyPositions: Array<number>) {
+  private renderer: NoteRenderer;
+  private textureAtlas: NoteTextureAtlas;
+
+  constructor(renderer: Renderer, container: ParticleContainer, keyPositions: Array<number>) {
     this.container = container;
     this.keyPositions = keyPositions;
+
+    // TODO: move this to dependency injection
+    this.textureAtlas = new NoteTextureAtlas(renderer, noteBlockTexture, instrumentColors);
+
+    this.renderer = new DefaultNoteRenderer(this.textureAtlas);
+
+    this.spritePool = new SpritePool(0, this.textureAtlas.getTexture(0), this.container);
   }
 
   public setSong(song: Song) {
     this.notes = loadNotes(song);
+
+    // TODO: duplicated code with update()
+    const visibleHeight = this.screenHeight - this.pianoHeight;
+    const visibleRowCount = Math.floor(visibleHeight / BLOCK_SIZE) * (1 / this.distanceScale);
+
+    const visibleTickCount = Math.ceil(visibleRowCount);
+
+    this.spritePool.destroy();
+
+    const poolSize = estimateMaxVisibleNotes(this.notes, visibleTickCount);
+
+    console.log('Sprite pool size:', poolSize);
+
+    this.spritePool = new SpritePool(poolSize, this.textureAtlas.getTexture(0), this.container);
   }
 
   public setKeyPositions(keyPositions: Array<number>) {
@@ -191,25 +205,28 @@ export class NoteManager {
     return this.notes[tick] || [];
   }
 
-  private addNoteSprite(note: NoteItem, container: Container) {
-    const sprite = note.getSprite(this.keyPositions);
-    container.addChildAt(sprite, 0);
-  }
-
-  private addTick(tick: number) {
-    const rowContainer = new Container();
-    rowContainer.y = -tick * BLOCK_SIZE * this.distanceScale;
-    this.container.addChildAt(rowContainer, 0);
-    this.visibleRows[tick] = rowContainer;
+  private activateTick(tick: number) {
     for (const note of this.getNotesAtTick(tick)) {
-      this.addNoteSprite(note, rowContainer);
+      const sprite = this.spritePool.acquire();
+
+      this.renderer.apply(sprite, note, {
+        keyPositions: this.keyPositions,
+        blockSize: BLOCK_SIZE,
+        distanceScale: this.distanceScale,
+      });
+
+      this.activeNotes.set(note, sprite);
     }
   }
 
-  private removeTick(tick: number) {
-    const rowContainer = this.visibleRows[tick];
-    this.container.removeChild(rowContainer);
-    delete this.visibleRows[tick];
+  private deactivateTick(tick: number) {
+    for (const note of this.getNotesAtTick(tick)) {
+      const sprite = this.activeNotes.get(note);
+      if (!sprite) continue;
+
+      this.spritePool.release(sprite);
+      this.activeNotes.delete(note);
+    }
   }
 
   public updateNoteSize(totalWidth: number) {
@@ -222,8 +239,15 @@ export class NoteManager {
   }
 
   public redraw(totalWidth: number) {
-    this.container.removeChildren();
-    this.visibleRows = {};
+    // Return all active sprites to the pool
+    for (const sprite of this.activeNotes.values()) {
+      this.spritePool.release(sprite);
+    }
+    this.activeNotes.clear();
+
+    this.oldStartTick = 0;
+    this.oldEndTick = 0;
+
     this.updateNoteSize(totalWidth);
     this.update(-1);
   }
@@ -241,25 +265,38 @@ export class NoteManager {
       return [];
     }
 
-    // Calculate ticks that are currently visible
-    const visibleTicks = new Set<number>(Object.keys(this.visibleRows).map(Number));
-
-    // Calculate ticks that should be seen after the update
+    // Calculate ticks that should be visible
     const visibleHeight = screenHeight - pianoHeight;
     const visibleRowCount = Math.floor(visibleHeight / BLOCK_SIZE) * (1 / this.distanceScale);
-    const newTicks = new Set<number>();
-    for (let i = 0; i < visibleRowCount; i++) {
-      newTicks.add(Math.floor(tick) + i);
+
+    const oldStart = this.oldStartTick;
+    const oldEnd = this.oldEndTick;
+
+    const newStart = floorTick;
+    const newEnd = floorTick + visibleRowCount;
+
+    // Remove anything no longer visible
+    for (let t = oldStart; t < oldEnd; t++) {
+      if (t < newStart || t >= newEnd) {
+        this.deactivateTick(t);
+      }
     }
 
-    // Diff to find what needs to be updated
-    const ticksToAdd = newTicks.difference(visibleTicks);
-    const ticksToRemove = visibleTicks.difference(newTicks);
+    // Add anything newly visible
+    for (let t = newStart; t < newEnd; t++) {
+      if (t < oldStart || t >= oldEnd) {
+        this.activateTick(t);
+      }
+    }
 
-    ticksToAdd.forEach((tick) => this.addTick(tick));
-    ticksToRemove.forEach((tick) => this.removeTick(tick));
+    // Store new state
+    this.oldStartTick = newStart;
+    this.oldEndTick = newEnd;
 
     this.currentTick = tick;
+
+    // Re-upload particle properties to GPU
+    this.container.update();
 
     // Return which keys should be played at this tick
     const keysToPlay = this.getNotesAtTick(floorTick).map((note) => note.key);
