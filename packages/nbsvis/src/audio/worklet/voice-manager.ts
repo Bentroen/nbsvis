@@ -1,6 +1,6 @@
 import { NoteEvent } from './scheduler';
 
-export const MAX_VOICE_COUNT = 1024;
+export const MAX_VOICE_COUNT = 4096;
 
 type Voice = {
   id: number;
