@@ -36,9 +36,16 @@ type StartEvent = {
   type: 'start';
 };
 
+type InitEvent = {
+  type: 'init';
+  ringBufferAudioSAB: SharedArrayBuffer;
+  ringBufferStateSAB: SharedArrayBuffer;
+  sampleRate: number;
+};
+
 type EngineToWorkletMessage = SongEvent | PlayEvent | PauseEvent | StopEvent | SeekEvent;
 
-type EngineToWorkerMessage = SongEvent | SampleEvent | SeekEvent | StartEvent;
+type EngineToWorkerMessage = SongEvent | SampleEvent | SeekEvent | StartEvent | InitEvent;
 
 type EngineMessage = EngineToWorkletMessage | EngineToWorkerMessage;
 
