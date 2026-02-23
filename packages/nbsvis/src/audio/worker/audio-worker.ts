@@ -9,18 +9,21 @@ import { cubicResample, ResamplerFn } from './resampler';
 import Scheduler from './scheduler';
 import { BaseTransport as RenderTransport } from '../transport';
 import VoiceManager from './voice-manager';
+import { PlaybackState } from '../worklet/state';
 
 const BLOCK_SIZE = 128;
 
 const DEFAULT_RESAMPLER = cubicResample;
 
 export type AudioWorkerInitOptions = {
+  playbackStateSAB: SharedArrayBuffer;
   ringBufferAudioSAB: SharedArrayBuffer;
   ringBufferStateSAB: SharedArrayBuffer;
   sampleRate: number;
 };
 
 export class AudioWorker {
+  playbackStateSAB: Int32Array;
   rbAudio: Float32Array;
   rbState: Int32Array;
   sampleRate: number;
@@ -39,6 +42,7 @@ export class AudioWorker {
   resample: ResamplerFn = DEFAULT_RESAMPLER;
 
   constructor(init: AudioWorkerInitOptions) {
+    this.playbackStateSAB = new Int32Array(init.playbackStateSAB);
     this.rbAudio = new Float32Array(init.ringBufferAudioSAB);
     this.rbState = new Int32Array(init.ringBufferStateSAB);
     this.sampleRate = init.sampleRate;
@@ -92,7 +96,7 @@ export class AudioWorker {
       writeToRingBuffer(this.rbAudio, this.rbState, block.outL, block.outR);
 
       // metadata (optional buffer)
-      //writeVoiceCount(block.voiceCount);
+      this.writeStats();
     }
 
     setTimeout(() => this.renderLoop(), 0);
@@ -207,6 +211,11 @@ export class AudioWorker {
     const filled = write - read;
     return Math.max(0, Math.min(1, filled / capacity));
   }
+
+  private writeStats() {
+    Atomics.store(this.playbackStateSAB, PlaybackState.VOICES, this.voiceManager.activeCount);
+    Atomics.store(this.playbackStateSAB, PlaybackState.MAX_VOICES, this.voiceManager.maxVoiceCount);
+  }
 }
 
 // Web Worker entry point
@@ -218,6 +227,7 @@ self.onmessage = (e: MessageEvent<EngineToWorkerMessage>) => {
   if (msg.type === 'init') {
     // Initialize the worker with SharedArrayBuffers and start immediately
     worker = new AudioWorker({
+      playbackStateSAB: msg.playbackStateSAB,
       ringBufferAudioSAB: msg.ringBufferAudioSAB,
       ringBufferStateSAB: msg.ringBufferStateSAB,
       sampleRate: msg.sampleRate,

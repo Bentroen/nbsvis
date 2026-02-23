@@ -146,6 +146,7 @@ export class AudioEngine {
     console.log('Initializing audio worker...');
     this.worker.postMessage({
       type: 'init',
+      playbackStateSAB: this.sharedTickBuffer,
       ringBufferAudioSAB: ringBufferData,
       ringBufferStateSAB: ringBufferState,
       sampleRate: this.nativeCtx.sampleRate,

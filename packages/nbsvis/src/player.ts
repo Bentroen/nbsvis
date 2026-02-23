@@ -29,6 +29,7 @@ export class Player {
         const currentTick = this.audioEngine.currentTick;
         this.viewer.currentTick = currentTick;
         this.viewer.soundCount = this.audioEngine.soundCount;
+        this.viewer.maxSoundCount = this.audioEngine.maxSoundCount;
         this.emitter.emit('seek', { tick: currentTick, totalLength: this.song?.length ?? 0 }); // TODO: This is a bit hacky; should be part of audio handler
       });
     } else {

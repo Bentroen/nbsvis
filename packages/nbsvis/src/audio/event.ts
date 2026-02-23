@@ -38,6 +38,7 @@ type StartEvent = {
 
 type InitEvent = {
   type: 'init';
+  playbackStateSAB: SharedArrayBuffer;
   ringBufferAudioSAB: SharedArrayBuffer;
   ringBufferStateSAB: SharedArrayBuffer;
   sampleRate: number;
