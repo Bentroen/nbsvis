@@ -6,6 +6,7 @@ type Voice = {
   gain: number;
   pan: number;
   pitch: number;
+  sliceIndex: number;
 };
 
 class VoiceManager {
@@ -35,6 +36,7 @@ class VoiceManager {
       gain: note.gain,
       pan: note.pan,
       pitch: note.pitch,
+      sliceIndex: 0,
     });
   }
 

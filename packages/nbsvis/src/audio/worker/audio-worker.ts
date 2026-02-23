@@ -4,6 +4,7 @@ import { RingBufferState, resetRingBuffer, ringBufferHasSpace, writeToRingBuffer
 import { EngineToWorkerMessage } from '../event';
 import { TempoMapView } from '../tempo';
 import { AdaptiveLoadBalancer } from './adaptive-balancer';
+import { CachedResampler } from './cached-resampler';
 import { cubicResample, ResamplerFn } from './resampler';
 import Scheduler from './scheduler';
 import { BaseTransport as RenderTransport } from '../transport';
@@ -24,6 +25,8 @@ export class AudioWorker {
   rbState: Int32Array;
   sampleRate: number;
 
+  cachedResampler: CachedResampler;
+
   transport: RenderTransport;
   scheduler: Scheduler;
   voiceManager: VoiceManager;
@@ -43,6 +46,8 @@ export class AudioWorker {
     this.transport = new RenderTransport(this.sampleRate);
     this.scheduler = new Scheduler();
     this.voiceManager = new VoiceManager(256);
+
+    this.cachedResampler = new CachedResampler();
 
     this.balancer = new AdaptiveLoadBalancer();
     this.balancer.init({ sampleRate: this.sampleRate });
@@ -66,6 +71,7 @@ export class AudioWorker {
 
       case 'sample':
         this.voiceManager.loadSample(data.sampleId, data.channels);
+        this.cachedResampler.loadSample(data.sampleId, data.channels);
         break;
 
       case 'seek':
@@ -125,30 +131,49 @@ export class AudioWorker {
   private mixVoices(outL: Float32Array, outR: Float32Array) {
     for (let v = this.voiceManager.voices.length - 1; v >= 0; v--) {
       const voice = this.voiceManager.voices[v];
-      const sample = this.voiceManager.samples[voice.id];
-      if (!sample) continue;
+      const sampleChannels = this.voiceManager.samples[voice.id];
+      if (!sampleChannels) continue;
 
-      const s = sample[0];
+      const sample = sampleChannels[0];
 
-      let advanced = 0;
-
-      for (let i = 0; i < BLOCK_SIZE; i++) {
-        const pos = voice.pos + i * voice.pitch;
-        if (pos >= s.length) {
-          this.voiceManager.voices.splice(v, 1);
-          break;
-        }
-
-        // TODO: take both channels into account if the sample is stereo
-        const resampled = this.resample(s, pos);
-
-        outL[i] += resampled * voice.gain * (1 - Math.max(0, voice.pan));
-        outR[i] += resampled * voice.gain * (1 + Math.min(0, voice.pan));
-
-        advanced = (i + 1) * voice.pitch;
+      if (voice.pos >= sample.length) {
+        this.voiceManager.voices.splice(v, 1);
+        continue;
       }
 
-      voice.pos += advanced;
+      // Get cached (or build) slice ONCE
+      const block = this.cachedResampler.getBlock(voice.id, voice.pitch, voice.sliceIndex);
+
+      if (!block) continue;
+
+      const gainL = voice.gain * (1 - Math.max(0, voice.pan));
+      const gainR = voice.gain * (1 + Math.min(0, voice.pan));
+
+      // How many samples remain in the source?
+      const maxSamplesLeft = Math.floor((sample.length - voice.pos) / voice.pitch);
+
+      if (maxSamplesLeft <= 0) {
+        this.voiceManager.voices.splice(v, 1);
+        continue;
+      }
+
+      const samplesToCopy = maxSamplesLeft < BLOCK_SIZE ? maxSamplesLeft : BLOCK_SIZE;
+
+      // Tight copy loop
+      for (let i = 0; i < samplesToCopy; i++) {
+        const s = block[i];
+        outL[i] += s * gainL;
+        outR[i] += s * gainR;
+      }
+
+      // Advance position
+      voice.sliceIndex += 1;
+      voice.pos += samplesToCopy * voice.pitch;
+
+      // Remove voice if finished
+      if (samplesToCopy < BLOCK_SIZE) {
+        this.voiceManager.voices.splice(v, 1);
+      }
     }
   }
 
