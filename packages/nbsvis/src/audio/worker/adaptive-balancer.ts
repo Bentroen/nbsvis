@@ -89,18 +89,18 @@ export class AdaptiveLoadBalancer implements IBalancer {
     if (bufferFill < this.CRITICAL_FILL || isCollapsing || isExtremeLoad) {
       this.criticalFrames++;
 
-      console.log(
-        '🔴 Critical buffer fill:',
-        bufferFill.toFixed(2),
-        'Δ:',
-        this.bufferDeltaEMA.toFixed(3),
-        'Load EMA:',
-        this.loadEMA.toFixed(2),
-        'Max voices:',
-        metrics.maxVoices,
-        'Resampler:',
-        this.resamplerLevel,
-      );
+      //console.log(
+      //  '🔴 Critical buffer fill:',
+      //  bufferFill.toFixed(2),
+      //  'Δ:',
+      //  this.bufferDeltaEMA.toFixed(3),
+      //  'Load EMA:',
+      //  this.loadEMA.toFixed(2),
+      //  'Max voices:',
+      //  metrics.maxVoices,
+      //  'Resampler:',
+      //  this.resamplerLevel,
+      //);
 
       if (this.criticalFrames >= this.CRITICAL_FRAMES) {
         if (this.framesSinceChange >= this.CRITICAL_COOLDOWN_FRAMES) {
@@ -117,18 +117,18 @@ export class AdaptiveLoadBalancer implements IBalancer {
     if (bufferFill < this.WARNING_FILL || isDraining || isHighLoad) {
       this.warningFrames++;
 
-      console.log(
-        '🟡 Warning buffer fill:',
-        bufferFill.toFixed(2),
-        'Δ:',
-        this.bufferDeltaEMA.toFixed(3),
-        'Load EMA:',
-        this.loadEMA.toFixed(2),
-        'Max voices:',
-        metrics.maxVoices,
-        'Resampler:',
-        this.resamplerLevel,
-      );
+      //console.log(
+      //  '🟡 Warning buffer fill:',
+      //  bufferFill.toFixed(2),
+      //  'Δ:',
+      //  this.bufferDeltaEMA.toFixed(3),
+      //  'Load EMA:',
+      //  this.loadEMA.toFixed(2),
+      //  'Max voices:',
+      //  metrics.maxVoices,
+      //  'Resampler:',
+      //  this.resamplerLevel,
+      //);
 
       if (this.warningFrames >= this.WARNING_FRAMES) {
         if (this.framesSinceChange >= this.WARNING_COOLDOWN_FRAMES) {
@@ -143,36 +143,36 @@ export class AdaptiveLoadBalancer implements IBalancer {
 
     // ---- 3. Overfill zone (slow recovery) ----
     if (bufferFill > this.OVERFILL && this.loadEMA < 0.9) {
-      console.log(
-        '🟢 Overfill buffer fill:',
-        bufferFill.toFixed(2),
-        'Δ:',
-        this.bufferDeltaEMA.toFixed(3),
-        'Load EMA:',
-        this.loadEMA.toFixed(2),
-        'Max voices:',
-        metrics.maxVoices,
-        'Resampler:',
-        this.resamplerLevel,
-      );
+      //console.log(
+      //  '🟢 Overfill buffer fill:',
+      //  bufferFill.toFixed(2),
+      //  'Δ:',
+      //  this.bufferDeltaEMA.toFixed(3),
+      //  'Load EMA:',
+      //  this.loadEMA.toFixed(2),
+      //  'Max voices:',
+      //  metrics.maxVoices,
+      //  'Resampler:',
+      //  this.resamplerLevel,
+      //);
       if (this.framesSinceChange >= this.COOLDOWN_FRAMES) {
         return this.upgrade(metrics);
       }
       return null;
     }
 
-    console.log(
-      '⚪ Regular buffer fill:',
-      bufferFill.toFixed(2),
-      'Δ:',
-      this.bufferDeltaEMA.toFixed(3),
-      'Load EMA:',
-      this.loadEMA.toFixed(2),
-      'Max voices:',
-      metrics.maxVoices,
-      'Resampler:',
-      this.resamplerLevel,
-    );
+    //console.log(
+    //  '⚪ Regular buffer fill:',
+    //  bufferFill.toFixed(2),
+    //  'Δ:',
+    //  this.bufferDeltaEMA.toFixed(3),
+    //  'Load EMA:',
+    //  this.loadEMA.toFixed(2),
+    //  'Max voices:',
+    //  metrics.maxVoices,
+    //  'Resampler:',
+    //  this.resamplerLevel,
+    //);
     return null;
   }
 

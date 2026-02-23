@@ -203,7 +203,7 @@ export class AudioWorker {
       bufferFill: this.getBufferFill(),
     });
     if (decision) {
-      console.log('Balancer decision:', decision);
+      //console.log('Balancer decision:', decision);
       if (decision.resampler) {
         this.resample = decision.resampler;
       }
