@@ -235,7 +235,14 @@ export class AdaptiveLoadBalancer implements IBalancer {
 
     // Only increase voices if we're actually using them
     if (utilization > 0.85) {
-      const newMaxVoices = Math.min(this.hardMaxVoices, Math.floor(metrics.maxVoices + 1));
+      if (this.maxVoices >= this.hardMaxVoices) return null;
+
+      let newMaxVoices;
+      if (this.loadEMA < 0.6) {
+        newMaxVoices = Math.min(this.hardMaxVoices, Math.floor(this.maxVoices * 1.2));
+      } else {
+        newMaxVoices = Math.min(this.hardMaxVoices, Math.floor(metrics.maxVoices + 1));
+      }
 
       if (newMaxVoices !== metrics.maxVoices) {
         this.maxVoices = newMaxVoices;
