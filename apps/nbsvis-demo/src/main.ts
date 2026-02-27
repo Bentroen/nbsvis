@@ -59,7 +59,7 @@ async function loadSong() {
       process.env.NODE_ENV === 'development'
         ? 'http://localhost:4000'
         : 'https://api.noteblock.world';
-    const songDownloadUrl = `${serverUrl}/api/v1/song/${songId}/open`;
+    const songDownloadUrl = `${serverUrl}/v1/song/${songId}/open`;
     console.log('Downloading song from Note Block World:', songDownloadUrl);
     const response = await fetch(songDownloadUrl, {
       headers: { src: 'downloadButton' },
