@@ -27,6 +27,8 @@ class VoiceManager {
   }
 
   spawn(note: NoteEvent) {
+    // TODO: we can remove this check by filtering out notes with missing samples beforehand (e.g. in Scheduler)
+    if (!this.samples[note.sampleId]) return;
     if (this.voices.length >= this.maxVoiceCount) {
       this.voices.shift(); // basic stealing
     }
