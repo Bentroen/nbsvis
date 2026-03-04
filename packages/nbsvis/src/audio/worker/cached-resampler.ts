@@ -53,6 +53,18 @@ class BlockCache {
       block: this.buffer.subarray(start, start + this.blockSize),
     };
   }
+
+  reset() {
+    this.keyToBlock.clear();
+
+    // Clear reverse lookup
+    for (let i = 0; i < this.blockToKey.length; i++) {
+      this.blockToKey[i] = null;
+    }
+    //this.blockToKey = new Array(this.totalBlocks).fill(null);
+
+    this.writePointer = 0;
+  }
 }
 
 export class CachedResampler {
@@ -74,16 +86,9 @@ export class CachedResampler {
     this.samples.set(sampleId, channels[0]);
   }
 
-  clearSample(sampleId: number) {
-    this.samples.delete(sampleId);
-
-    // Remove cache entries for this sample
-    const prefix = `${sampleId}|`;
-    for (const key of this.cache.keys()) {
-      if (key.startsWith(prefix)) {
-        this.cache.delete(key);
-      }
-    }
+  clearAll() {
+    this.samples.clear();
+    this.cache.reset();
   }
 
   getBlock(sampleId: number, pitch: number, sliceIndex: number): Float32Array | null {
