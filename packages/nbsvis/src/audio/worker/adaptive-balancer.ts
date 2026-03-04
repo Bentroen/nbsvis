@@ -21,7 +21,7 @@ export class AdaptiveLoadBalancer implements IBalancer {
   private minVoices = 256;
   private defaultVoices = 256;
   private maxVoices = this.defaultVoices;
-  private hardMaxVoices = 4096;
+  private hardMaxVoices = 8192;
 
   // ---- Tunable constants ----
   private readonly CRITICAL_FILL = 0.2;
