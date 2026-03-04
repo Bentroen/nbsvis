@@ -3,13 +3,15 @@ import { cubicResample, ResamplerFn } from './resampler';
 const BLOCK_SIZE = 512;
 const PITCH_SCALE = 65536;
 
+type CacheKey = `${number}|${number}|${number}`; // sampleId|pitchQuant|sliceIndex
+
 class BlockCache {
   private readonly blockSize: number;
   private readonly totalBlocks: number;
 
   private readonly buffer: Float32Array;
-  private readonly keyToBlock = new Map<string, number>();
-  private readonly blockToKey: (string | null)[];
+  private readonly keyToBlock = new Map<CacheKey, number>();
+  private readonly blockToKey: (CacheKey | null)[];
 
   private writePointer = 0;
 
@@ -22,7 +24,7 @@ class BlockCache {
     this.blockToKey = new Array(this.totalBlocks).fill(null);
   }
 
-  getBlock(key: string): Float32Array | null {
+  getBlock(key: CacheKey): Float32Array | null {
     const blockIndex = this.keyToBlock.get(key);
     if (blockIndex === undefined) return null;
 
@@ -30,7 +32,7 @@ class BlockCache {
     return this.buffer.subarray(start, start + this.blockSize);
   }
 
-  allocateBlock(key: string): { blockIndex: number; block: Float32Array } {
+  allocateBlock(key: CacheKey): { blockIndex: number; block: Float32Array } {
     const blockIndex = this.writePointer;
 
     // Evict old key if needed
@@ -123,7 +125,7 @@ export class CachedResampler {
     }
   }
 
-  private makeKey(sampleId: number, pitch: number, sliceIndex: number): string {
+  private makeKey(sampleId: number, pitch: number, sliceIndex: number): CacheKey {
     const pitchQuant = Math.round(pitch * PITCH_SCALE);
     return `${sampleId}|${pitchQuant}|${sliceIndex}`;
   }
