@@ -52,11 +52,15 @@ export class AudioWorker {
 
     this.transport = new RenderTransport(this.sampleRate);
     this.scheduler = new Scheduler();
-    this.voiceManager = new VoiceManager(256);
+    this.voiceManager = new VoiceManager({ maxVoiceCount: 256 });
 
-    this.cachedResampler = new CachedResampler(DEFAULT_RESAMPLER, 16 * 1024 * 1024, BLOCK_SIZE);
+    this.cachedResampler = new CachedResampler({
+      resampler: DEFAULT_RESAMPLER,
+      cacheSizeBytes: 16 * 1024 * 1024,
+      blockSize: BLOCK_SIZE,
+    });
 
-    this.balancer = new AdaptiveLoadBalancer(BLOCK_SIZE);
+    this.balancer = new AdaptiveLoadBalancer({ blockSize: BLOCK_SIZE });
     this.balancer.init({ sampleRate: this.sampleRate });
     this.balancer.setActive(true);
 

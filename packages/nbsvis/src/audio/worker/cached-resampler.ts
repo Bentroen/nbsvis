@@ -68,21 +68,25 @@ class BlockCache {
   }
 }
 
+export type CachedResamplerOptions = {
+  resampler?: ResamplerFn;
+  cacheSizeBytes: number;
+  blockSize: number;
+};
+
 export class CachedResampler {
   private samples = new Map<number, Float32Array>();
   private cache: BlockCache;
   private readonly buildResampler: ResamplerFn;
   private readonly blockSize: number;
 
-  constructor(
-    buildResampler: ResamplerFn = cubicResample,
-    cacheSizeBytes: number,
-    blockSize: number,
-  ) {
-    this.buildResampler = buildResampler;
-    this.blockSize = blockSize;
+  constructor(options: CachedResamplerOptions) {
+    this.buildResampler = options.resampler ?? cubicResample;
 
-    this.cache = new BlockCache(cacheSizeBytes, blockSize);
+    this.blockSize = options.blockSize;
+
+    const cacheSizeBytes = options.cacheSizeBytes;
+    this.cache = new BlockCache(cacheSizeBytes, options.blockSize);
   }
 
   loadSample(sampleId: number, channels: Float32Array[]) {

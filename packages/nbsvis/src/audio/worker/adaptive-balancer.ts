@@ -4,6 +4,10 @@ import { cubicResample, linearResample, nearestNeighborResample, ResamplerFn } f
 type ResamplerLevel = 0 | 1 | 2;
 // 0 = nearest, 1 = linear, 2 = cubic
 
+export type AdaptiveLoadBalancerOptions = {
+  blockSize: number;
+};
+
 export class AdaptiveLoadBalancer implements IBalancer {
   private active = false;
 
@@ -40,8 +44,8 @@ export class AdaptiveLoadBalancer implements IBalancer {
   private warningFrames = 0;
   private readonly BUFFER_EMA_ALPHA = 0.4;
 
-  constructor(blockSize: number) {
-    this.blockSize = blockSize;
+  constructor(options: AdaptiveLoadBalancerOptions) {
+    this.blockSize = options.blockSize;
   }
 
   init(ctx: BalancerContext): void {

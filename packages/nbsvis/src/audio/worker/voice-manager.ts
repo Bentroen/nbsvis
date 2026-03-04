@@ -9,13 +9,17 @@ type Voice = {
   sliceIndex: number;
 };
 
+export type VoiceManagerOptions = {
+  maxVoiceCount: number;
+};
+
 class VoiceManager {
   samples: Record<number, Float32Array[]> = {};
   voices: Voice[] = [];
   maxVoiceCount: number;
 
-  constructor(maxVoiceCount: number) {
-    this.maxVoiceCount = maxVoiceCount;
+  constructor(options: VoiceManagerOptions) {
+    this.maxVoiceCount = options.maxVoiceCount;
   }
 
   get activeCount() {
