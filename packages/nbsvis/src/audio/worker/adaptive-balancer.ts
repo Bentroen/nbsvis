@@ -8,6 +8,7 @@ export class AdaptiveLoadBalancer implements IBalancer {
   private active = false;
 
   private sampleRate = 48000;
+  private blockSize: number;
   private blockDuration = 0;
 
   private processStart = 0;
@@ -39,9 +40,13 @@ export class AdaptiveLoadBalancer implements IBalancer {
   private warningFrames = 0;
   private readonly BUFFER_EMA_ALPHA = 0.4;
 
+  constructor(blockSize: number) {
+    this.blockSize = blockSize;
+  }
+
   init(ctx: BalancerContext): void {
     this.sampleRate = ctx.sampleRate;
-    this.blockDuration = 512 / this.sampleRate;
+    this.blockDuration = this.blockSize / this.sampleRate;
   }
 
   setActive(active: boolean): void {

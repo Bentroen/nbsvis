@@ -1,6 +1,5 @@
 import { cubicResample, ResamplerFn } from './resampler';
 
-const BLOCK_SIZE = 512;
 const CENTS_PER_OCTAVE = 1200;
 
 type CacheKey = `${number}|${number}|${number}`; // sampleId|centOffset|sliceIndex
@@ -73,14 +72,17 @@ export class CachedResampler {
   private samples = new Map<number, Float32Array>();
   private cache: BlockCache;
   private readonly buildResampler: ResamplerFn;
+  private readonly blockSize: number;
 
   constructor(
     buildResampler: ResamplerFn = cubicResample,
-    cacheSizeBytes: number = 16 * 1024 * 1024,
+    cacheSizeBytes: number,
+    blockSize: number,
   ) {
     this.buildResampler = buildResampler;
+    this.blockSize = blockSize;
 
-    this.cache = new BlockCache(cacheSizeBytes, BLOCK_SIZE);
+    this.cache = new BlockCache(cacheSizeBytes, blockSize);
   }
 
   loadSample(sampleId: number, channels: Float32Array[]) {
@@ -112,9 +114,9 @@ export class CachedResampler {
   }
 
   private buildSlice(sample: Float32Array, pitch: number, sliceIndex: number, block: Float32Array) {
-    const sliceStartPos = sliceIndex * pitch * BLOCK_SIZE;
+    const sliceStartPos = sliceIndex * pitch * this.blockSize;
 
-    for (let i = 0; i < BLOCK_SIZE; i++) {
+    for (let i = 0; i < this.blockSize; i++) {
       const sourcePos = sliceStartPos + i * pitch;
 
       if (sourcePos >= sample.length) {

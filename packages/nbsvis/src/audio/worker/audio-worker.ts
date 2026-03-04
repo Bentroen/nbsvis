@@ -54,9 +54,9 @@ export class AudioWorker {
     this.scheduler = new Scheduler();
     this.voiceManager = new VoiceManager(256);
 
-    this.cachedResampler = new CachedResampler();
+    this.cachedResampler = new CachedResampler(DEFAULT_RESAMPLER, 16 * 1024 * 1024, BLOCK_SIZE);
 
-    this.balancer = new AdaptiveLoadBalancer();
+    this.balancer = new AdaptiveLoadBalancer(BLOCK_SIZE);
     this.balancer.init({ sampleRate: this.sampleRate });
     this.balancer.setActive(true);
 
