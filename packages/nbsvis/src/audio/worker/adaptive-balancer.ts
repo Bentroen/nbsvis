@@ -41,7 +41,7 @@ export class AdaptiveLoadBalancer implements IBalancer {
 
   init(ctx: BalancerContext): void {
     this.sampleRate = ctx.sampleRate;
-    this.blockDuration = 128 / this.sampleRate;
+    this.blockDuration = 512 / this.sampleRate;
   }
 
   setActive(active: boolean): void {

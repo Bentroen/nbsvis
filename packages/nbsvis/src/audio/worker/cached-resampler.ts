@@ -1,6 +1,6 @@
 import { cubicResample, ResamplerFn } from './resampler';
 
-const BLOCK_SIZE = 128;
+const BLOCK_SIZE = 512;
 const PITCH_SCALE = 65536;
 
 class BlockCache {

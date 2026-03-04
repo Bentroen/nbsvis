@@ -11,7 +11,7 @@ import { BaseTransport as RenderTransport } from '../transport';
 import VoiceManager from './voice-manager';
 import { PlaybackState } from '../worklet/state';
 
-const BLOCK_SIZE = 128;
+const BLOCK_SIZE = 512;
 
 const DEFAULT_RESAMPLER = cubicResample;
 
