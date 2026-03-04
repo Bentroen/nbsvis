@@ -1,9 +1,9 @@
 import { cubicResample, ResamplerFn } from './resampler';
 
 const BLOCK_SIZE = 512;
-const PITCH_SCALE = 65536;
+const CENTS_PER_OCTAVE = 1200;
 
-type CacheKey = `${number}|${number}|${number}`; // sampleId|pitchQuant|sliceIndex
+type CacheKey = `${number}|${number}|${number}`; // sampleId|centOffset|sliceIndex
 
 class BlockCache {
   private readonly blockSize: number;
@@ -126,7 +126,7 @@ export class CachedResampler {
   }
 
   private makeKey(sampleId: number, pitch: number, sliceIndex: number): CacheKey {
-    const pitchQuant = Math.round(pitch * PITCH_SCALE);
-    return `${sampleId}|${pitchQuant}|${sliceIndex}`;
+    const centOffset = Math.round(CENTS_PER_OCTAVE * Math.log2(pitch));
+    return `${sampleId}|${centOffset}|${sliceIndex}`;
   }
 }
