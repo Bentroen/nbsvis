@@ -1,8 +1,101 @@
 import { cubicResample, ResamplerFn } from './resampler';
 
-const CENTS_PER_OCTAVE = 1200;
+/**
+ * CacheKey
+ *
+ * Packed 53-bit integer used as the key for the resampling cache.
+ *
+ * JavaScript numbers preserve integer precision up to 2^53-1,
+ * allowing us to safely pack multiple fields into one integer.
+ *
+ * Layout (MSB → LSB)
+ *
+ * [ sampleId | centOffset | sliceIndex ]
+ *
+ * Bit allocation:
+ *
+ *   sampleId   : 16 bits  (0–65,535)
+ *   centOffset : 16 bits  (-32,768 → +32,767) stored as unsigned via bias
+ *   sliceIndex : 20 bits  (0–1,048,576)
+ *
+ * Total: 52 bits
+ *
+ * ----------------------------------------------------------------
+ * Sample ID
+ * ----------------------------------------------------------------
+ *
+ * As of Note Block Studio 3.11 / NBS format version 6, instrument
+ * indices are represented by a byte (0-255). This means it can
+ * be represented with 8 bits.
+ *
+ * Our 16-bit sampleId range (0-65,535) is effectively the square
+ * of our original domain (256^2), so it's comfortably future-proof.
+ *
+ * ----------------------------------------------------------------
+ * Pitch representation
+ * ----------------------------------------------------------------
+ *
+ * Note Block Studio pitch works as:
+ *
+ *   key range : 0–87
+ *   resolution: 0.01 semitone (1 cent)
+ *
+ * That means:
+ *
+ *   87 semitones × 100 cents = 8700 cents
+ *
+ * In the engine, we don't store semitone + detune separately.
+ * Instead, we operate directly on a playback ratio:
+ *
+ *   pitch = 2^(semitones / 12)
+ *
+ * To obtain a stable cache key we convert the ratio back into cents:
+ *
+ *   centOffset = round(1200 * log2(pitch))
+ *
+ * The 16-bit signed range easily covers any realistic pitch deviation.
+ *
+ * ----------------------------------------------------------------
+ * Slice indexing
+ * ----------------------------------------------------------------
+ *
+ * Each cache entry stores one resampled block of BLOCK_SIZE samples.
+ *
+ * With 20 bits we can index:
+ *
+ *   1,048,576 slices
+ *
+ * Playback duration coverage:
+ *
+ *   BLOCK_SIZE = 512 @ 48 kHz
+ *   → ~3.1 hours of audio
+ *
+ * Even with smaller blocks (128 samples):
+ *
+ *   → ~46.6 minutes
+ *
+ * Which is far beyond the length of any realistic NBS sample.
+ *
+ * ----------------------------------------------------------------
+ * Why we use numeric keys
+ * ----------------------------------------------------------------
+ *
+ * Using a packed numeric key avoids:
+ *
+ *   • millions of temporary string allocations
+ *   • GC pressure
+ *   • slower string hashing in Map lookups
+ *
+ * This significantly improves performance for large songs
+ * containing millions of notes.
+ */
+type CacheKey = number;
 
-type CacheKey = `${number}|${number}|${number}`; // sampleId|centOffset|sliceIndex
+const CENTS_PER_OCTAVE = 1200;
+const CENT_OFFSET_BIAS = 65536;
+
+const SAMPLE_SHIFT = 2 ** 36; // 16 + 20
+const CENT_SHIFT = 2 ** 20;
 
 class BlockCache {
   private readonly blockSize: number;
@@ -131,8 +224,13 @@ export class CachedResampler {
     }
   }
 
+  /**
+   * Packs sampleId, pitch and sliceIndex into a 52-bit integer cache key.
+   */
   private makeKey(sampleId: number, pitch: number, sliceIndex: number): CacheKey {
     const centOffset = Math.round(CENTS_PER_OCTAVE * Math.log2(pitch));
-    return `${sampleId}|${centOffset}|${sliceIndex}`;
+    const centEncoded = centOffset + CENT_OFFSET_BIAS;
+
+    return sampleId * SAMPLE_SHIFT + centEncoded * CENT_SHIFT + sliceIndex;
   }
 }
