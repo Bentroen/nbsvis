@@ -87,7 +87,6 @@ export class AdaptiveLoadBalancer implements IBalancer {
     this.bufferDeltaEMA =
       this.bufferDeltaEMA * (1 - this.BUFFER_EMA_ALPHA) + bufferDelta * this.BUFFER_EMA_ALPHA;
 
-    const isRefilling = this.bufferDeltaEMA > 0.005;
     const isDraining = this.bufferDeltaEMA < -0.005;
     const isCollapsing = this.bufferDeltaEMA < -0.02;
 
