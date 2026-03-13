@@ -7,7 +7,8 @@ import audioWorkerUrl from './audio/worker/audio-worker?worker&url';
 import workletUrl from './audio/worklet/audio-sink-processor?worker&url';
 import { PlaybackState } from './audio/worklet/state';
 import PlayerInstrument, { defaultInstruments } from './instrument';
-import { getNoteEvents, getTempoChangeEvents, getTempoSegments } from './song';
+import { NoteBuffer } from './note';
+import { getTempoChangeEvents, getTempoSegments } from './song';
 
 function resolveWorkletUrl() {
   const base = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
@@ -227,7 +228,7 @@ export class AudioEngine {
     this.instruments = [...defaultInstruments];
   }
 
-  public async loadSong(song: Song, instruments: Array<PlayerInstrument>) {
+  public async loadSong(song: Song, noteData: NoteBuffer, instruments: Array<PlayerInstrument>) {
     await this.init();
 
     await this.resetSounds();
@@ -235,7 +236,7 @@ export class AudioEngine {
     await this.loadSounds();
 
     this.tempoSegments = getTempoSegments(song);
-    const noteEvents = getNoteEvents(song);
+    const noteEvents = noteData.getBuffer();
     const tempoChangeEvents = getTempoChangeEvents(song);
     this.scheduleSong(noteEvents, tempoChangeEvents, song.tempo * 15);
 

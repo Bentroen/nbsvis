@@ -1,6 +1,8 @@
 import { Song } from '@encode42/nbs.js';
 import { Application, BitmapText, Container, Renderer, TextureStyle, Ticker } from 'pixi.js';
 
+import { NoteBuffer } from '../note';
+
 // TODO: is this needed?
 TextureStyle.defaultOptions.scaleMode = 'nearest';
 
@@ -83,8 +85,8 @@ export class Viewer {
     });
   }
 
-  public loadSong(song: Song) {
-    this.view?.loadSong(song);
+  public loadSong(song: Song, noteData: NoteBuffer) {
+    this.view?.loadSong(song, noteData);
   }
 
   resize(width?: number, height?: number) {
@@ -146,7 +148,7 @@ export abstract class BaseView {
 
   public abstract draw(): void;
 
-  public abstract loadSong(song: Song): void;
+  public abstract loadSong(song: Song, noteData: NoteBuffer): void;
 
   public abstract redraw(width: number, height: number): void;
 

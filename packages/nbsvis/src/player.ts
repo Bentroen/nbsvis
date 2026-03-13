@@ -2,7 +2,7 @@ import mitt, { Emitter } from 'mitt';
 
 import { AudioEngine } from './audio';
 import { loadCustomInstruments } from './instrument';
-import { loadSongFromUrl } from './song';
+import { getNoteEvents, loadSongFromUrl } from './song';
 import { Viewer } from './viewer';
 
 type PlayerEvents = {
@@ -41,9 +41,10 @@ export class Player {
 
   public async loadSong(url: string) {
     const { song, extraSounds } = await loadSongFromUrl(url);
+    const noteData = getNoteEvents(song);
     const instruments = loadCustomInstruments(song, extraSounds);
-    await this.audioEngine.loadSong(song, instruments);
-    this.viewer?.loadSong(song);
+    await this.audioEngine.loadSong(song, noteData, instruments);
+    this.viewer?.loadSong(song, noteData);
     this.lengthTicks = song.length;
     this.songLoaded = true;
   }

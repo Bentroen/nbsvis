@@ -37,7 +37,7 @@ export class NoteBuffer {
   readonly noteCount: number;
   readonly tickCount: number;
 
-  readonly sab: SharedArrayBuffer;
+  private readonly sab: SharedArrayBuffer;
 
   readonly instrumentIds: InstanceType<typeof NoteBuffer.INSTRUMENT_TYPE>;
   readonly pitch: InstanceType<typeof NoteBuffer.PITCH_TYPE>;
@@ -191,5 +191,9 @@ export class NoteBuffer {
         this.panning[i] / 127,
       );
     }
+  }
+
+  getBuffer() {
+    return this.sab;
   }
 }

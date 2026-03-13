@@ -1,6 +1,7 @@
 import { Song } from '@encode42/nbs.js';
 import { Container, ParticleContainer } from 'pixi.js';
 
+import { NoteBuffer } from '../../note';
 import { BaseView } from '../viewer';
 import { NoteManager } from '../widgets/note';
 import { PianoManager } from '../widgets/piano';
@@ -37,8 +38,8 @@ export class PianoRollView extends BaseView {
     this.noteManager.redraw(width);
   }
 
-  loadSong(song: Song) {
-    this.noteManager.setSong(song);
+  loadSong(_: Song, noteData: NoteBuffer) {
+    this.noteManager.setSong(noteData);
     this.noteManager.redraw(this.stage.width);
     this.pianoManager.redraw(this.stage.width);
   }

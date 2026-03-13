@@ -163,5 +163,5 @@ export function getNoteEvents(song: Song) {
     noteBuffer.writeNote(event.tick, event.sampleId, event.pitch, event.gain, event.pan);
   });
 
-  return noteBuffer.sab;
+  return noteBuffer;
 }

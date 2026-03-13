@@ -1,8 +1,9 @@
-import { Note, Song } from '@encode42/nbs.js';
+import { Note } from '@encode42/nbs.js';
 import { Assets, Particle, ParticleContainer, Renderer, Texture } from 'pixi.js';
 
 import { WHITE_KEY_COUNT } from './piano';
 import assetPaths from '../../assets';
+import { NoteBuffer } from '../../note';
 import { NoteData, NoteRenderer, RenderContext } from '../util/note';
 import { NoteTextureAtlas } from '../util/note-texture';
 import SpritePool from '../util/sprite';
@@ -57,42 +58,8 @@ function normalizeKeyAndPitch(note: Note): { key: number; pitch: number } {
   return { key, pitch };
 }
 
-export function loadNotes(song: Song) {
-  const notesPerTick: Record<number, Array<NoteData>> = {};
-
-  for (const layer of song.layers) {
-    for (const tickStr in layer.notes) {
-      const note = layer.notes[tickStr];
-      const tick = parseInt(tickStr);
-
-      const { key, pitch } = normalizeKeyAndPitch(note);
-
-      const noteData: NoteData = {
-        tick,
-        instrument: note.instrument,
-        key,
-        pitch,
-        velocity: note.velocity / 100,
-      };
-
-      if (!(tick in notesPerTick)) {
-        notesPerTick[tick] = [];
-      }
-      notesPerTick[tick].push(noteData);
-    }
-  }
-
-  for (const tick in notesPerTick) {
-    notesPerTick[tick].sort((a, b) => b.key + b.pitch / 100 - (a.key + a.pitch / 100));
-  }
-
-  return notesPerTick;
-}
-
-export function estimateMaxVisibleNotes(
-  notesPerTick: Record<number, NoteData[]>,
-  visibleTickCount: number,
-): number {
+export function estimateMaxVisibleNotes(noteData: NoteBuffer, visibleTickCount: number): number {
+  return 2000;
   const totalNotes = Object.values(notesPerTick).reduce((sum, notes) => sum + notes.length, 0);
   const totalTicks = Object.keys(notesPerTick).length;
 
@@ -124,6 +91,34 @@ export function getKeyLabel(note: NoteData): string {
   return `${keyLabels[key]}${octave}`;
 }
 
+class NotePool {
+  private pool: NoteData[] = [];
+
+  acquire(
+    tick: number,
+    instrument: number,
+    key: number,
+    pitch: number,
+    velocity: number,
+  ): NoteData {
+    let note = this.pool.pop();
+    if (note) {
+      note.tick = tick;
+      note.instrument = instrument;
+      note.key = key;
+      note.pitch = pitch;
+      note.velocity = velocity;
+    } else {
+      note = { tick, instrument, key, pitch, velocity };
+    }
+    return note;
+  }
+
+  release(note: NoteData) {
+    this.pool.push(note);
+  }
+}
+
 export class DefaultNoteRenderer implements NoteRenderer {
   constructor(private textureAtlas: NoteTextureAtlas) {}
 
@@ -141,13 +136,16 @@ export class DefaultNoteRenderer implements NoteRenderer {
 }
 
 export class NoteManager {
-  private notes: Record<number, Array<NoteData>> = {};
+  private notes?: NoteBuffer;
   private currentTick = 0;
   private container: ParticleContainer;
   private keyPositions: Array<number>;
   private pianoHeight = 200;
   private screenHeight = 600;
 
+  private notePool: NotePool = new NotePool();
+
+  private activeNotesPerTick: Map<number, NoteData[]> = new Map();
   private activeNotes: Map<NoteData, Particle> = new Map();
 
   private oldStartTick = 0;
@@ -171,8 +169,8 @@ export class NoteManager {
     this.spritePool = new SpritePool(0, this.textureAtlas.getTexture(0), this.container);
   }
 
-  public setSong(song: Song) {
-    this.notes = loadNotes(song);
+  public setSong(noteData: NoteBuffer) {
+    this.notes = noteData;
 
     // TODO: duplicated code with update()
     const visibleHeight = this.screenHeight - this.pianoHeight;
@@ -201,12 +199,13 @@ export class NoteManager {
     this.pianoHeight = pianoHeight;
   }
 
-  private getNotesAtTick(tick: number) {
-    return this.notes[tick] || [];
-  }
-
   private activateTick(tick: number) {
-    for (const note of this.getNotesAtTick(tick)) {
+    this.notes?.forEachNoteAtTick(tick, (instrument, pitch, volume) => {
+      pitch = Math.log2(pitch) * 1200;
+      const key = Math.floor(pitch / 100) + 45;
+      const detune = pitch % 100;
+
+      const note = this.notePool.acquire(tick, instrument, key, detune, volume);
       const sprite = this.spritePool.acquire();
 
       this.renderer.apply(sprite, note, {
@@ -216,17 +215,25 @@ export class NoteManager {
       });
 
       this.activeNotes.set(note, sprite);
-    }
+
+      if (!this.activeNotesPerTick.has(tick)) {
+        this.activeNotesPerTick.set(tick, []);
+      }
+      this.activeNotesPerTick.get(tick)?.push(note);
+    });
   }
 
   private deactivateTick(tick: number) {
-    for (const note of this.getNotesAtTick(tick)) {
+    const notes = this.activeNotesPerTick.get(tick);
+    if (!notes) return;
+    for (const note of notes) {
       const sprite = this.activeNotes.get(note);
       if (!sprite) continue;
 
       this.spritePool.release(sprite);
       this.activeNotes.delete(note);
     }
+    this.activeNotesPerTick.delete(tick);
   }
 
   public updateNoteSize(totalWidth: number) {
@@ -299,7 +306,14 @@ export class NoteManager {
     this.container.update();
 
     // Return which keys should be played at this tick
-    const keysToPlay = this.getNotesAtTick(floorTick).map((note) => note.key);
+    const keysToPlay: Array<number> = [];
+    this.notes?.forEachNoteAtTick(floorTick, (_instrument, pitch) => {
+      pitch = Math.log2(pitch) * 1200;
+      let key = Math.floor(pitch / 100) + 45;
+      key = Math.max(0, Math.min(87, key));
+      keysToPlay.push(key);
+    });
+
     return keysToPlay;
   }
 }
