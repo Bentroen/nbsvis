@@ -1,5 +1,3 @@
-import { NoteEvent } from './scheduler';
-
 type Voice = {
   id: number;
   pos: number;
@@ -53,20 +51,20 @@ export class VoiceManager {
     this.samples[id] = channels;
   }
 
-  spawn(note: NoteEvent) {
+  spawn(sampleId: number, pitch: number, gain: number, pan: number) {
     // TODO: we can remove this check by filtering out notes with missing samples beforehand (e.g. in Scheduler)
-    if (!this.samples[note.sampleId]) return;
+    if (!this.samples[sampleId]) return;
     if (this.voices.length >= this.maxVoiceCount) {
       const killed = this.voices.shift(); // basic stealing
       if (killed) this.voicePool.release(killed);
     }
 
     const voice = this.voicePool.acquire();
-    voice.id = note.sampleId;
+    voice.id = sampleId;
     voice.pos = 0;
-    voice.gain = note.gain;
-    voice.pan = note.pan;
-    voice.pitch = note.pitch;
+    voice.gain = gain;
+    voice.pan = pan;
+    voice.pitch = pitch;
     voice.sliceIndex = 0;
     this.voices.push(voice);
   }

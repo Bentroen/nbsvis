@@ -4,10 +4,10 @@ import { RingBufferState } from './audio/buffer';
 import { EngineMessage, EngineToWorkerMessage, EngineToWorkletMessage } from './audio/event';
 import { AudioWorkerInitOptions } from './audio/worker/audio-worker';
 import audioWorkerUrl from './audio/worker/audio-worker?worker&url';
-import { NoteEvent } from './audio/worker/scheduler';
 import workletUrl from './audio/worklet/audio-sink-processor?worker&url';
 import { PlaybackState } from './audio/worklet/state';
 import PlayerInstrument, { defaultInstruments } from './instrument';
+import { NoteBuffer } from './note';
 import { getTempoChangeEvents, getTempoSegments } from './song';
 
 function resolveWorkletUrl() {
@@ -45,44 +45,62 @@ async function loadAudio(
 }
 
 function getNoteEvents(song: Song) {
-  const noteEventsPerTick: Record<number, Array<NoteEvent>> = {};
+  const forEachEvent = (
+    callback: (event: {
+      tick: number;
+      sampleId: number;
+      pitch: number;
+      gain: number;
+      pan: number;
+    }) => void,
+  ) => {
+    for (const layer of song.layers) {
+      for (const tickStr in layer.notes) {
+        const note = layer.notes[tickStr];
 
-  for (const layer of song.layers) {
-    for (const tickStr in layer.notes) {
-      const note = layer.notes[tickStr];
+        const tick = parseInt(tickStr, 10);
+        const instrument = note.instrument;
+        const instrumentKeyOffset = song.instruments.loaded[instrument].key - 45;
+        const key = note.key + instrumentKeyOffset + note.pitch / 100;
+        const velocity = ((note.velocity / 100) * layer.volume) / 100;
+        const panning =
+          (layer.stereo === 0 ? note.panning : (note.panning + layer.stereo) / 2) / 100;
 
-      // TODO: move this logic one abstraction level higher
-      // song -> notes
-      const tick = parseInt(tickStr);
-      const instrument = note.instrument;
-      const instrumentKeyOffset = song.instruments.loaded[instrument].key - 45;
-      const key = note.key + instrumentKeyOffset + note.pitch / 100;
-      const velocity = ((note.velocity / 100) * layer.volume) / 100;
-      const panning = (layer.stereo === 0 ? note.panning : (note.panning + layer.stereo) / 2) / 100;
+        if (velocity === 0) continue;
 
-      if (velocity == 0) continue;
-
-      // notes -> events
-      const sampleId = instrument;
-      const pitch = 2 ** ((key - 45) / 12);
-      const gain = velocity;
-      const pan = panning;
-
-      const noteEvent = {
-        tick,
-        sampleId,
-        pitch,
-        gain,
-        pan,
-      };
-
-      if (!(tick in noteEventsPerTick)) {
-        noteEventsPerTick[tick] = [];
+        callback({
+          tick,
+          sampleId: instrument,
+          pitch: 2 ** ((key - 45) / 12),
+          gain: velocity,
+          pan: panning,
+        });
       }
-      noteEventsPerTick[tick].push(noteEvent);
     }
-  }
-  return noteEventsPerTick;
+  };
+
+  let noteCount = 0;
+  let maxTick = 0;
+  forEachEvent(({ tick }) => {
+    noteCount += 1;
+    if (tick > maxTick) maxTick = tick;
+  });
+
+  const tickCount = maxTick + 1;
+  const noteBuffer = NoteBuffer.allocate(noteCount, tickCount);
+
+  const noteCountsPerTick = new Uint32Array(tickCount);
+  forEachEvent((event) => {
+    noteCountsPerTick[event.tick] += 1;
+  });
+
+  noteBuffer.initializeTickOffsets(noteCountsPerTick);
+
+  forEachEvent((event) => {
+    noteBuffer.writeNote(event.tick, event.sampleId, event.pitch, event.gain, event.pan);
+  });
+
+  return noteBuffer.sab;
 }
 
 export class AudioEngine {
@@ -287,13 +305,13 @@ export class AudioEngine {
   }
 
   private scheduleSong(
-    noteEvents: Record<number, Array<NoteEvent>>,
+    noteData: SharedArrayBuffer,
     tempoChangeEvents: Record<number, number>,
     tempo: number,
   ) {
     this.dispatch({
       type: 'song',
-      notes: noteEvents,
+      noteData: noteData,
       tempoChanges: tempoChangeEvents,
       ticksPerBeat: 4,
       initialTempo: tempo,

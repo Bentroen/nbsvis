@@ -1,9 +1,8 @@
 import { Tempo, Tick } from './tempo';
-import { NoteEvent } from './worker/scheduler';
 
 type SongEvent = {
   type: 'song';
-  notes: Record<Tick, NoteEvent[]>;
+  noteData: SharedArrayBuffer;
   tempoChanges: Record<Tick, Tempo>;
   ticksPerBeat: number;
   initialTempo: Tempo;
