@@ -105,7 +105,6 @@ function getNoteEvents(song: Song) {
 
 export class AudioEngine {
   instruments: Array<PlayerInstrument>;
-  song?: Song;
   tempoSegments?: Record<number, number>;
 
   private worker?: Worker;
@@ -295,11 +294,10 @@ export class AudioEngine {
     this.instruments = defaultInstruments.concat(instruments);
     await this.loadSounds();
 
-    this.song = song;
     this.tempoSegments = getTempoSegments(song);
-    const noteEvents = getNoteEvents(this.song);
-    const tempoChangeEvents = getTempoChangeEvents(this.song);
-    this.scheduleSong(noteEvents, tempoChangeEvents, this.song.tempo * 15);
+    const noteEvents = getNoteEvents(song);
+    const tempoChangeEvents = getTempoChangeEvents(song);
+    this.scheduleSong(noteEvents, tempoChangeEvents, song.tempo * 15);
 
     this.dispatch({ type: 'start' });
   }

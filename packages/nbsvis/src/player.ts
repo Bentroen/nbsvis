@@ -1,4 +1,3 @@
-import { Song } from '@encode42/nbs.js';
 import mitt, { Emitter } from 'mitt';
 
 import { AudioEngine } from './audio';
@@ -16,7 +15,10 @@ type PlayerEvents = {
 export class Player {
   viewer: Viewer;
   audioEngine: AudioEngine;
-  song?: Song;
+  songLoaded: boolean = false;
+
+  // TODO: replace with SongData object
+  lengthTicks: number = 0;
   private emitter: Emitter<PlayerEvents>;
 
   constructor(viewer: Viewer) {
@@ -30,7 +32,7 @@ export class Player {
         this.viewer.currentTick = currentTick;
         this.viewer.soundCount = this.audioEngine.soundCount;
         this.viewer.maxSoundCount = this.audioEngine.maxSoundCount;
-        this.emitter.emit('seek', { tick: currentTick, totalLength: this.song?.length ?? 0 }); // TODO: This is a bit hacky; should be part of audio handler
+        this.emitter.emit('seek', { tick: currentTick, totalLength: this.lengthTicks }); // TODO: This is a bit hacky; should be part of audio handler
       });
     } else {
       console.debug('Viewer not initialized, skipping ticker update');
@@ -40,9 +42,10 @@ export class Player {
   public async loadSong(url: string) {
     const { song, extraSounds } = await loadSongFromUrl(url);
     const instruments = loadCustomInstruments(song, extraSounds);
-    this.song = song;
     await this.audioEngine.loadSong(song, instruments);
     this.viewer?.loadSong(song);
+    this.lengthTicks = song.length;
+    this.songLoaded = true;
   }
 
   public togglePlayback(): boolean {
@@ -55,7 +58,7 @@ export class Player {
   }
 
   public play() {
-    if (!this.song) return;
+    if (!this.songLoaded) return;
     this.audioEngine.play();
     this.emitter.emit('play');
   }
@@ -76,7 +79,7 @@ export class Player {
 
   seek(tick: number) {
     this.audioEngine.currentTick = tick;
-    this.emitter.emit('seek', { tick, totalLength: this.song?.length ?? 0 });
+    this.emitter.emit('seek', { tick, totalLength: this.lengthTicks });
   }
 
   on<K extends keyof PlayerEvents>(type: K, handler: (event: PlayerEvents[K]) => void) {
