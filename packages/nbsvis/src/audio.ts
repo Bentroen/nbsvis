@@ -7,8 +7,7 @@ import audioWorkerUrl from './audio/worker/audio-worker?worker&url';
 import workletUrl from './audio/worklet/audio-sink-processor?worker&url';
 import { PlaybackState } from './audio/worklet/state';
 import PlayerInstrument, { defaultInstruments } from './instrument';
-import { NoteBuffer } from './note';
-import { getTempoChangeEvents, getTempoSegments } from './song';
+import { getNoteEvents, getTempoChangeEvents, getTempoSegments } from './song';
 
 function resolveWorkletUrl() {
   const base = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
@@ -42,65 +41,6 @@ async function loadAudio(
   }
 
   return decodeAudioData(ctx, arrayBuffer);
-}
-
-function getNoteEvents(song: Song) {
-  const forEachEvent = (
-    callback: (event: {
-      tick: number;
-      sampleId: number;
-      pitch: number;
-      gain: number;
-      pan: number;
-    }) => void,
-  ) => {
-    for (const layer of song.layers) {
-      for (const tickStr in layer.notes) {
-        const note = layer.notes[tickStr];
-
-        const tick = parseInt(tickStr, 10);
-        const instrument = note.instrument;
-        const instrumentKeyOffset = song.instruments.loaded[instrument].key - 45;
-        const key = note.key + instrumentKeyOffset + note.pitch / 100;
-        const velocity = ((note.velocity / 100) * layer.volume) / 100;
-        const panning =
-          (layer.stereo === 0 ? note.panning : (note.panning + layer.stereo) / 2) / 100;
-
-        if (velocity === 0) continue;
-
-        callback({
-          tick,
-          sampleId: instrument,
-          pitch: 2 ** ((key - 45) / 12),
-          gain: velocity,
-          pan: panning,
-        });
-      }
-    }
-  };
-
-  let noteCount = 0;
-  let maxTick = 0;
-  forEachEvent(({ tick }) => {
-    noteCount += 1;
-    if (tick > maxTick) maxTick = tick;
-  });
-
-  const tickCount = maxTick + 1;
-  const noteBuffer = NoteBuffer.allocate(noteCount, tickCount);
-
-  const noteCountsPerTick = new Uint32Array(tickCount);
-  forEachEvent((event) => {
-    noteCountsPerTick[event.tick] += 1;
-  });
-
-  noteBuffer.initializeTickOffsets(noteCountsPerTick);
-
-  forEachEvent((event) => {
-    noteBuffer.writeNote(event.tick, event.sampleId, event.pitch, event.gain, event.pan);
-  });
-
-  return noteBuffer.sab;
 }
 
 export class AudioEngine {
