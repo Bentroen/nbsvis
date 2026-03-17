@@ -94,7 +94,7 @@ export class AudioWorker {
     resetRingBuffer(this.rbState);
   }
 
-  renderLoop() {
+  renderLoop = () => {
     while (ringBufferHasSpace(this.rbState, BLOCK_SIZE)) {
       const block = this.renderBlock();
       writeToRingBuffer(this.rbAudio, this.rbState, block.outL, block.outR);
@@ -105,7 +105,7 @@ export class AudioWorker {
 
     // Schedule next iteration
     setTimeout(this.renderLoop, 0);
-  }
+  };
 
   renderBlock() {
     this.balancer.beginProcess();
