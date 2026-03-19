@@ -42,9 +42,6 @@ export class AudioWorker {
 
   resample: ResamplerFn = DEFAULT_RESAMPLER;
 
-  // MessageChannel for tight scheduling (avoids setTimeout 4-16ms delay)
-  private port: MessagePort;
-
   constructor(init: AudioWorkerInitOptions) {
     this.playbackStateSAB = new Int32Array(init.playbackStateSAB);
     this.rbAudio = new Float32Array(init.ringBufferAudioSAB);
@@ -63,16 +60,7 @@ export class AudioWorker {
     this.balancer = new AdaptiveLoadBalancer({ blockSize: BLOCK_SIZE });
     this.balancer.init({ sampleRate: this.sampleRate });
     this.balancer.setActive(true);
-
-    // Create MessageChannel for fast scheduling
-    const { port1, port2 } = new MessageChannel();
-    this.port = port1;
-    this.port.onmessage = () => this.renderLoop();
-    // Keep port2 to send messages to ourselves
-    this.schedulerPort = port2;
   }
-
-  private schedulerPort: MessagePort;
 
   onmessage(event: MessageEvent<EngineToWorkerMessage>) {
     const { data } = event;
@@ -107,7 +95,7 @@ export class AudioWorker {
     this.lastDispatchedTick = Math.floor(this.transport.currentTick) - 1;
   }
 
-  renderLoop() {
+  renderLoop = () => {
     while (ringBufferHasSpace(this.rbState, BLOCK_SIZE)) {
       const block = this.renderBlock();
       writeToRingBuffer(this.rbAudio, this.rbState, block.outL, block.outR);
@@ -116,9 +104,9 @@ export class AudioWorker {
       this.writeStats();
     }
 
-    // Schedule next iteration with MessageChannel (no setTimeout delay!)
-    this.schedulerPort.postMessage(null);
-  }
+    // Schedule next iteration
+    setTimeout(this.renderLoop, 0);
+  };
 
   handleNote = (instrument: number, pitch: number, volume: number, panning: number) => {
     this.voiceManager.spawn(instrument, pitch, volume, panning);
