@@ -97,7 +97,7 @@ export class AudioWorker {
   resetRender() {
     this.voiceManager.resetVoices();
     resetRingBuffer(this.rbState);
-    this.lastDispatchedTick = Math.floor(this.transport.currentTick) - 1;
+    this.lastDispatchedTick = -1;
   }
 
   renderLoop = () => {
@@ -118,22 +118,11 @@ export class AudioWorker {
   };
 
   private dispatchPendingNotes() {
-    // TODO: this logic can be simplified a lot
-    if (!this.noteData || this.noteData.tickCount <= 0) return;
-
+    if (!this.noteData) return;
     const currentTick = Math.floor(this.transport.currentTick);
-    const maxTick = this.noteData.tickCount - 1;
-    const targetTick = Math.min(currentTick, maxTick);
-
-    let startTick = this.lastDispatchedTick + 1;
-    if (startTick < 0) startTick = 0;
-    if (startTick > targetTick) return;
-
-    for (let tick = startTick; tick <= targetTick; tick++) {
-      this.noteData.forEachNoteAtTick(tick, this.handleNote);
-    }
-
-    this.lastDispatchedTick = targetTick;
+    if (currentTick === this.lastDispatchedTick) return;
+    this.noteData.forEachNoteAtTick(currentTick, this.handleNote);
+    this.lastDispatchedTick = currentTick;
   }
 
   renderBlock() {
