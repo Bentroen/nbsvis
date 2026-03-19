@@ -30,7 +30,8 @@ class AudioSinkProcessor extends AudioWorkletProcessor {
       // TODO: extract to method
       switch (msg.type) {
         case 'song':
-          // TODO: this.transport.stop();
+          this.transport.stop();
+          Atomics.store(this.rbState, RingBufferState.RB_READ_INDEX, 0);
           this.transport.setTempoMap(new TempoMapView(msg.tempoChanges, msg.initialTempo));
           break;
 
