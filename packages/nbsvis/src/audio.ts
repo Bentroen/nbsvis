@@ -189,13 +189,13 @@ export class AudioEngine {
       }
 
       case 'seek':
+      case 'stop':
         this.postToWorker(msg);
         this.postToWorklet(msg);
         break;
 
       case 'play':
       case 'pause':
-      case 'stop':
         this.postToWorklet(msg);
         break;
     }

@@ -82,6 +82,11 @@ export class AudioWorker {
         this.cachedResampler.loadSample(data.sampleId, data.channels);
         break;
 
+      case 'stop':
+        this.transport.stop();
+        this.resetRender();
+        break;
+
       case 'seek':
         this.transport.seekToTick(data.seconds);
         this.resetRender();
