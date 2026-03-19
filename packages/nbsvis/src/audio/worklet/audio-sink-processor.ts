@@ -3,15 +3,15 @@
 import { readFromRingBuffer, RingBufferState } from '../buffer';
 import { EngineToWorkletMessage } from '../event';
 import { PlaybackState } from './state';
-import PlaybackTransport from './transport';
 import { TempoMapView } from '../tempo';
+import { BaseTransport } from '../transport';
 
 class AudioSinkProcessor extends AudioWorkletProcessor {
   private rbAudio: Float32Array;
   private rbState: Int32Array;
   private playbackState: Int32Array;
 
-  transport: PlaybackTransport;
+  transport: BaseTransport;
 
   constructor(options: AudioWorkletNodeOptions) {
     super();
@@ -22,7 +22,7 @@ class AudioSinkProcessor extends AudioWorkletProcessor {
     this.rbState = new Int32Array(ringBufferStateSAB);
     this.playbackState = new Int32Array(playbackStateSAB);
 
-    this.transport = new PlaybackTransport(sampleRate);
+    this.transport = new BaseTransport(sampleRate);
 
     this.port.onmessage = (e: MessageEvent<EngineToWorkletMessage>) => {
       const msg = e.data;

@@ -15,6 +15,19 @@ export class BaseTransport {
     this.currentFrame += frames;
   }
 
+  play() {
+    this.isPlaying = true;
+  }
+
+  pause() {
+    this.isPlaying = false;
+  }
+
+  stop() {
+    this.isPlaying = false;
+    this.currentFrame = 0;
+  }
+
   /** Seek to a specific tick */
   seekToTick(tick: Tick) {
     if (!this.tempoMap) return;
