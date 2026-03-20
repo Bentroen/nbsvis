@@ -9,9 +9,7 @@ export default defineConfig({
     viteStaticCopy({
       targets: [
         {
-          src: normalizePath(
-            path.resolve(__dirname, 'node_modules/@nbsvis/core/dist/assets/mixer-processor-*.js'),
-          ),
+          src: normalizePath(path.resolve(__dirname, 'node_modules/@nbsvis/core/dist/assets/*.js')),
           dest: 'assets',
         },
         {

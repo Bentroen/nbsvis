@@ -1,17 +1,24 @@
 import { Song } from '@encode42/nbs.js';
 
-import mixerWorkletUrl from './audio/worklet/mixer-processor?worker&url';
-import { NoteEvent } from './audio/worklet/scheduler';
-import { SharedState } from './audio/worklet/state';
-import { MAX_VOICE_COUNT } from './audio/worklet/voice-manager';
+import { RingBufferState } from './audio/buffer';
+import { EngineMessage, EngineToWorkerMessage, EngineToWorkletMessage } from './audio/event';
+import { AudioWorkerInitOptions } from './audio/worker/audio-worker';
+import audioWorkerUrl from './audio/worker/audio-worker?worker&url';
+import { NoteEvent } from './audio/worker/scheduler';
+import workletUrl from './audio/worklet/audio-sink-processor?worker&url';
+import { PlaybackState } from './audio/worklet/state';
 import PlayerInstrument, { defaultInstruments } from './instrument';
 import { getTempoChangeEvents, getTempoSegments } from './song';
 
-export const MAX_AUDIO_SOURCES = MAX_VOICE_COUNT;
-
 function resolveWorkletUrl() {
   const base = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
-  const relative = mixerWorkletUrl.replace(/^\/+/, '');
+  const relative = workletUrl.replace(/^\/+/, '');
+  return new URL(relative, base).toString();
+}
+
+function resolveWorkerUrl() {
+  const base = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
+  const relative = audioWorkerUrl.replace(/^\/+/, '');
   return new URL(relative, base).toString();
 }
 
@@ -83,6 +90,7 @@ export class AudioEngine {
   song?: Song;
   tempoSegments?: Record<number, number>;
 
+  private worker?: Worker;
   private mixerNode?: AudioWorkletNode;
   private sharedTickBuffer?: SharedArrayBuffer;
   private tickView?: Int32Array;
@@ -106,8 +114,43 @@ export class AudioEngine {
     this.nativeCtx = new AudioContext();
 
     // Set up shared state buffer
-    this.sharedTickBuffer = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * SharedState.SIZE);
+    this.sharedTickBuffer = new SharedArrayBuffer(
+      Int32Array.BYTES_PER_ELEMENT * PlaybackState.SIZE,
+    );
     this.tickView = new Int32Array(this.sharedTickBuffer);
+
+    // Set up shared ring buffer
+    // 128 frames × 2 channels × 128 blocks = 32768 frames
+    const capacity = 32768; // frames
+
+    const ringBufferData = new SharedArrayBuffer(Float32Array.BYTES_PER_ELEMENT * capacity * 2);
+
+    const ringBufferState = new SharedArrayBuffer(
+      Int32Array.BYTES_PER_ELEMENT * RingBufferState.SIZE,
+    );
+
+    const rbState = new Int32Array(ringBufferState);
+    rbState[RingBufferState.RB_READ_INDEX] = 0;
+    rbState[RingBufferState.RB_WRITE_INDEX] = 0;
+    rbState[RingBufferState.RB_CAPACITY] = capacity;
+
+    // Spawn the DSP worker
+    const workerUrl = resolveWorkerUrl();
+    console.log('Spawning audio worker from:', workerUrl);
+    this.worker = new Worker(workerUrl, { type: 'module' });
+    this.worker.onerror = (error) => {
+      console.error('Audio worker error:', error);
+    };
+
+    // Initialize worker with SharedArrayBuffers
+    console.log('Initializing audio worker...');
+    this.worker.postMessage({
+      type: 'init',
+      playbackStateSAB: this.sharedTickBuffer,
+      ringBufferAudioSAB: ringBufferData,
+      ringBufferStateSAB: ringBufferState,
+      sampleRate: this.nativeCtx.sampleRate,
+    } satisfies AudioWorkerInitOptions & { type: 'init' });
 
     const mixerWorkletUrl = resolveWorkletUrl();
     console.log('Loading worklet from:', mixerWorkletUrl);
@@ -116,11 +159,13 @@ export class AudioEngine {
     console.log('Creating mixer node...');
     console.log(this.nativeCtx);
 
-    this.mixerNode = new AudioWorkletNode(this.nativeCtx, 'mixer-processor', {
+    this.mixerNode = new AudioWorkletNode(this.nativeCtx, 'audio-sink', {
       numberOfOutputs: 1,
       outputChannelCount: [2],
       processorOptions: {
-        sharedTickBuffer: this.sharedTickBuffer,
+        playbackStateSAB: this.sharedTickBuffer,
+        ringBufferAudioSAB: ringBufferData,
+        ringBufferStateSAB: ringBufferState,
       },
     });
 
@@ -153,8 +198,52 @@ export class AudioEngine {
     masterGainNode.connect(this.nativeCtx.destination);
   }
 
+  private postToWorklet(msg: EngineToWorkletMessage, transfer?: Transferable[]) {
+    if (!this.mixerNode) {
+      throw new Error('Audio engine not initialized.');
+    }
+    this.mixerNode.port.postMessage(msg, transfer ?? []);
+  }
+
+  private postToWorker(msg: EngineToWorkerMessage, transfer?: Transferable[]) {
+    if (!this.worker) {
+      throw new Error('Audio engine not initialized.');
+    }
+    this.worker.postMessage(msg, transfer ?? []);
+  }
+
+  private dispatch(msg: EngineMessage) {
+    switch (msg.type) {
+      case 'song':
+        this.postToWorker(msg);
+        this.postToWorklet(msg);
+        break;
+
+      case 'sample': {
+        const transfer = msg.channels.map((c) => c.buffer);
+        this.postToWorker(msg, transfer);
+        break;
+      }
+
+      case 'start': {
+        this.postToWorker(msg);
+        break;
+      }
+
+      case 'seek':
+        this.postToWorker(msg);
+        this.postToWorklet(msg);
+        break;
+
+      case 'play':
+      case 'pause':
+      case 'stop':
+        this.postToWorklet(msg);
+        break;
+    }
+  }
+
   private async loadSounds() {
-    const port = this.getPort();
     const ctx = this.nativeCtx!;
 
     for (const [index, ins] of this.instruments.entries()) {
@@ -166,24 +255,14 @@ export class AudioEngine {
         channels.push(audioBuffer.getChannelData(c).slice());
       }
 
-      port.postMessage(
-        {
-          type: 'sample',
-          sampleId: index,
-          channels,
-        },
-        channels.map((c) => c.buffer),
-      );
+      this.dispatch({
+        type: 'sample',
+        sampleId: index,
+        channels,
+      });
     }
 
-    console.debug('All instruments loaded into worklet.');
-  }
-
-  private getPort(): MessagePort {
-    if (!this.mixerNode) {
-      throw new Error('Audio engine not initialized. Call init() before playback.');
-    }
-    return this.mixerNode.port;
+    console.debug('All instruments loaded into worker.');
   }
 
   private async resetSounds() {
@@ -203,6 +282,8 @@ export class AudioEngine {
     const noteEvents = getNoteEvents(this.song);
     const tempoChangeEvents = getTempoChangeEvents(this.song);
     this.scheduleSong(noteEvents, tempoChangeEvents, this.song.tempo * 15);
+
+    this.dispatch({ type: 'start' });
   }
 
   private scheduleSong(
@@ -210,7 +291,7 @@ export class AudioEngine {
     tempoChangeEvents: Record<number, number>,
     tempo: number,
   ) {
-    this.getPort().postMessage({
+    this.dispatch({
       type: 'song',
       notes: noteEvents,
       tempoChanges: tempoChangeEvents,
@@ -223,21 +304,27 @@ export class AudioEngine {
 
   public get currentTick() {
     if (!this.tickView) return 0;
-    return Atomics.load(this.tickView, SharedState.TICK) / 1000;
+    return Atomics.load(this.tickView, PlaybackState.TICK) / 1000;
   }
 
   public set currentTick(tick: number) {
-    this.getPort().postMessage({ type: 'seek', tick });
+    // TODO: implement seconds-based seeking
+    this.dispatch({ type: 'seek', seconds: tick });
   }
 
   public get soundCount() {
     if (!this.tickView) return 0;
-    return Atomics.load(this.tickView, SharedState.VOICES);
+    return Atomics.load(this.tickView, PlaybackState.VOICES);
+  }
+
+  public get maxSoundCount() {
+    if (!this.tickView) return 0;
+    return Atomics.load(this.tickView, PlaybackState.MAX_VOICES);
   }
 
   public get isPlaying() {
     if (!this.tickView) return false;
-    return Atomics.load(this.tickView, SharedState.PLAYING) === 1;
+    return Atomics.load(this.tickView, PlaybackState.PLAYING) === 1;
   }
 
   public async play() {
@@ -249,14 +336,15 @@ export class AudioEngine {
       await ctx.resume();
     }
 
-    this.getPort().postMessage({ type: 'play' });
+    this.dispatch({ type: 'play' });
   }
 
   public pause() {
-    this.getPort().postMessage({ type: 'pause' });
+    this.dispatch({ type: 'pause' });
   }
 
   public stop() {
-    this.getPort().postMessage({ type: 'stop' });
+    // TODO: this should stop the worker too
+    this.dispatch({ type: 'stop' });
   }
 }
