@@ -30,7 +30,7 @@ export default [
     rules: {
       semi: ['warn', 'always'],
       quotes: ['warn', 'double'],
-      '@typescript-eslint/no-unused-vars': ['warn'],
+      '@typescript-eslint/no-unused-vars': ['off'],
       'import/order': [
         'warn',
         {
