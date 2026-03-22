@@ -11,6 +11,7 @@
     "dev": "pnpm --parallel dev",
     "build": "pnpm --filter ./packages/* build",
     "build:demo": "pnpm build && pnpm --filter ./apps/nbsvis-demo build",
+    "typecheck": "pnpm -r exec tsc --noEmit",
     "test": "pnpm --filter ./packages/* test",
     "lint": "eslint . --fix",
     "lint:check": "eslint .",
