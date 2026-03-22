@@ -6,9 +6,9 @@ import { TempoMapView } from '../tempo';
 import { AdaptiveLoadBalancer } from './adaptive-balancer';
 import { CachedResampler } from './cached-resampler';
 import { cubicResample, ResamplerFn } from './resampler';
-import Scheduler from './scheduler';
 import { BaseTransport as RenderTransport } from '../transport';
 import VoiceManager from './voice-manager';
+import { NoteBuffer } from '../../note';
 import { PlaybackState } from '../worklet/state';
 
 const BLOCK_SIZE = 512;
@@ -23,6 +23,7 @@ export type AudioWorkerInitOptions = {
 };
 
 export class AudioWorker {
+  noteData: NoteBuffer | null = null;
   playbackStateSAB: Int32Array;
   rbAudio: Float32Array;
   rbState: Int32Array;
@@ -31,10 +32,10 @@ export class AudioWorker {
   cachedResampler: CachedResampler;
 
   transport: RenderTransport;
-  scheduler: Scheduler;
   voiceManager: VoiceManager;
   balancer: AdaptiveLoadBalancer;
   renderFrame = 0;
+  lastDispatchedTick = -1;
 
   outL = new Float32Array(BLOCK_SIZE);
   outR = new Float32Array(BLOCK_SIZE);
@@ -48,7 +49,6 @@ export class AudioWorker {
     this.sampleRate = init.sampleRate;
 
     this.transport = new RenderTransport(this.sampleRate);
-    this.scheduler = new Scheduler();
     this.voiceManager = new VoiceManager({ maxVoiceCount: 256 });
 
     this.cachedResampler = new CachedResampler({
@@ -71,7 +71,7 @@ export class AudioWorker {
         break;
 
       case 'song':
-        this.scheduler.loadSong(data.notes, data.tempoChanges);
+        this.noteData = new NoteBuffer(data.noteData);
         this.transport.setTempoMap(new TempoMapView(data.tempoChanges, data.initialTempo));
         this.transport.seekToTick(0);
         this.resetRender();
@@ -92,6 +92,7 @@ export class AudioWorker {
   resetRender() {
     this.voiceManager.resetVoices();
     resetRingBuffer(this.rbState);
+    this.lastDispatchedTick = Math.floor(this.transport.currentTick) - 1;
   }
 
   renderLoop = () => {
@@ -107,17 +108,33 @@ export class AudioWorker {
     setTimeout(this.renderLoop, 0);
   };
 
+  handleNote = (instrument: number, pitch: number, volume: number, panning: number) => {
+    this.voiceManager.spawn(instrument, pitch, volume, panning);
+  };
+
+  private dispatchPendingNotes() {
+    // TODO: this logic can be simplified a lot
+    if (!this.noteData || this.noteData.tickCount <= 0) return;
+
+    const currentTick = Math.floor(this.transport.currentTick);
+    const maxTick = this.noteData.tickCount - 1;
+    const targetTick = Math.min(currentTick, maxTick);
+
+    let startTick = this.lastDispatchedTick + 1;
+    if (startTick < 0) startTick = 0;
+    if (startTick > targetTick) return;
+
+    for (let tick = startTick; tick <= targetTick; tick++) {
+      this.noteData.forEachNoteAtTick(tick, this.handleNote);
+    }
+
+    this.lastDispatchedTick = targetTick;
+  }
+
   renderBlock() {
     this.balancer.beginProcess();
 
-    const events = this.scheduler.collectEvents(this.transport.currentTick);
-    for (const e of events) {
-      if ('tempo' in e) {
-        //this.transport.currentTempo = e.tempo;
-      } else {
-        this.voiceManager.spawn(e);
-      }
-    }
+    this.dispatchPendingNotes();
 
     this.outL.fill(0);
     this.outR.fill(0);

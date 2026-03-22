@@ -4,10 +4,10 @@ import { RingBufferState } from './audio/buffer';
 import { EngineMessage, EngineToWorkerMessage, EngineToWorkletMessage } from './audio/event';
 import { AudioWorkerInitOptions } from './audio/worker/audio-worker';
 import audioWorkerUrl from './audio/worker/audio-worker?worker&url';
-import { NoteEvent } from './audio/worker/scheduler';
 import workletUrl from './audio/worklet/audio-sink-processor?worker&url';
 import { PlaybackState } from './audio/worklet/state';
 import PlayerInstrument, { defaultInstruments } from './instrument';
+import { NoteBuffer } from './note';
 import { getTempoChangeEvents, getTempoSegments } from './song';
 
 function resolveWorkletUrl() {
@@ -44,50 +44,8 @@ async function loadAudio(
   return decodeAudioData(ctx, arrayBuffer);
 }
 
-function getNoteEvents(song: Song) {
-  const noteEventsPerTick: Record<number, Array<NoteEvent>> = {};
-
-  for (const layer of song.layers) {
-    for (const tickStr in layer.notes) {
-      const note = layer.notes[tickStr];
-
-      // TODO: move this logic one abstraction level higher
-      // song -> notes
-      const tick = parseInt(tickStr);
-      const instrument = note.instrument;
-      const instrumentKeyOffset = song.instruments.loaded[instrument].key - 45;
-      const key = note.key + instrumentKeyOffset + note.pitch / 100;
-      const velocity = ((note.velocity / 100) * layer.volume) / 100;
-      const panning = (layer.stereo === 0 ? note.panning : (note.panning + layer.stereo) / 2) / 100;
-
-      if (velocity == 0) continue;
-
-      // notes -> events
-      const sampleId = instrument;
-      const pitch = 2 ** ((key - 45) / 12);
-      const gain = velocity;
-      const pan = panning;
-
-      const noteEvent = {
-        tick,
-        sampleId,
-        pitch,
-        gain,
-        pan,
-      };
-
-      if (!(tick in noteEventsPerTick)) {
-        noteEventsPerTick[tick] = [];
-      }
-      noteEventsPerTick[tick].push(noteEvent);
-    }
-  }
-  return noteEventsPerTick;
-}
-
 export class AudioEngine {
   instruments: Array<PlayerInstrument>;
-  song?: Song;
   tempoSegments?: Record<number, number>;
 
   private worker?: Worker;
@@ -270,30 +228,29 @@ export class AudioEngine {
     this.instruments = [...defaultInstruments];
   }
 
-  public async loadSong(song: Song, instruments: Array<PlayerInstrument>) {
+  public async loadSong(song: Song, noteData: NoteBuffer, instruments: Array<PlayerInstrument>) {
     await this.init();
 
     await this.resetSounds();
     this.instruments = defaultInstruments.concat(instruments);
     await this.loadSounds();
 
-    this.song = song;
     this.tempoSegments = getTempoSegments(song);
-    const noteEvents = getNoteEvents(this.song);
-    const tempoChangeEvents = getTempoChangeEvents(this.song);
-    this.scheduleSong(noteEvents, tempoChangeEvents, this.song.tempo * 15);
+    const noteEvents = noteData.getBuffer();
+    const tempoChangeEvents = getTempoChangeEvents(song);
+    this.scheduleSong(noteEvents, tempoChangeEvents, song.tempo * 15);
 
     this.dispatch({ type: 'start' });
   }
 
   private scheduleSong(
-    noteEvents: Record<number, Array<NoteEvent>>,
+    noteData: SharedArrayBuffer,
     tempoChangeEvents: Record<number, number>,
     tempo: number,
   ) {
     this.dispatch({
       type: 'song',
-      notes: noteEvents,
+      noteData: noteData,
       tempoChanges: tempoChangeEvents,
       ticksPerBeat: 4,
       initialTempo: tempo,
