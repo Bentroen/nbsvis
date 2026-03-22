@@ -11,7 +11,18 @@
     "dev": "pnpm --parallel dev",
     "build": "pnpm --filter ./packages/* build",
     "build:demo": "pnpm build && pnpm --filter ./apps/nbsvis-demo build",
-    "test": "pnpm --filter ./packages/* test"
+    "test": "pnpm --filter ./packages/* test",
+    "lint": "eslint . --fix",
+    "lint:check": "eslint .",
+    "format": "prettier --write .",
+    "prepare": "husky",
+    "lint-staged": "lint-staged"
+  },
+  "lint-staged": {
+    "*": [
+      "eslint --fix",
+      "prettier --ignore-unknown --write"
+    ]
   },
   "keywords": [],
   "author": "",
@@ -24,6 +35,9 @@
     "eslint-import-resolver-typescript": "^4.3.2",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-unused-imports": "^4.1.4",
+    "globals": "^16.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "prettier": "^3.5.3",
     "typescript-eslint": "^8.26.1"
   }
