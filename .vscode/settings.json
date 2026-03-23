@@ -7,5 +7,11 @@
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "always"
-  }
+  },
+
+  /***********************************
+  Use the workspace version of TypeScript
+  ***********************************/
+  "typescript.tsdk": "./node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true
 }
