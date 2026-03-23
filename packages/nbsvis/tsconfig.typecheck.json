@@ -9,6 +9,5 @@
     "declarationMap": false,
     "outDir": "./dist",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
-  },
-  "include": ["src"]
+  }
 }

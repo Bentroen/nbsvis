@@ -9,6 +9,5 @@
     "outDir": "./dist",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "references": [{ "path": "../../packages/nbsvis/tsconfig.typecheck.json" }],
-  "include": ["."]
+  "references": [{ "path": "../../packages/nbsvis/tsconfig.typecheck.json" }]
 }
