@@ -6,8 +6,7 @@
     "declaration": true,
     "emitDeclarationOnly": true,
     "declarationMap": false,
-    "outDir": "./.typecheck",
-    "tsBuildInfoFile": "./.typecheck/tsconfig.tsbuildinfo"
+    "outDir": "./dist"
   },
   "references": [{ "path": "../../packages/nbsvis/tsconfig.typecheck.json" }],
   "include": ["."]
