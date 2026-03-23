@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationMap": false,
+    "outDir": "./.typecheck",
+    "tsBuildInfoFile": "./.typecheck/tsconfig.tsbuildinfo"
+  },
+  "references": [{ "path": "../../packages/nbsvis/tsconfig.typecheck.json" }],
+  "include": ["."]
+}

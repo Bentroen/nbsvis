@@ -11,7 +11,7 @@
     "dev": "pnpm --parallel dev",
     "build": "pnpm --filter ./packages/* build",
     "build:demo": "pnpm build && pnpm --filter ./apps/nbsvis-demo build",
-    "typecheck": "pnpm -r exec tsc --noEmit",
+    "typecheck": "tsc -b tsconfig.json",
     "test": "pnpm --filter ./packages/* test",
     "lint": "eslint . --fix",
     "lint:check": "eslint .",
@@ -40,6 +40,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "prettier": "^3.5.3",
+    "typescript": "5.8.2",
     "typescript-eslint": "^8.26.1"
   }
 }
