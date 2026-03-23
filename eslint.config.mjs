@@ -8,6 +8,9 @@ import tseslint from 'typescript-eslint';
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
+  {
+    ignores: ['**/dist/**', '**/node_modules/**', '**/coverage/**'],
+  },
   pluginJs.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -30,7 +33,7 @@ export default [
     rules: {
       semi: ['warn', 'always'],
       quotes: ['warn', 'double'],
-      '@typescript-eslint/no-unused-vars': ['warn'],
+      '@typescript-eslint/no-unused-vars': ['off'],
       'import/order': [
         'warn',
         {

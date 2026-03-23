@@ -59,9 +59,11 @@ function normalizeKeyAndPitch(note: Note): { key: number; pitch: number } {
 }
 
 export function estimateMaxVisibleNotes(noteData: NoteBuffer, visibleTickCount: number): number {
-  return 2000;
-  const totalNotes = Object.values(notesPerTick).reduce((sum, notes) => sum + notes.length, 0);
-  const totalTicks = Object.keys(notesPerTick).length;
+  const totalNotes = noteData.noteCount;
+  const totalTicks = noteData.tickCount;
+
+  // Handle empty buffer
+  if (totalTicks === 0) return 0;
 
   const avgNotesPerTick = totalNotes / totalTicks;
   const estimatedVisibleNotes = avgNotesPerTick * visibleTickCount;

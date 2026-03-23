@@ -12,13 +12,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v5
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9.5.0
       - name: install Nodejs
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v5
         with:
           node-version: 20
           cache: 'pnpm'
@@ -34,7 +34,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v5
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -42,7 +42,7 @@ jobs:
           version: 9.5.0
 
       - name: install Nodejs
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v5
         with:
           node-version: 20
           cache: 'pnpm'

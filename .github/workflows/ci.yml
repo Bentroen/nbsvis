@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+  pull_request:
+    branches:
+      - develop
+      - main
+
+jobs:
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.5.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm typecheck
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.5.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint:check
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.5.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.5.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build:demo

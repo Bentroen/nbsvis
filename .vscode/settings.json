@@ -1,4 +1,7 @@
 {
+  /***********************************
+  Linting and formatting settings
+  **********************************/
   "editor.formatOnSave": true,
   "eslint.validate": ["javascript", "typescript"],
   "eslint.run": "onType",
@@ -7,5 +10,11 @@
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "always"
-  }
+  },
+
+  /***********************************
+  Use the workspace version of TypeScript
+  ***********************************/
+  "typescript.tsdk": "./node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true
 }
