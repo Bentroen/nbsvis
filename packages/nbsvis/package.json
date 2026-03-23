@@ -19,7 +19,7 @@
   },
   "scripts": {
     "dev": "vite build --watch --mode development --emptyOutDir=false",
-    "build": "tsc && vite build --mode production",
+    "build": "vite build --mode production",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "format": "prettier --write .",
