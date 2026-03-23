@@ -1,4 +1,7 @@
 {
+  /***********************************
+  Linting and formatting settings
+  **********************************/
   "editor.formatOnSave": true,
   "eslint.validate": ["javascript", "typescript"],
   "eslint.run": "onType",
