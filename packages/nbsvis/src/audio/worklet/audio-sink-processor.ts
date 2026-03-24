@@ -62,41 +62,48 @@ class AudioSinkProcessor extends AudioWorkletProcessor {
     Atomics.store(this.playbackState, PlaybackState.TICK, this.transport.currentTick * 1000);
   }
 
-  process(_: Float32Array[][], outputs: Float32Array[][]): boolean {
-    const outL = outputs[0][0];
-    const outR = outputs[0][1] ?? outL;
-
-    if (!this.transport.isPlaying) {
-      // not playing, output silence
-      outL.fill(0);
-      outR.fill(0);
-
-      // publish audible state
-      this.writeState();
-
-      return true;
-    }
-
+  private readAudioIntoOutput(outL: Float32Array, outR: Float32Array): boolean {
     const frameCount = outL.length;
 
     const readIndex = Atomics.load(this.rbState, RingBufferState.RB_READ_INDEX);
     const writeIndex = Atomics.load(this.rbState, RingBufferState.RB_WRITE_INDEX);
     const available = writeIndex - readIndex;
+
     if (available < frameCount) {
       // underrun
       console.log('underrun');
       Atomics.add(this.playbackState, PlaybackState.UNDERRUN_COUNT, 1);
-      outL.fill(0);
-      outR.fill(0);
-      this.writeState();
-      return true;
+      return false;
     }
 
-    // read audio directly into output channels
     readFromRingBuffer(this.rbAudio, this.rbState, outL, outR);
+    return true;
+  }
+
+  private processPlayback(outL: Float32Array, outR: Float32Array) {
+    if (!this.transport.isPlaying) {
+      return false;
+    }
+
+    const readSuccess = this.readAudioIntoOutput(outL, outR);
 
     // advance authoritative playback time
+    const frameCount = outL.length;
     this.transport.advance(frameCount);
+
+    return readSuccess;
+  }
+
+  process(_: Float32Array[][], outputs: Float32Array[][]): boolean {
+    const outL = outputs[0][0];
+    const outR = outputs[0][1] ?? outL;
+
+    const bufferFilled = this.processPlayback(outL, outR);
+
+    if (!bufferFilled) {
+      outL.fill(0);
+      outR.fill(0);
+    }
 
     // publish audible state
     this.writeState();
