@@ -11,13 +11,14 @@ import VoiceManager from './voice-manager';
 import { NoteBuffer } from '../../note';
 import { PlaybackState } from '../worklet/state';
 
-const BLOCK_SIZE = 512;
+export const BLOCK_SIZE = 512;
 
 const DEFAULT_RESAMPLER = cubicResample;
 
 export type AudioWorkerInitOptions = {
   playbackStateSAB: SharedArrayBuffer;
   ringBufferAudioSAB: SharedArrayBuffer;
+  ringBufferMetaSAB: SharedArrayBuffer;
   ringBufferStateSAB: SharedArrayBuffer;
   sampleRate: number;
 };
@@ -26,6 +27,7 @@ export class AudioWorker {
   noteData: NoteBuffer | null = null;
   playbackStateSAB: Int32Array;
   rbAudio: Float32Array;
+  rbMeta: Int8Array;
   rbState: Int32Array;
   sampleRate: number;
 
@@ -45,6 +47,7 @@ export class AudioWorker {
   constructor(init: AudioWorkerInitOptions) {
     this.playbackStateSAB = new Int32Array(init.playbackStateSAB);
     this.rbAudio = new Float32Array(init.ringBufferAudioSAB);
+    this.rbMeta = new Int8Array(init.ringBufferMetaSAB);
     this.rbState = new Int32Array(init.ringBufferStateSAB);
     this.sampleRate = init.sampleRate;
 
@@ -74,6 +77,8 @@ export class AudioWorker {
         this.noteData = new NoteBuffer(data.noteData);
         this.transport.setTempoMap(new TempoMapView(data.tempoChanges, data.initialTempo));
         this.transport.seekToTick(0);
+        this.transport.setLoopRegion(data.loopStartTick, data.lengthTicks);
+        //this.transport.setLoop(data.loop);
         this.resetRender();
         break;
 
@@ -83,7 +88,7 @@ export class AudioWorker {
         break;
 
       case 'stop':
-        this.transport.stop();
+        this.transport.seekToTick(0);
         this.resetRender();
         break;
 
@@ -91,19 +96,25 @@ export class AudioWorker {
         this.transport.seekToTick(data.seconds);
         this.resetRender();
         break;
+
+      case 'loop':
+        this.transport.setLoop(data.loop);
+        break;
     }
   }
 
-  resetRender() {
+  private resetRender() {
     this.voiceManager.resetVoices();
     resetRingBuffer(this.rbState);
     this.lastDispatchedTick = -1;
+    Atomics.store(this.playbackStateSAB, PlaybackState.RENDER_DONE, 0);
   }
 
   renderLoop = () => {
     while (ringBufferHasSpace(this.rbState, BLOCK_SIZE)) {
       const block = this.renderBlock();
-      writeToRingBuffer(this.rbAudio, this.rbState, block.outL, block.outR);
+      const hasAudio = block.voiceCount > 0;
+      writeToRingBuffer(this.rbAudio, this.rbMeta, this.rbState, block.outL, block.outR, hasAudio);
 
       // metadata (optional buffer)
       this.writeStats();
@@ -138,6 +149,25 @@ export class AudioWorker {
     this.applyBalancerDecision();
 
     this.transport.advance(BLOCK_SIZE);
+
+    const songEndReached = this.transport.currentTick >= this.transport.loopRegion.endTick;
+    const hasActiveVoices = this.voiceManager.activeCount > 0;
+    const renderDone = Atomics.load(this.playbackStateSAB, PlaybackState.RENDER_DONE) === 1;
+
+    if (songEndReached) {
+      if (this.transport.loop) {
+        this.transport.seekToTick(this.transport.loopRegion.startTick);
+        Atomics.store(this.playbackStateSAB, PlaybackState.RENDER_DONE, 0);
+      } else {
+        // If we've reached the end and are not looping, let the
+        // final notes ring out before stopping playback
+        if (!hasActiveVoices && !renderDone) {
+          console.log('Song ended, pausing render transport');
+          Atomics.store(this.playbackStateSAB, PlaybackState.RENDER_DONE, 1);
+        }
+      }
+    }
+
     this.renderFrame += 1;
 
     return {
@@ -245,6 +275,7 @@ self.onmessage = (e: MessageEvent<EngineToWorkerMessage>) => {
     worker = new AudioWorker({
       playbackStateSAB: msg.playbackStateSAB,
       ringBufferAudioSAB: msg.ringBufferAudioSAB,
+      ringBufferMetaSAB: msg.ringBufferMetaSAB,
       ringBufferStateSAB: msg.ringBufferStateSAB,
       sampleRate: msg.sampleRate,
     });

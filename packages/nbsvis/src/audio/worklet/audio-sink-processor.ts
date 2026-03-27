@@ -6,8 +6,15 @@ import { PlaybackState } from './state';
 import { TempoMapView } from '../tempo';
 import { BaseTransport } from '../transport';
 
+enum ReadStatus {
+  UNDERRUN = 0,
+  SUCCESS = 1,
+  NO_AUDIO = 2,
+}
+
 class AudioSinkProcessor extends AudioWorkletProcessor {
   private rbAudio: Float32Array;
+  private rbMeta: Int8Array;
   private rbState: Int32Array;
   private playbackState: Int32Array;
 
@@ -16,9 +23,11 @@ class AudioSinkProcessor extends AudioWorkletProcessor {
   constructor(options: AudioWorkletNodeOptions) {
     super();
 
-    const { ringBufferAudioSAB, ringBufferStateSAB, playbackStateSAB } = options.processorOptions;
+    const { ringBufferAudioSAB, ringBufferMetaSAB, ringBufferStateSAB, playbackStateSAB } =
+      options.processorOptions;
 
     this.rbAudio = new Float32Array(ringBufferAudioSAB);
+    this.rbMeta = new Int8Array(ringBufferMetaSAB);
     this.rbState = new Int32Array(ringBufferStateSAB);
     this.playbackState = new Int32Array(playbackStateSAB);
 
@@ -33,6 +42,7 @@ class AudioSinkProcessor extends AudioWorkletProcessor {
           this.transport.stop();
           Atomics.store(this.rbState, RingBufferState.RB_READ_INDEX, 0);
           this.transport.setTempoMap(new TempoMapView(msg.tempoChanges, msg.initialTempo));
+          this.transport.setLoopRegion(msg.loopStartTick, msg.lengthTicks);
           break;
 
         case 'play':
@@ -52,17 +62,29 @@ class AudioSinkProcessor extends AudioWorkletProcessor {
           this.transport.seekToTick(msg.seconds); // TODO: tick, frame or second?
           Atomics.store(this.rbState, RingBufferState.RB_READ_INDEX, 0);
           break;
+
+        case 'loop':
+          this.transport.setLoop(msg.loop);
+          Atomics.store(this.playbackState, PlaybackState.LOOP, msg.loop ? 1 : 0);
+          break;
       }
     };
   }
 
   private writeState() {
     Atomics.store(this.playbackState, PlaybackState.PLAYING, this.transport.isPlaying ? 1 : 0);
+    Atomics.store(this.playbackState, PlaybackState.LOOP, this.transport.loop ? 1 : 0);
     Atomics.store(this.playbackState, PlaybackState.FRAME, this.transport.framePosition);
     Atomics.store(this.playbackState, PlaybackState.TICK, this.transport.currentTick * 1000);
   }
 
-  private readAudioIntoOutput(outL: Float32Array, outR: Float32Array): boolean {
+  private isBufferEmpty(): boolean {
+    const read = Atomics.load(this.rbState, RingBufferState.RB_READ_INDEX);
+    const write = Atomics.load(this.rbState, RingBufferState.RB_WRITE_INDEX);
+    return write - read <= 0;
+  }
+
+  private readAudioIntoOutput(outL: Float32Array, outR: Float32Array): number {
     const frameCount = outL.length;
 
     const readIndex = Atomics.load(this.rbState, RingBufferState.RB_READ_INDEX);
@@ -73,11 +95,11 @@ class AudioSinkProcessor extends AudioWorkletProcessor {
       // underrun
       console.log('underrun');
       Atomics.add(this.playbackState, PlaybackState.UNDERRUN_COUNT, 1);
-      return false;
+      return ReadStatus.UNDERRUN;
     }
 
-    readFromRingBuffer(this.rbAudio, this.rbState, outL, outR);
-    return true;
+    const hasAudio = readFromRingBuffer(this.rbAudio, this.rbMeta, this.rbState, outL, outR);
+    return hasAudio ? ReadStatus.SUCCESS : ReadStatus.NO_AUDIO;
   }
 
   private processPlayback(outL: Float32Array, outR: Float32Array) {
@@ -85,7 +107,32 @@ class AudioSinkProcessor extends AudioWorkletProcessor {
       return false;
     }
 
-    const readSuccess = this.readAudioIntoOutput(outL, outR);
+    const readStatus = this.readAudioIntoOutput(outL, outR);
+    const readSuccess = readStatus === ReadStatus.SUCCESS;
+    const bufferEnded = readStatus === ReadStatus.NO_AUDIO;
+
+    // Handle looping and end-of-song logic
+    const songEndReached = this.transport.currentTick >= this.transport.loopRegion.endTick + 1;
+    //const voices = Atomics.load(this.playbackState, PlaybackState.VOICES);
+    const renderDone = Atomics.load(this.playbackState, PlaybackState.RENDER_DONE) === 1;
+
+    if (songEndReached) {
+      if (this.transport.loop) {
+        console.log(
+          'Looping back to start of loop region at tick',
+          this.transport.loopRegion.startTick,
+        );
+        this.transport.seekToTick(this.transport.loopRegion.startTick);
+        Atomics.store(this.playbackState, PlaybackState.RENDER_DONE, 0);
+      } else {
+        if (renderDone && bufferEnded) {
+          console.log('Song ended');
+          this.transport.pause();
+          this.playbackEnded = true;
+          this.port.postMessage({ type: 'ended' });
+        }
+      }
+    }
 
     // advance authoritative playback time
     const frameCount = outL.length;

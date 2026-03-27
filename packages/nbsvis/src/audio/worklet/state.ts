@@ -4,9 +4,11 @@ export enum PlaybackState {
   BPM = 2, // bpm * 1000
   VOICES = 3,
   PLAYING = 4,
-  UNDERRUN_COUNT = 5,
-  MAX_VOICES = 6,
+  LOOP = 5,
+  UNDERRUN_COUNT = 6,
+  MAX_VOICES = 7,
+  RENDER_DONE = 8,
 
   // future-proof padding
-  SIZE = 8,
+  SIZE = 10,
 }

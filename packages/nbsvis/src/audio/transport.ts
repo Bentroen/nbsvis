@@ -1,13 +1,39 @@
 import { TempoMapView, Tick } from './tempo';
 
+type LoopRegion = {
+  startTick: number;
+  endTick: number;
+};
+
 export class BaseTransport {
   protected currentFrame = 0;
   protected tempoMap?: TempoMapView;
+
+  isPlaying = false;
+
+  loop: boolean = false;
+  protected _loopRegion: LoopRegion = {
+    startTick: 0,
+    endTick: Infinity,
+  };
 
   constructor(protected sampleRate: number) {}
 
   setTempoMap(tempoMap: TempoMapView) {
     this.tempoMap = tempoMap;
+  }
+
+  setLoop(loop: boolean) {
+    this.loop = loop;
+  }
+
+  setLoopRegion(startTick: number, endTick: number) {
+    this._loopRegion.startTick = startTick;
+    this._loopRegion.endTick = endTick;
+  }
+
+  get loopRegion() {
+    return this._loopRegion;
   }
 
   /** Advance render position by audio frames */
