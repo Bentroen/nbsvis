@@ -36,6 +36,22 @@ export class BaseTransport {
     return this._loopRegion;
   }
 
+  /**
+   * Check if song end is reached and handle looping.
+   * Returns true if looping occurred, false if we've reached the end.
+   */
+  checkAndHandleLoop(): boolean {
+    const songEndReached = this.currentTick >= this._loopRegion.endTick;
+
+    if (songEndReached && this.loop) {
+      console.log('Looping back to start of loop region at tick', this._loopRegion.startTick);
+      this.seekToTick(this._loopRegion.startTick);
+      return true;
+    }
+
+    return false;
+  }
+
   /** Advance render position by audio frames */
   advance(frames: number) {
     this.currentFrame += frames;

@@ -150,21 +150,19 @@ export class AudioWorker {
 
     this.transport.advance(BLOCK_SIZE);
 
-    const songEndReached = this.transport.currentTick >= this.transport.loopRegion.endTick;
-    const hasActiveVoices = this.voiceManager.activeCount > 0;
-    const renderDone = Atomics.load(this.playbackStateSAB, PlaybackState.RENDER_DONE) === 1;
-
-    if (songEndReached) {
-      if (this.transport.loop) {
-        this.transport.seekToTick(this.transport.loopRegion.startTick);
-        Atomics.store(this.playbackStateSAB, PlaybackState.RENDER_DONE, 0);
-      } else {
-        // If we've reached the end and are not looping, let the
-        // final notes ring out before stopping playback
-        if (!hasActiveVoices && !renderDone) {
-          console.log('Song ended, pausing render transport');
-          Atomics.store(this.playbackStateSAB, PlaybackState.RENDER_DONE, 1);
-        }
+    // Handle looping uniformly; each path handles ended differently
+    const looped = this.transport.checkAndHandleLoop();
+    if (looped) {
+      Atomics.store(this.playbackStateSAB, PlaybackState.RENDER_DONE, 0);
+    } else {
+      // Not looping; check if we've reached song end
+      const songEndReached = this.transport.currentTick >= this.transport.loopRegion.endTick;
+      const hasActiveVoices = this.voiceManager.activeCount > 0;
+      const renderDone = Atomics.load(this.playbackStateSAB, PlaybackState.RENDER_DONE) === 1;
+      // If we've reached the end, let the final notes ring out before stopping playback
+      if (songEndReached && !hasActiveVoices && !renderDone) {
+        console.log('Song ended, pausing render transport');
+        Atomics.store(this.playbackStateSAB, PlaybackState.RENDER_DONE, 1);
       }
     }
 

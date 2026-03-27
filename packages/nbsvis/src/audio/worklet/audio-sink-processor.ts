@@ -78,12 +78,6 @@ class AudioSinkProcessor extends AudioWorkletProcessor {
     Atomics.store(this.playbackState, PlaybackState.TICK, this.transport.currentTick * 1000);
   }
 
-  private isBufferEmpty(): boolean {
-    const read = Atomics.load(this.rbState, RingBufferState.RB_READ_INDEX);
-    const write = Atomics.load(this.rbState, RingBufferState.RB_WRITE_INDEX);
-    return write - read <= 0;
-  }
-
   private readAudioIntoOutput(outL: Float32Array, outR: Float32Array): number {
     const frameCount = outL.length;
 
@@ -109,28 +103,21 @@ class AudioSinkProcessor extends AudioWorkletProcessor {
 
     const readStatus = this.readAudioIntoOutput(outL, outR);
     const readSuccess = readStatus === ReadStatus.SUCCESS;
-    const bufferEnded = readStatus === ReadStatus.NO_AUDIO;
 
-    // Handle looping and end-of-song logic
-    const songEndReached = this.transport.currentTick >= this.transport.loopRegion.endTick + 1;
-    //const voices = Atomics.load(this.playbackState, PlaybackState.VOICES);
-    const renderDone = Atomics.load(this.playbackState, PlaybackState.RENDER_DONE) === 1;
+    // Handle looping uniformly; worklet-specific ended logic follows
+    const looped = this.transport.checkAndHandleLoop();
+    if (looped) {
+      Atomics.store(this.playbackState, PlaybackState.RENDER_DONE, 0);
+    } else {
+      // Not looping; check if we've reached song end (worklet-specific logic)
+      const songEndReached = this.transport.currentTick >= this.transport.loopRegion.endTick;
+      const renderDone = Atomics.load(this.playbackState, PlaybackState.RENDER_DONE) === 1;
+      const bufferEnded = readStatus === ReadStatus.NO_AUDIO;
 
-    if (songEndReached) {
-      if (this.transport.loop) {
-        console.log(
-          'Looping back to start of loop region at tick',
-          this.transport.loopRegion.startTick,
-        );
-        this.transport.seekToTick(this.transport.loopRegion.startTick);
-        Atomics.store(this.playbackState, PlaybackState.RENDER_DONE, 0);
-      } else {
-        if (renderDone && bufferEnded) {
-          console.log('Song ended');
-          this.transport.pause();
-          this.playbackEnded = true;
-          this.port.postMessage({ type: 'ended' });
-        }
+      if (songEndReached && renderDone && bufferEnded) {
+        console.log('Song ended');
+        this.transport.pause();
+        this.port.postMessage({ type: 'ended' });
       }
     }
 
