@@ -1,3 +1,5 @@
+const BLOCK_SIZE = 512; // TODO: extract and make configurable
+
 enum RingBufferState {
   PLAYBACK_TICK, // authoritative, written by worklet
   BPM,
@@ -20,6 +22,7 @@ function ringBufferHasSpace(rbState: Int32Array, framesNeeded: number): boolean 
 
 function readFromRingBuffer(
   rbAudio: Float32Array,
+  rbMeta: Int8Array,
   rbState: Int32Array,
   outL: Float32Array,
   outR: Float32Array,
@@ -34,14 +37,22 @@ function readFromRingBuffer(
     outL[i] = rbAudio[srcBase]; // left channel
     outR[i] = rbAudio[srcBase + 1]; // right channel
   }
+
+  const metaIndex = Math.floor((readIndex % capacity) / BLOCK_SIZE); // one meta byte per block (512 frames)
+  const hasAudio = rbMeta[metaIndex] === 1; // check if the block has audio
+
   Atomics.store(rbState, RingBufferState.RB_READ_INDEX, readIndex + framesNeeded);
+
+  return hasAudio;
 }
 
 function writeToRingBuffer(
   rbAudio: Float32Array,
+  rbMeta: Int8Array,
   rbState: Int32Array,
   inL: Float32Array,
   inR: Float32Array,
+  hasAudio: boolean,
 ) {
   const writeIndex = Atomics.load(rbState, RingBufferState.RB_WRITE_INDEX);
   const capacity = Atomics.load(rbState, RingBufferState.RB_CAPACITY);
@@ -53,6 +64,10 @@ function writeToRingBuffer(
     rbAudio[dstBase] = inL[i]; // left channel
     rbAudio[dstBase + 1] = inR[i]; // right channel
   }
+
+  const metaIndex = Math.floor((writeIndex % capacity) / BLOCK_SIZE); // one meta byte per block (512 frames)
+  rbMeta[metaIndex] = hasAudio ? 1 : 0; // mark the block as used or unused
+
   Atomics.store(rbState, RingBufferState.RB_WRITE_INDEX, writeIndex + framesToWrite);
 }
 

@@ -9,6 +9,7 @@ type PlayerEvents = {
   play: void;
   pause: void;
   stop: void;
+  ended: void;
   seek: { tick: number; totalLength: number };
 };
 
@@ -25,6 +26,9 @@ export class Player {
     this.viewer = viewer;
     this.audioEngine = new AudioEngine();
     this.emitter = mitt<PlayerEvents>();
+    this.audioEngine.onEnded(() => {
+      this.emitter.emit('ended');
+    });
 
     if (this.viewer) {
       this.viewer.app.ticker.add(() => {
@@ -74,8 +78,20 @@ export class Player {
     this.emitter.emit('stop');
   }
 
+  get loop() {
+    return this.audioEngine.loop;
+  }
+
+  set loop(loop: boolean) {
+    this.audioEngine.loop = loop;
+  }
+
   get isPlaying() {
     return this.audioEngine.isPlaying;
+  }
+
+  get isEnded() {
+    return this.audioEngine.isEnded;
   }
 
   seek(tick: number) {

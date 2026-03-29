@@ -7,6 +7,12 @@ const appContainer = document.getElementById('app');
 let viewer: Viewer;
 let player: Player;
 
+function updatePlayButton() {
+  const button = document.getElementById('togglePlay');
+  if (!button || !player) return;
+  button.innerText = player.isEnded ? '↺' : player.isPlaying ? '⏸️' : '▶️';
+}
+
 async function main() {
   // Append the app canvas to the container
   if (!appContainer) {
@@ -27,7 +33,14 @@ async function main() {
     if (!input) return;
     input.value = tick.toString();
     input.max = totalLength.toString();
+    updatePlayButton();
   });
+  player.on('play', updatePlayButton);
+  player.on('pause', updatePlayButton);
+  player.on('stop', updatePlayButton);
+  player.on('ended', updatePlayButton);
+
+  updatePlayButton();
 
   console.log('Done!');
 }
@@ -63,26 +76,36 @@ async function loadSong() {
     });
     const objectUrl = await response.text();
     await player.loadSong(objectUrl);
+    updatePlayButton();
   } else if (file) {
     console.log('Loading song from file:', file.name);
     const arrayBuffer = await file.arrayBuffer();
     const blob = new Blob([arrayBuffer]);
     const url = URL.createObjectURL(blob);
     await player.loadSong(url);
+    updatePlayButton();
   } else {
     console.error('No URL or file provided for loading song');
   }
 }
 
 function togglePlayback() {
-  const isPlaying = player.togglePlayback();
-  const button = document.getElementById('togglePlay');
+  player.togglePlayback();
+  updatePlayButton();
+}
+
+function toggleLoop() {
+  const nextLoop = !player.loop;
+  player.loop = nextLoop;
+  const button = document.getElementById('toggleLoop');
   if (!button) return;
-  button.innerText = isPlaying ? '⏸️' : '▶️';
+  button.innerText = nextLoop ? '🔁' : '➡';
+  console.log('Looping is now', nextLoop);
 }
 
 function stop() {
   player.stop();
+  updatePlayButton();
 }
 
 function seek(event: Event) {
@@ -104,6 +127,7 @@ declare global {
       setFile: (event: Event) => void;
       loadSong: () => Promise<void>;
       togglePlayback: () => void;
+      toggleLoop: () => void;
       stop: () => void;
       seek: (event: Event) => void;
       resize: (width?: number, height?: number) => void;
@@ -116,6 +140,7 @@ window.controls = {
   setFile,
   loadSong,
   togglePlayback,
+  toggleLoop,
   stop,
   seek,
   resize,
