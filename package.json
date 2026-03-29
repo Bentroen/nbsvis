@@ -31,6 +31,8 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@semantic-release/exec": "^7.1.0",
     "@typescript-eslint/eslint-plugin": "^8.26.1",
     "@typescript-eslint/parser": "^8.26.1",

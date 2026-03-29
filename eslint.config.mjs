@@ -11,6 +11,13 @@ export default [
   {
     ignores: ['**/dist/**', '**/node_modules/**', '**/coverage/**'],
   },
+  {
+    files: ['**/*.cjs'],
+    languageOptions: {
+      globals: globals.node,
+      sourceType: 'commonjs',
+    },
+  },
   pluginJs.configs.recommended,
   ...tseslint.configs.recommended,
   {
