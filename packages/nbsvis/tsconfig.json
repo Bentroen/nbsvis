@@ -20,7 +20,7 @@
     "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true,
     "noUncheckedSideEffectImports": true,
-    "types": ["jest", "audioworklet"]
+    "types": ["vitest/globals", "audioworklet"]
   },
   "include": ["src"]
 }
