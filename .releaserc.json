@@ -20,6 +20,11 @@
         "pkgRoot": "packages/nbsvis"
       }
     ],
-    "@semantic-release/github"
+    [
+      "@semantic-release/github",
+      {
+        "labels": []
+      }
+    ]
   ]
 }
