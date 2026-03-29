@@ -17,6 +17,9 @@
       "require": "./dist/nbsvis.umd.js"
     }
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "vite build --watch --mode development --emptyOutDir=false",
     "build": "vite build --mode production",

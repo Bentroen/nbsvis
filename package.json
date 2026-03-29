@@ -16,6 +16,8 @@
     "lint": "eslint . --fix",
     "lint:check": "eslint .",
     "format": "prettier --write .",
+    "release": "semantic-release",
+    "release:dry": "semantic-release --dry-run",
     "prepare": "husky",
     "lint-staged": "lint-staged"
   },
@@ -31,6 +33,7 @@
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.26.1",
     "@typescript-eslint/parser": "^8.26.1",
+    "conventional-changelog-conventionalcommits": "^9.3.0",
     "eslint": "^9.22.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-import-resolver-typescript": "^4.3.2",
@@ -40,6 +43,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "prettier": "^3.5.3",
+    "semantic-release": "^25.0.3",
     "typescript": "5.8.2",
     "typescript-eslint": "^8.26.1"
   }
