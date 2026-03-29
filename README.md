@@ -1,5 +1,7 @@
 # nbsvis
 
+[![Build](https://github.com/Bentroen/nbsvis/actions/workflows/check.yml/badge.svg)](https://github.com/Bentroen/nbsvis/actions/workflows/check.yml)
+
 Web player and visualizer for Note Block Studio songs
 
 ## Release
