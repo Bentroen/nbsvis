@@ -1,7 +1,12 @@
 import { Song } from '@encode42/nbs.js';
 
 import { RingBufferState } from './audio/buffer';
-import { EngineMessage, EngineToWorkerMessage, EngineToWorkletMessage } from './audio/event';
+import {
+  EngineMessage,
+  EngineToWorkerMessage,
+  EngineToWorkletMessage,
+  WorkletToEngineMessage,
+} from './audio/event';
 import { AudioWorkerInitOptions } from './audio/worker/audio-worker';
 import audioWorkerUrl from './audio/worker/audio-worker?worker&url';
 import workletUrl from './audio/worklet/audio-sink-processor?worker&url';
@@ -54,6 +59,8 @@ export class AudioEngine {
   private tickView?: Int32Array;
   private nativeCtx?: AudioContext;
   private initPromise?: Promise<void>;
+  private endedListeners = new Set<() => void>();
+  private playbackEnded = false;
 
   constructor() {
     this.instruments = [...defaultInstruments];
@@ -78,11 +85,15 @@ export class AudioEngine {
     this.tickView = new Int32Array(this.sharedTickBuffer);
 
     // Set up shared ring buffer
-    // 128 frames × 2 channels × 128 blocks = 32768 frames
-    const capacity = 32768; // frames
+    // RB_CAPACITY is measured in frames (not interleaved samples)
+    const workletBlockSize = 128;
+    const workerBlockSize = 512;
+    const frameCapacity = 256 * workletBlockSize; // 32768 frames (~682 ms @ 48 kHz)
+    const sampleCapacity = frameCapacity * 2; // interleaved stereo samples
+    const metaCapacity = frameCapacity / workerBlockSize; // one byte per 512-frame worker block
 
-    const ringBufferData = new SharedArrayBuffer(Float32Array.BYTES_PER_ELEMENT * capacity * 2);
-
+    const ringBufferData = new SharedArrayBuffer(Float32Array.BYTES_PER_ELEMENT * sampleCapacity);
+    const ringBufferMeta = new SharedArrayBuffer(Int8Array.BYTES_PER_ELEMENT * metaCapacity);
     const ringBufferState = new SharedArrayBuffer(
       Int32Array.BYTES_PER_ELEMENT * RingBufferState.SIZE,
     );
@@ -90,7 +101,7 @@ export class AudioEngine {
     const rbState = new Int32Array(ringBufferState);
     rbState[RingBufferState.RB_READ_INDEX] = 0;
     rbState[RingBufferState.RB_WRITE_INDEX] = 0;
-    rbState[RingBufferState.RB_CAPACITY] = capacity;
+    rbState[RingBufferState.RB_CAPACITY] = frameCapacity;
 
     // Spawn the DSP worker
     const workerUrl = resolveWorkerUrl();
@@ -106,6 +117,7 @@ export class AudioEngine {
       type: 'init',
       playbackStateSAB: this.sharedTickBuffer,
       ringBufferAudioSAB: ringBufferData,
+      ringBufferMetaSAB: ringBufferMeta,
       ringBufferStateSAB: ringBufferState,
       sampleRate: this.nativeCtx.sampleRate,
     } satisfies AudioWorkerInitOptions & { type: 'init' });
@@ -123,9 +135,18 @@ export class AudioEngine {
       processorOptions: {
         playbackStateSAB: this.sharedTickBuffer,
         ringBufferAudioSAB: ringBufferData,
+        ringBufferMetaSAB: ringBufferMeta,
         ringBufferStateSAB: ringBufferState,
       },
     });
+    this.mixerNode.port.onmessage = (event: MessageEvent<WorkletToEngineMessage>) => {
+      if (event.data.type === 'ended') {
+        this.playbackEnded = true;
+        for (const listener of this.endedListeners) {
+          listener();
+        }
+      }
+    };
 
     // chain: mixer -> compressor -> limiter -> masterGain -> destination
 
@@ -189,13 +210,14 @@ export class AudioEngine {
       }
 
       case 'seek':
+      case 'stop':
+      case 'loop':
         this.postToWorker(msg);
         this.postToWorklet(msg);
         break;
 
       case 'play':
       case 'pause':
-      case 'stop':
         this.postToWorklet(msg);
         break;
     }
@@ -230,6 +252,7 @@ export class AudioEngine {
 
   public async loadSong(song: Song, noteData: NoteBuffer, instruments: Array<PlayerInstrument>) {
     await this.init();
+    this.playbackEnded = false;
 
     await this.resetSounds();
     this.instruments = defaultInstruments.concat(instruments);
@@ -238,7 +261,13 @@ export class AudioEngine {
     this.tempoSegments = getTempoSegments(song);
     const noteEvents = noteData.getBuffer();
     const tempoChangeEvents = getTempoChangeEvents(song);
-    this.scheduleSong(noteEvents, tempoChangeEvents, song.tempo * 15);
+    this.scheduleSong(
+      noteEvents,
+      tempoChangeEvents,
+      song.tempo * 15,
+      song.length,
+      song.loop.startTick,
+    );
 
     this.dispatch({ type: 'start' });
   }
@@ -247,6 +276,8 @@ export class AudioEngine {
     noteData: SharedArrayBuffer,
     tempoChangeEvents: Record<number, number>,
     tempo: number,
+    lengthTicks: number,
+    loopStartTick: number,
   ) {
     this.dispatch({
       type: 'song',
@@ -254,9 +285,20 @@ export class AudioEngine {
       tempoChanges: tempoChangeEvents,
       ticksPerBeat: 4,
       initialTempo: tempo,
+      lengthTicks: lengthTicks,
+      loopStartTick: loopStartTick,
     });
 
     console.log('Song scheduled.');
+  }
+
+  public get loop() {
+    if (!this.tickView) return false;
+    return Atomics.load(this.tickView, PlaybackState.LOOP) === 1;
+  }
+
+  public set loop(loop: boolean) {
+    this.dispatch({ type: 'loop', loop });
   }
 
   public get currentTick() {
@@ -266,6 +308,7 @@ export class AudioEngine {
 
   public set currentTick(tick: number) {
     // TODO: implement seconds-based seeking
+    this.playbackEnded = false;
     this.dispatch({ type: 'seek', seconds: tick });
   }
 
@@ -284,13 +327,26 @@ export class AudioEngine {
     return Atomics.load(this.tickView, PlaybackState.PLAYING) === 1;
   }
 
+  public get isEnded() {
+    return this.playbackEnded;
+  }
+
   public async play() {
+    const restartFromEnded = this.playbackEnded;
+    if (restartFromEnded) {
+      this.playbackEnded = false;
+    }
+
     await this.init();
 
     const ctx = this.nativeCtx!;
 
     if (ctx.state !== 'running') {
       await ctx.resume();
+    }
+
+    if (restartFromEnded) {
+      this.dispatch({ type: 'seek', seconds: 0 });
     }
 
     this.dispatch({ type: 'play' });
@@ -302,6 +358,12 @@ export class AudioEngine {
 
   public stop() {
     // TODO: this should stop the worker too
+    this.playbackEnded = false;
     this.dispatch({ type: 'stop' });
+  }
+
+  public onEnded(listener: () => void): () => void {
+    this.endedListeners.add(listener);
+    return () => this.endedListeners.delete(listener);
   }
 }
