@@ -1,4 +1,4 @@
-import { Player, Viewer, PianoRollView } from '@nbsvis/core';
+import { Player, Viewer, PianoRollView } from '@opennbs/nbsvis';
 
 // ---------- App ---------- //
 

@@ -58,10 +58,10 @@
 - [ ] Publish API documentation + demo GitHub page
 - [ ] Separate projects:
   - [ ] nbsvis (ships all core functionality, including player and a default piano roll viewer)
-  - [ ] @nbsvis/core (or /player)
-  - [ ] @nbsvis/viewer (depends on @nbsvis/core)
-  - [ ] @nbsvis/controls (depends on @nbsvis/core)
-  - [ ] @nbsvis/view/piano-roll (depends on @nbsvis/viewer)
+  - [ ] @opennbs/nbsvis (or /player)
+  - [ ] @opennbs/nbsvis-viewer (depends on @opennbs/nbsvis)
+  - [ ] @opennbs/nbsvis-controls (depends on @opennbs/nbsvis)
+  - [ ] @opennbs/nbsvis-view-piano-roll (depends on @opennbs/nbsvis-viewer)
 
 # Custom visualizers
 

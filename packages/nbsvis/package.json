@@ -1,5 +1,5 @@
 {
-  "name": "@nbsvis/core",
+  "name": "@opennbs/nbsvis",
   "version": "0.3.0",
   "description": "NBS visualization tool",
   "type": "module",

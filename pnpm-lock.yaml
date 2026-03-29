@@ -50,7 +50,7 @@ importers:
 
   apps/nbsvis-demo:
     dependencies:
-      '@nbsvis/core':
+      '@opennbs/nbsvis':
         specifier: workspace:*
         version: link:../../packages/nbsvis
       coi-serviceworker:

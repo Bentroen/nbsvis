@@ -9,7 +9,9 @@ export default defineConfig({
     viteStaticCopy({
       targets: [
         {
-          src: normalizePath(path.resolve(__dirname, 'node_modules/@nbsvis/core/dist/assets/*.js')),
+          src: normalizePath(
+            path.resolve(__dirname, 'node_modules/@opennbs/nbsvis/dist/assets/*.js'),
+          ),
           dest: 'assets',
         },
         {

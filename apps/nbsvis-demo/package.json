@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@nbsvis/core": "workspace:*",
+    "@opennbs/nbsvis": "workspace:*",
     "coi-serviceworker": "^0.1.7"
   },
   "devDependencies": {
