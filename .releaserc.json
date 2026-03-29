@@ -15,10 +15,10 @@
       }
     ],
     [
-      "@semantic-release/npm",
+      "@semantic-release/exec",
       {
-        "pkgRoot": "packages/nbsvis",
-        "prepare": false
+        "prepareCmd": "pnpm --filter @opennbs/nbsvis version ${nextRelease.version} --git-tag-version=false",
+        "publishCmd": "pnpm --filter @opennbs/nbsvis publish --access public --no-git-checks"
       }
     ],
     [
