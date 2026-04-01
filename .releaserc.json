@@ -17,8 +17,8 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "pnpm --filter @opennbs/nbsvis version ${nextRelease.version} --git-tag-version=false",
-        "publishCmd": "pnpm --filter @opennbs/nbsvis publish --access public --no-git-checks"
+        "prepareCmd": "pnpm --filter @opennbs/nbsvis exec npm version ${nextRelease.version} --no-git-tag-version --allow-same-version",
+        "publishCmd": "pnpm --filter @opennbs/nbsvis exec pnpm publish --access public --no-git-checks"
       }
     ],
     [
