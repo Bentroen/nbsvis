@@ -21,7 +21,7 @@ export default defineConfig(({ mode }: UserConfig) => {
       lib: {
         entry: resolve(__dirname, 'src/index.ts'),
         name: 'nbsvis',
-        fileName: 'nbsvis',
+        fileName: 'index',
         formats: ['es'], // TODO: umd, cjs (remove top-level await)
       },
       rollupOptions: {

@@ -4,6 +4,11 @@
 
 Web player and visualizer for Note Block Studio songs
 
+## Single entrypoint
+
+`@opennbs/nbsvis` is a single entrypoint.
+Viewer classes are exported directly, and `pixi.js` is provided by the consuming app.
+
 ## Configurable worker/worklet URL base
 
 The audio engine no longer derives worker/worklet URLs from `document.baseURI`.
