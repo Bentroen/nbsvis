@@ -39,7 +39,10 @@ const instrumentColors = [
 
 const keyLabels = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
-function normalizeKeyAndPitch(note: Note): { key: number; pitch: number } {
+function normalizeKeyAndPitch(note: { key: number; pitch: number }): {
+  key: number;
+  pitch: number;
+} {
   const weightedKey = note.key + note.pitch / 100;
   let key = Math.round(weightedKey);
   key = Math.max(0, Math.min(87, key));
