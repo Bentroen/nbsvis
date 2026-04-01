@@ -1,6 +1,4 @@
-import { Assets, Container, Graphics, Sprite, Texture } from 'pixi.js';
-
-import assetPaths from '../../assets';
+import { Container, Graphics, Sprite, Texture } from 'pixi.js';
 
 const KEY_COUNT = 88;
 export const WHITE_KEY_COUNT = Math.ceil((KEY_COUNT / 12) * 7);
@@ -9,19 +7,6 @@ let WHITE_KEY_WIDTH = 35;
 let WHITE_KEY_HEIGHT = 113;
 const BLACK_KEY_WIDTH_FACTOR = 2 / 3;
 const BLACK_KEY_HEIGHT_FACTOR = 2 / 3;
-
-let whiteKeyTexture: Texture;
-let blackKeyTexture: Texture;
-
-export async function loadPianoTextures() {
-  whiteKeyTexture = await Assets.load(assetPaths['img/key_white.png']);
-  blackKeyTexture = await Assets.load(assetPaths['img/key_black.png']);
-
-  whiteKeyTexture.source.scaleMode = 'nearest';
-  blackKeyTexture.source.scaleMode = 'nearest';
-}
-
-await loadPianoTextures();
 
 const BLACK_KEY_POSITIONS = new Set([1, 3, 6, 8, 10]);
 
@@ -33,14 +18,10 @@ function easeOutQuad(x: number): number {
 }
 
 abstract class KeyItem {
-  sprite: Container;
+  sprite!: Container;
 
   // 1.0 at the start, 0.0 when fully released
   animationProgress = 0;
-
-  constructor(posX: number) {
-    this.sprite = this.draw(posX);
-  }
 
   abstract draw(posX: number): Container;
 
@@ -70,6 +51,14 @@ abstract class KeyItem {
 }
 
 class BlackKeyItem extends KeyItem {
+  private blackKeyTexture: Texture;
+
+  constructor(posX: number, blackKeyTexture: Texture) {
+    super();
+    this.blackKeyTexture = blackKeyTexture;
+    this.sprite = this.draw(posX);
+  }
+
   draw(posX: number) {
     const container = new Container();
     const key = new Graphics();
@@ -81,7 +70,7 @@ class BlackKeyItem extends KeyItem {
     container.addChild(key);
 
     // Apply texture
-    const textureSprite = new Sprite(blackKeyTexture);
+    const textureSprite = new Sprite(this.blackKeyTexture);
     textureSprite.width = width;
     textureSprite.height = height;
     container.addChild(textureSprite);
@@ -91,6 +80,14 @@ class BlackKeyItem extends KeyItem {
 }
 
 class WhiteKeyItem extends KeyItem {
+  private whiteKeyTexture: Texture;
+
+  constructor(posX: number, whiteKeyTexture: Texture) {
+    super();
+    this.whiteKeyTexture = whiteKeyTexture;
+    this.sprite = this.draw(posX);
+  }
+
   draw(posX: number) {
     const container = new Container();
     const key = new Graphics();
@@ -100,7 +97,7 @@ class WhiteKeyItem extends KeyItem {
     container.addChild(key);
 
     // Apply texture
-    const textureSprite = new Sprite(whiteKeyTexture);
+    const textureSprite = new Sprite(this.whiteKeyTexture);
     textureSprite.width = WHITE_KEY_WIDTH;
     textureSprite.height = WHITE_KEY_HEIGHT;
     textureSprite.position.set(0, 3);
@@ -116,9 +113,13 @@ export class PianoManager {
   keys: Array<KeyItem> = [];
   playingKeys: Set<KeyItem> = new Set();
   keyPositions: Array<number> = [];
+  private whiteKeyTexture: Texture;
+  private blackKeyTexture: Texture;
 
-  constructor(container: Container) {
+  constructor(container: Container, whiteKeyTexture: Texture, blackKeyTexture: Texture) {
     this.container = container;
+    this.whiteKeyTexture = whiteKeyTexture;
+    this.blackKeyTexture = blackKeyTexture;
     this.draw();
   }
 
@@ -131,10 +132,11 @@ export class PianoManager {
       let key: KeyItem;
       const isBlackKey = BLACK_KEY_POSITIONS.has((i + 9) % 12);
       if (isBlackKey) {
-        key = new BlackKeyItem(x);
-        blackKeys.push(key);
+        const blackKey = new BlackKeyItem(x, this.blackKeyTexture);
+        key = blackKey;
+        blackKeys.push(blackKey);
       } else {
-        key = new WhiteKeyItem(x);
+        key = new WhiteKeyItem(x, this.whiteKeyTexture);
         this.container.addChild(key.sprite);
         x += WHITE_KEY_WIDTH + 2;
       }

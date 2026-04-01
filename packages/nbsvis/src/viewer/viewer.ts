@@ -1,6 +1,7 @@
 import { Song } from '@encode42/nbs.js';
 import { Application, BitmapText, Container, Renderer, TextureStyle, Ticker } from 'pixi.js';
 
+import { ViewAssetDescriptor } from '../assets';
 import { NoteBuffer } from '../note';
 
 // TODO: is this needed?
@@ -22,6 +23,9 @@ export class Viewer {
   soundCount: number = 0;
   maxSoundCount: number = 0;
 
+  private initialized = false;
+  private readonly assetCache = new Map<string, unknown>();
+
   constructor(container: HTMLElement) {
     this.app = new Application();
     this.container = container;
@@ -41,16 +45,55 @@ export class Viewer {
     this.container.appendChild(this.app.canvas);
     this.app.ticker.add(this.updateFunction);
     this.draw();
+    this.initialized = true;
+
+    if (this.view) {
+      await this.resolveAndInjectViewAssets(this.view);
+      this.view.bindContext({ renderer: this.app.renderer });
+      this.app.stage.addChild(this.view.stage);
+      this.view.mount();
+    }
+
     this.setResponsive(true);
   }
 
-  public setView(view: BaseView) {
-    if (this.view) {
+  public async setView(view: BaseView) {
+    if (this.view && this.initialized && this.view.isMounted) {
       this.app.stage.removeChild(this.view.stage);
     }
+
     this.view = view;
+
+    if (!this.initialized) {
+      return;
+    }
+
+    await this.resolveAndInjectViewAssets(this.view);
+    this.view.bindContext({ renderer: this.app.renderer });
     this.app.stage.addChild(this.view.stage);
-    this.view?.draw();
+    this.view.mount();
+  }
+
+  private async resolveAndInjectViewAssets(view: BaseView) {
+    const requirements = view.getAssetRequirements();
+
+    await Promise.all(
+      requirements.map(async (asset) => {
+        if (this.assetCache.has(asset.id)) return;
+        const loaded = await asset.load();
+        this.assetCache.set(asset.id, loaded);
+      }),
+    );
+
+    const resolvedAssets = new Map<string, unknown>();
+    for (const asset of requirements) {
+      if (!this.assetCache.has(asset.id)) {
+        throw new Error(`Failed to resolve asset "${asset.id}"`);
+      }
+      resolvedAssets.set(asset.id, this.assetCache.get(asset.id));
+    }
+
+    view.setAssets(resolvedAssets);
   }
 
   private draw() {
@@ -104,7 +147,9 @@ export class Viewer {
     // Re-render current scene to avoid flickering. See:
     // https://github.com/pixijs/pixijs/issues/3395#issuecomment-328495407
     this.app.render();
-    this.view?.resize(width, height);
+    if (this.view?.isMounted) {
+      this.view.resize(width, height);
+    }
   }
 
   public setResponsive(responsive: boolean) {
@@ -129,7 +174,8 @@ export abstract class BaseView {
 
   public ticker: Ticker;
 
-  protected context: { renderer: Renderer };
+  protected context: { renderer?: Renderer };
+  private mounted = false;
 
   // TODO: make this part of a Context object
   public currentTick: number = 0;
@@ -138,12 +184,32 @@ export abstract class BaseView {
 
   public maxSoundCount: number = 0;
 
-  constructor(context: { renderer: Renderer }) {
+  constructor(context: { renderer?: Renderer } = {}) {
     this.context = context;
 
     this.stage = new Container();
     this.ticker = new Ticker();
     this.ticker.autoStart = true;
+  }
+
+  public getAssetRequirements(): Array<ViewAssetDescriptor> {
+    return [];
+  }
+
+  public setAssets(_: Map<string, unknown>) {}
+
+  public bindContext(context: { renderer: Renderer }) {
+    this.context = { ...this.context, ...context };
+  }
+
+  public get isMounted(): boolean {
+    return this.mounted;
+  }
+
+  public mount() {
+    if (this.mounted) return;
+    this.draw();
+    this.mounted = true;
   }
 
   public abstract draw(): void;

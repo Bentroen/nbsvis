@@ -1,8 +1,6 @@
-import { Note } from '@encode42/nbs.js';
-import { Assets, Particle, ParticleContainer, Renderer, Texture } from 'pixi.js';
+import { Particle, ParticleContainer, Renderer, Texture } from 'pixi.js';
 
 import { WHITE_KEY_COUNT } from './piano';
-import assetPaths from '../../assets';
 import { NoteBuffer } from '../../note';
 import { NoteData, NoteRenderer, RenderContext } from '../util/note';
 import { NoteTextureAtlas } from '../util/note-texture';
@@ -17,15 +15,6 @@ import SpritePool from '../util/sprite';
 // e.g. export class ViewerContext {}
 // ^ contains info such as the notes to play in this tick, the Song object, methods to
 // cull offscreen notes, calculate diff between visible and newly entered notes etc.
-
-let noteBlockTexture: Texture;
-
-export async function loadNoteTexture() {
-  noteBlockTexture = await Assets.load(assetPaths['img/note_block_grayscale.png']);
-  noteBlockTexture.source.scaleMode = 'nearest';
-}
-
-await loadNoteTexture();
 
 let BLOCK_SIZE = 32;
 
@@ -159,7 +148,12 @@ export class NoteManager {
   private renderer: NoteRenderer;
   private textureAtlas: NoteTextureAtlas;
 
-  constructor(renderer: Renderer, container: ParticleContainer, keyPositions: Array<number>) {
+  constructor(
+    renderer: Renderer,
+    container: ParticleContainer,
+    keyPositions: Array<number>,
+    noteBlockTexture: Texture,
+  ) {
     this.container = container;
     this.keyPositions = keyPositions;
 

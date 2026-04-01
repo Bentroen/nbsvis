@@ -20,9 +20,8 @@ async function main() {
   }
 
   viewer = new Viewer(appContainer);
+  await viewer.setView(new PianoRollView({ renderer: viewer.app.renderer }));
   await viewer.init();
-
-  viewer.setView(new PianoRollView({ renderer: viewer.app.renderer }));
 
   player = new Player(viewer);
   const base = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
