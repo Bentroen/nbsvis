@@ -23,7 +23,11 @@ async function main() {
   await viewer.setView(new PianoRollView({ renderer: viewer.app.renderer }));
   await viewer.init();
 
-  player = new Player(viewer);
+  player = new Player(viewer, {
+    audioEngine: {
+      urlBase: document.baseURI,
+    },
+  });
   const base = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
   await player.loadSong(new URL('megacollab.zip', base).href);
 

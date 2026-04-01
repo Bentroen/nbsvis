@@ -4,6 +4,19 @@
 
 Web player and visualizer for Note Block Studio songs
 
+## Configurable worker/worklet URL base
+
+The audio engine no longer derives worker/worklet URLs from `document.baseURI`.
+Pass `urlBase`, or explicit `workerUrl` / `workletUrl`, via `Player` options:
+
+```ts
+const player = new Player(viewer, {
+  audioEngine: {
+    urlBase: import.meta.env.BASE_URL,
+  },
+});
+```
+
 ## Release
 
 Automated releases are handled with semantic-release on pushes to `main`.

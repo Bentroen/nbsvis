@@ -1,9 +1,13 @@
 import mitt, { Emitter } from 'mitt';
 
-import { AudioEngine } from './audio';
+import { AudioEngine, AudioEngineOptions } from './audio';
 import { loadCustomInstruments } from './instrument';
 import { getNoteEvents, loadSongFromUrl } from './song';
-import { Viewer } from './viewer';
+import type { Viewer } from './viewer';
+
+export type PlayerOptions = {
+  audioEngine?: AudioEngineOptions;
+};
 
 type PlayerEvents = {
   play: void;
@@ -22,9 +26,9 @@ export class Player {
   lengthTicks: number = 0;
   private emitter: Emitter<PlayerEvents>;
 
-  constructor(viewer: Viewer) {
+  constructor(viewer: Viewer, options: PlayerOptions = {}) {
     this.viewer = viewer;
-    this.audioEngine = new AudioEngine();
+    this.audioEngine = new AudioEngine(options.audioEngine);
     this.emitter = mitt<PlayerEvents>();
     this.audioEngine.onEnded(() => {
       this.emitter.emit('ended');

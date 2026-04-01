@@ -15,17 +15,29 @@ import PlayerInstrument, { defaultInstruments } from './instrument';
 import { NoteBuffer } from './note';
 import { getTempoChangeEvents, getTempoSegments } from './song';
 
-function resolveWorkletUrl() {
-  const base = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
-  const relative = workletUrl.replace(/^\/+/, '');
+function ensureTrailingSlash(url: string): string {
+  return url.endsWith('/') ? url : `${url}/`;
+}
+
+function resolveAssetUrl(url: string, urlBase?: string | URL): string {
+  if (!urlBase) {
+    return url;
+  }
+
+  const base =
+    typeof urlBase === 'string'
+      ? ensureTrailingSlash(urlBase)
+      : ensureTrailingSlash(urlBase.toString());
+  const relative = url.replace(/^\/+/, '');
+  console.log(`Resolving asset URL. Base: ${base}, Relative: ${relative}`);
   return new URL(relative, base).toString();
 }
 
-function resolveWorkerUrl() {
-  const base = document.baseURI.endsWith('/') ? document.baseURI : `${document.baseURI}/`;
-  const relative = audioWorkerUrl.replace(/^\/+/, '');
-  return new URL(relative, base).toString();
-}
+export type AudioEngineOptions = {
+  workerUrl?: string;
+  workletUrl?: string;
+  urlBase?: string | URL;
+};
 
 function decodeAudioData(ctx: AudioContext, buffer: ArrayBuffer): Promise<AudioBuffer> {
   return ctx.decodeAudioData(buffer);
@@ -61,9 +73,11 @@ export class AudioEngine {
   private initPromise?: Promise<void>;
   private endedListeners = new Set<() => void>();
   private playbackEnded = false;
+  private options: AudioEngineOptions;
 
-  constructor() {
+  constructor(options: AudioEngineOptions = {}) {
     this.instruments = [...defaultInstruments];
+    this.options = options;
   }
 
   /**
@@ -104,7 +118,8 @@ export class AudioEngine {
     rbState[RingBufferState.RB_CAPACITY] = frameCapacity;
 
     // Spawn the DSP worker
-    const workerUrl = resolveWorkerUrl();
+    const workerUrl =
+      this.options.workerUrl ?? resolveAssetUrl(audioWorkerUrl, this.options.urlBase);
     console.log('Spawning audio worker from:', workerUrl);
     this.worker = new Worker(workerUrl, { type: 'module' });
     this.worker.onerror = (error) => {
@@ -122,7 +137,8 @@ export class AudioEngine {
       sampleRate: this.nativeCtx.sampleRate,
     } satisfies AudioWorkerInitOptions & { type: 'init' });
 
-    const mixerWorkletUrl = resolveWorkletUrl();
+    const mixerWorkletUrl =
+      this.options.workletUrl ?? resolveAssetUrl(workletUrl, this.options.urlBase);
     console.log('Loading worklet from:', mixerWorkletUrl);
     await this.nativeCtx.audioWorklet.addModule(mixerWorkletUrl);
     console.log('Worklet loaded.');
