@@ -14,13 +14,7 @@
         "preset": "conventionalcommits"
       }
     ],
-    [
-      "@semantic-release/exec",
-      {
-        "prepareCmd": "pnpm --filter @opennbs/nbsvis exec npm version ${nextRelease.version} --no-git-tag-version --allow-same-version",
-        "publishCmd": "pnpm --filter @opennbs/nbsvis exec pnpm publish --access public --no-git-checks"
-      }
-    ],
+    ["@anolilab/semantic-release-pnpm"],
     [
       "@semantic-release/github",
       {
