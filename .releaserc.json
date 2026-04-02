@@ -15,9 +15,10 @@
       }
     ],
     [
-      "@anolilab/semantic-release-pnpm",
+      "@semantic-release/exec",
       {
-        "pkgRoot": "./packages/nbsvis"
+        "prepareCmd": "cd packages/nbsvis && pnpm version ${nextRelease.version} --no-git-tag-version --allow-same-version",
+        "publishCmd": "cd packages/nbsvis && pnpm publish --no-git-checks"
       }
     ],
     [
