@@ -31,7 +31,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "fix": "pnpm run format && pnpm run lint:fix",
-    "test": "jest"
+    "test": "jest",
+    "release": "semantic-release",
+    "release:dry": "semantic-release --dry-run"
   },
   "dependencies": {
     "@encode42/nbs.js": "^5.0.2",

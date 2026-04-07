@@ -16,8 +16,6 @@
     "lint": "eslint . --fix",
     "lint:check": "eslint .",
     "format": "prettier --write .",
-    "release": "semantic-release",
-    "release:dry": "semantic-release --dry-run",
     "prepare": "husky",
     "lint-staged": "lint-staged"
   },
