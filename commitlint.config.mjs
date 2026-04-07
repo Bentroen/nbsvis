@@ -21,5 +21,6 @@ export default {
     'scope-enum': [2, 'always', allowedScopes],
     'scope-case': [2, 'always', 'lower-case'],
     'subject-case': [2, 'never', ['sentence-case', 'start-case', 'pascal-case', 'upper-case']],
+    'body-max-line-length': [0, 'always', 100],
   },
 };

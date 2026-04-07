@@ -1,7 +1,7 @@
 {
   "name": "@nbsvis/monorepo",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.0.0-semantically-released",
   "description": "",
   "workspaces": [
     "apps/*",
