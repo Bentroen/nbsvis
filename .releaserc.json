@@ -5,7 +5,13 @@
     [
       "@semantic-release/commit-analyzer",
       {
-        "preset": "conventionalcommits"
+        "preset": "conventionalcommits",
+        "releaseRules": [
+          {
+            "scope": "demo",
+            "release": false
+          }
+        ]
       }
     ],
     [
