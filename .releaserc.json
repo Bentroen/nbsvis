@@ -14,12 +14,7 @@
         "preset": "conventionalcommits"
       }
     ],
-    [
-      "@anolilab/semantic-release-pnpm",
-      {
-        "pkgRoot": "packages/nbsvis"
-      }
-    ],
+    "@semantic-release/npm",
     "@semantic-release/github"
   ]
 }
