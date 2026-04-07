@@ -51,6 +51,7 @@ jobs:
         run: pnpm --filter @opennbs/nbsvis build
 
       - name: Release
+        working-directory: packages/nbsvis
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm release

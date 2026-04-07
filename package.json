@@ -31,7 +31,6 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@anolilab/semantic-release-pnpm": "^5.0.0",
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
     "@eslint/js": "^9.22.0",

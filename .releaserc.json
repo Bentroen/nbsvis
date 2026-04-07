@@ -14,18 +14,7 @@
         "preset": "conventionalcommits"
       }
     ],
-    [
-      "@semantic-release/exec",
-      {
-        "prepareCmd": "cd packages/nbsvis && pnpm version ${nextRelease.version} --no-git-tag-version --allow-same-version",
-        "publishCmd": "cd packages/nbsvis && pnpm publish --no-git-checks"
-      }
-    ],
-    [
-      "@semantic-release/github",
-      {
-        "labels": []
-      }
-    ]
+    "@semantic-release/npm",
+    "@semantic-release/github"
   ]
 }
