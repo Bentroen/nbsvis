@@ -1,9 +1,13 @@
 name: Release package
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - CI checks
     branches:
       - main
+    types:
+      - completed
   workflow_dispatch:
 
 permissions:
@@ -20,6 +24,9 @@ jobs:
   release:
     name: Semantic Release
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     permissions:
       contents: write
       issues: write
