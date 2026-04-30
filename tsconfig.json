@@ -6,6 +6,7 @@
     { "path": "./packages/nbsvis-pixi-viewer/tsconfig.typecheck.json" },
     { "path": "./packages/nbsvis-web-audio/tsconfig.typecheck.json" },
     { "path": "./packages/nbsvis/tsconfig.typecheck.json" },
-    { "path": "./apps/nbsvis-demo/tsconfig.typecheck.json" }
+    { "path": "./apps/nbsvis-demo/tsconfig.typecheck.json" },
+    { "path": "./apps/nbsvis-three-osc-demo/tsconfig.typecheck.json" }
   ]
 }

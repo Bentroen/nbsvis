@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="coi-serviceworker.js"></script>
+    <link rel="stylesheet" href="src/style.css" />
+    <title>nbsvis three oscillator demo</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div class="hud">
+      <h1>Three.js Oscillator Piano</h1>
+      <p>Playback is driven by .nbs note data (pitch, pan, velocity).</p>
+      <p id="controlsInfo">
+        Press Z to toggle FPS camera mode (WASD + mouse, Space/Shift up/down).
+      </p>
+      <p id="status">Audio not started</p>
+      <div class="controls">
+        <input id="songFile" type="file" accept=".nbs,.zip" />
+        <button id="loadSong">Load file</button>
+        <button id="togglePlay">Play / Pause</button>
+      </div>
+    </div>
+    <script type="module" src="src/main.ts"></script>
+  </body>
+</html>
