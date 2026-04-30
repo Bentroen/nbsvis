@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@opennbs/nbsvis": "workspace:*",
+    "@opennbs/nbsvis-pixi-viewer": "workspace:*",
     "coi-serviceworker": "^0.1.7"
   },
   "devDependencies": {

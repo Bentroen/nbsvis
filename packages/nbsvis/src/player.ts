@@ -1,13 +1,15 @@
 import type { NbsvisAudioBackend } from '@opennbs/nbsvis-audio-api';
+import type { NbsvisViewerBackend } from '@opennbs/nbsvis-viewer-api';
 import { AudioEngine, type AudioEngineOptions } from '@opennbs/nbsvis-web-audio';
 import mitt, { Emitter } from 'mitt';
 
 import { buildAudioPlaybackPayload } from './audio-payload';
 import { defaultInstruments, loadCustomInstruments } from './instrument';
 import { getNoteEvents, loadSongFromUrl } from './song';
-import type { Viewer } from './viewer';
+import { buildViewerRenderPayload } from './viewer-payload';
 
 export type PlayerOptions = {
+  viewerBackend: NbsvisViewerBackend;
   audioBackend?: NbsvisAudioBackend;
   webAudio?: AudioEngineOptions;
 };
@@ -21,32 +23,38 @@ type PlayerEvents = {
 };
 
 export class Player {
-  viewer: Viewer;
+  private readonly viewerBackend: NbsvisViewerBackend;
   audioBackend: NbsvisAudioBackend;
   songLoaded: boolean = false;
 
   lengthTicks: number = 0;
   private emitter: Emitter<PlayerEvents>;
+  private readonly stopViewerSync: () => void;
 
-  constructor(viewer: Viewer, options: PlayerOptions = {}) {
-    this.viewer = viewer;
+  constructor(options: PlayerOptions) {
+    this.viewerBackend = options.viewerBackend;
     this.audioBackend = options.audioBackend ?? new AudioEngine(options.webAudio ?? {});
     this.emitter = mitt<PlayerEvents>();
     this.audioBackend.onEnded(() => {
       this.emitter.emit('ended');
     });
 
-    if (this.viewer) {
-      this.viewer.app.ticker.add(() => {
-        const currentTick = this.audioBackend.currentTick;
-        this.viewer.currentTick = currentTick;
-        this.viewer.soundCount = this.audioBackend.soundCount;
-        this.viewer.maxSoundCount = this.audioBackend.maxSoundCount;
-        this.emitter.emit('seek', { tick: currentTick, totalLength: this.lengthTicks });
+    this.stopViewerSync = this.viewerBackend.onRenderTick(() => {
+      this.viewerBackend.setTick(this.audioBackend.currentTick);
+      this.viewerBackend.setSoundCount(
+        this.audioBackend.soundCount,
+        this.audioBackend.maxSoundCount,
+      );
+      this.viewerBackend.setPlaying(this.audioBackend.isPlaying);
+      this.emitter.emit('seek', {
+        tick: this.audioBackend.currentTick,
+        totalLength: this.lengthTicks,
       });
-    } else {
-      console.debug('Viewer not initialized, skipping ticker update');
-    }
+    });
+  }
+
+  public dispose(): void {
+    this.stopViewerSync();
   }
 
   public async loadSong(url: string) {
@@ -56,7 +64,7 @@ export class Player {
     const merged = defaultInstruments.concat(instruments);
     const payload = await buildAudioPlaybackPayload(song, noteData, merged);
     await this.audioBackend.loadSong(payload);
-    this.viewer?.loadSong(song, noteData);
+    this.viewerBackend.loadSong(buildViewerRenderPayload(song));
     this.lengthTicks = song.length;
     this.songLoaded = true;
   }

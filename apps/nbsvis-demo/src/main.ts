@@ -1,10 +1,11 @@
-import { Player, Viewer, PianoRollView } from '@opennbs/nbsvis';
+import { Player } from '@opennbs/nbsvis';
+import { PixiViewer } from '@opennbs/nbsvis-pixi-viewer';
 
 // ---------- App ---------- //
 
 const appContainer = document.getElementById('app');
 
-let viewer: Viewer;
+let viewer: PixiViewer;
 let player: Player;
 
 function updatePlayButton() {
@@ -14,16 +15,17 @@ function updatePlayButton() {
 }
 
 async function main() {
-  // Append the app canvas to the container
   if (!appContainer) {
     throw new Error('App container not found');
   }
 
-  viewer = new Viewer(appContainer);
-  await viewer.setView(new PianoRollView({ renderer: viewer.app.renderer }));
+  viewer = new PixiViewer();
+  viewer.mount(appContainer);
+  viewer.setViewMode('piano-roll');
   await viewer.init();
 
-  player = new Player(viewer, {
+  player = new Player({
+    viewerBackend: viewer,
     webAudio: {
       urlBase: document.baseURI,
     },

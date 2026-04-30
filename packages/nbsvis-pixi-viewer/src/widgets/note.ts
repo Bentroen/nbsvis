@@ -1,4 +1,4 @@
-import type { NoteBuffer } from '@opennbs/nbsvis-audio-api';
+import type { ViewerRenderBlock } from '@opennbs/nbsvis-viewer-api';
 import { Particle, ParticleContainer, Renderer, Texture } from 'pixi.js';
 
 import { WHITE_KEY_COUNT } from './piano';
@@ -39,7 +39,55 @@ const instrumentColors = [
 
 const keyLabels = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
-export function estimateMaxVisibleNotes(noteData: NoteBuffer, visibleTickCount: number): number {
+/** Same iteration contract as the former `NoteBuffer` used by `NoteManager`. */
+export interface NoteTickSource {
+  readonly noteCount: number;
+  readonly tickCount: number;
+  forEachNoteAtTick(
+    tick: number,
+    callback: (instrument: number, pitch: number, volume: number) => void,
+  ): void;
+}
+
+export class BlockNoteSchedule implements NoteTickSource {
+  readonly noteCount: number;
+  readonly tickCount: number;
+  private readonly byTick = new Map<
+    number,
+    Array<{ instrument: number; pitchRatio: number; gain: number }>
+  >();
+
+  constructor(blocks: readonly ViewerRenderBlock[], songLength: number) {
+    this.noteCount = blocks.length;
+    let maxTick = 0;
+    for (const b of blocks) {
+      maxTick = Math.max(maxTick, b.tick);
+      let arr = this.byTick.get(b.tick);
+      if (!arr) {
+        arr = [];
+        this.byTick.set(b.tick, arr);
+      }
+      arr.push({ instrument: b.instrument, pitchRatio: b.pitchRatio, gain: b.velocity });
+    }
+    this.tickCount = Math.max(songLength, maxTick + 1, 1);
+  }
+
+  forEachNoteAtTick(
+    tick: number,
+    callback: (instrument: number, pitch: number, volume: number) => void,
+  ): void {
+    const arr = this.byTick.get(tick);
+    if (!arr) return;
+    for (const n of arr) {
+      callback(n.instrument, n.pitchRatio, n.gain);
+    }
+  }
+}
+
+export function estimateMaxVisibleNotes(
+  noteData: NoteTickSource,
+  visibleTickCount: number,
+): number {
   const totalNotes = noteData.noteCount;
   const totalTicks = noteData.tickCount;
 
@@ -119,7 +167,7 @@ export class DefaultNoteRenderer implements NoteRenderer {
 }
 
 export class NoteManager {
-  private notes?: NoteBuffer;
+  private notes?: NoteTickSource;
   private currentTick = 0;
   private container: ParticleContainer;
   private keyPositions: Array<number>;
@@ -157,7 +205,7 @@ export class NoteManager {
     this.spritePool = new SpritePool(0, this.textureAtlas.getTexture(0), this.container);
   }
 
-  public setSong(noteData: NoteBuffer) {
+  public setSong(noteData: NoteTickSource) {
     this.notes = noteData;
 
     // TODO: duplicated code with update()

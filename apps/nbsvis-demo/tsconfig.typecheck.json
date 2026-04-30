@@ -10,5 +10,8 @@
     "outDir": "./dist",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "references": [{ "path": "../../packages/nbsvis/tsconfig.typecheck.json" }]
+  "references": [
+    { "path": "../../packages/nbsvis/tsconfig.typecheck.json" },
+    { "path": "../../packages/nbsvis-pixi-viewer/tsconfig.typecheck.json" }
+  ]
 }

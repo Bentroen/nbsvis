@@ -24,9 +24,7 @@ export default defineConfig(({ mode }: UserConfig) => {
         fileName: 'index',
         formats: ['es'], // TODO: umd, cjs (remove top-level await)
       },
-      rollupOptions: {
-        external: ['pixi.js'],
-      },
+      rollupOptions: {},
     },
   } satisfies UserConfig;
 });

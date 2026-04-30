@@ -1,10 +1,9 @@
-import { Song } from '@encode42/nbs.js';
-import type { NoteBuffer } from '@opennbs/nbsvis-audio-api';
+import type { ViewerRenderPayload } from '@opennbs/nbsvis-viewer-api';
 import { Container, ParticleContainer, Texture } from 'pixi.js';
 
-import { ViewAssetDescriptor, viewerAssets } from '../../assets';
-import { BaseView } from '../viewer';
-import { NoteManager } from '../widgets/note';
+import { ViewAssetDescriptor, viewerAssets } from '../assets';
+import { BaseView } from '../base-view';
+import { BlockNoteSchedule, NoteManager } from '../widgets/note';
 import { PianoManager } from '../widgets/piano';
 
 type PianoRollTextures = {
@@ -47,14 +46,14 @@ export class PianoRollView extends BaseView {
   draw() {
     if (!this.textures) {
       throw new Error(
-        'PianoRollView assets not injected. Ensure Viewer.init() runs before drawing.',
+        'PianoRollView assets not injected. Ensure PixiViewer.init() runs before drawing.',
       );
     }
 
     const renderer = this.context.renderer;
     if (!renderer) {
       throw new Error(
-        'PianoRollView renderer context not bound. Ensure Viewer.init() has completed.',
+        'PianoRollView renderer context not bound. Ensure PixiViewer.init() has completed.',
       );
     }
 
@@ -88,8 +87,8 @@ export class PianoRollView extends BaseView {
     this.noteManager.redraw(width);
   }
 
-  loadSong(_: Song, noteData: NoteBuffer) {
-    this.noteManager.setSong(noteData);
+  loadSong(payload: ViewerRenderPayload) {
+    this.noteManager.setSong(new BlockNoteSchedule(payload.blocks, payload.songLength));
     this.noteManager.redraw(this.stage.width);
     this.pianoManager.redraw(this.stage.width);
   }
