@@ -1,0 +1,40 @@
+{
+  "name": "@opennbs/nbsvis-web-audio",
+  "version": "1.0.0",
+  "description": "Web Audio worklet/worker implementation of nbsvis audio playback",
+  "type": "module",
+  "files": [
+    "dist",
+    "assets"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "dev": "vite build --watch --mode development --emptyOutDir=false",
+    "build": "vite build --mode production",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix"
+  },
+  "dependencies": {
+    "@opennbs/nbsvis-audio-api": "workspace:*"
+  },
+  "devDependencies": {
+    "@laynezh/vite-plugin-lib-assets": "^1.1.0",
+    "@types/audioworklet": "^0.0.93",
+    "globals": "^16.0.0",
+    "pathe": "^2.0.3",
+    "typescript": "5.8.2",
+    "vite": "^6.3.0",
+    "vite-plugin-dts": "^4.5.3"
+  }
+}

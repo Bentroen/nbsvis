@@ -1,5 +1,7 @@
 /// <reference lib="webworker" />
 
+import { NoteBuffer } from '@opennbs/nbsvis-audio-api';
+
 import { RingBufferState, resetRingBuffer, ringBufferHasSpace, writeToRingBuffer } from '../buffer';
 import { EngineToWorkerMessage } from '../event';
 import { TempoMapView } from '../tempo';
@@ -8,7 +10,6 @@ import { CachedResampler } from './cached-resampler';
 import { cubicResample, ResamplerFn } from './resampler';
 import { BaseTransport as RenderTransport } from '../transport';
 import VoiceManager from './voice-manager';
-import { NoteBuffer } from '../../note';
 import { PlaybackState } from '../worklet/state';
 
 export const BLOCK_SIZE = 512;

@@ -1,7 +1,7 @@
+import type { NoteBuffer } from '@opennbs/nbsvis-audio-api';
 import { Particle, ParticleContainer, Renderer, Texture } from 'pixi.js';
 
 import { WHITE_KEY_COUNT } from './piano';
-import { NoteBuffer } from '../../note';
 import { NoteData, NoteRenderer, RenderContext } from '../util/note';
 import { NoteTextureAtlas } from '../util/note-texture';
 import SpritePool from '../util/sprite';
@@ -38,17 +38,6 @@ const instrumentColors = [
 ];
 
 const keyLabels = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-
-function normalizeKeyAndPitch(note: { key: number; pitch: number }): {
-  key: number;
-  pitch: number;
-} {
-  const weightedKey = note.key + note.pitch / 100;
-  let key = Math.round(weightedKey);
-  key = Math.max(0, Math.min(87, key));
-  const pitch = weightedKey - key;
-  return { key, pitch };
-}
 
 export function estimateMaxVisibleNotes(noteData: NoteBuffer, visibleTickCount: number): number {
   const totalNotes = noteData.noteCount;
@@ -199,7 +188,7 @@ export class NoteManager {
   }
 
   private activateTick(tick: number) {
-    this.notes?.forEachNoteAtTick(tick, (instrument, pitch, volume) => {
+    this.notes?.forEachNoteAtTick(tick, (instrument: number, pitch: number, volume: number) => {
       pitch = Math.log2(pitch) * 1200;
       const key = Math.floor(pitch / 100) + 45;
       const detune = pitch % 100;
@@ -306,7 +295,7 @@ export class NoteManager {
 
     // Return which keys should be played at this tick
     const keysToPlay: Array<number> = [];
-    this.notes?.forEachNoteAtTick(floorTick, (_instrument, pitch) => {
+    this.notes?.forEachNoteAtTick(floorTick, (_instrument: number, pitch: number) => {
       pitch = Math.log2(pitch) * 1200;
       let key = Math.floor(pitch / 100) + 45;
       key = Math.max(0, Math.min(87, key));

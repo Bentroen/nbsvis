@@ -1,8 +1,8 @@
 import { Song } from '@encode42/nbs.js';
+import type { NoteBuffer } from '@opennbs/nbsvis-audio-api';
 import { Container, ParticleContainer, Texture } from 'pixi.js';
 
 import { ViewAssetDescriptor, viewerAssets } from '../../assets';
-import { NoteBuffer } from '../../note';
 import { BaseView } from '../viewer';
 import { NoteManager } from '../widgets/note';
 import { PianoManager } from '../widgets/piano';

@@ -10,7 +10,7 @@ export default defineConfig({
       targets: [
         {
           src: normalizePath(
-            path.resolve(__dirname, 'node_modules/@opennbs/nbsvis/dist/assets/*.js'),
+            path.resolve(__dirname, '../../packages/nbsvis-web-audio/dist/assets/*.js'),
           ),
           dest: 'assets',
         },

@@ -54,8 +54,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build publishable package
-        run: pnpm --filter @opennbs/nbsvis build
+      - name: Build publishable packages
+        run: pnpm --filter '@opennbs/*' build
 
       - name: Release
         working-directory: packages/nbsvis

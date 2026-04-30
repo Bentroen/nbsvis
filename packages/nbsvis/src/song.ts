@@ -1,7 +1,6 @@
 import { Song, fromArrayBuffer } from '@encode42/nbs.js';
+import { NoteBuffer } from '@opennbs/nbsvis-audio-api';
 import JSZIP from 'jszip';
-
-import { NoteBuffer } from './note';
 
 function isZipFile(buffer: ArrayBuffer) {
   const view = new Uint8Array(buffer);

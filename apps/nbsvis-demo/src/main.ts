@@ -24,7 +24,7 @@ async function main() {
   await viewer.init();
 
   player = new Player(viewer, {
-    audioEngine: {
+    webAudio: {
       urlBase: document.baseURI,
     },
   });

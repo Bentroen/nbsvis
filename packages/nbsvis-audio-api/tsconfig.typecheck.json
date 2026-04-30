@@ -9,9 +9,5 @@
     "declarationMap": false,
     "outDir": "./dist",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
-  },
-  "references": [
-    { "path": "../nbsvis-audio-api/tsconfig.typecheck.json" },
-    { "path": "../nbsvis-web-audio/tsconfig.typecheck.json" }
-  ]
+  }
 }

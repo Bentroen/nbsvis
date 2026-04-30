@@ -1,8 +1,8 @@
 import { Song } from '@encode42/nbs.js';
+import type { NoteBuffer } from '@opennbs/nbsvis-audio-api';
 import { Application, BitmapText, Container, Renderer, TextureStyle, Ticker } from 'pixi.js';
 
 import { ViewAssetDescriptor } from '../assets';
-import { NoteBuffer } from '../note';
 
 // TODO: is this needed?
 TextureStyle.defaultOptions.scaleMode = 'nearest';

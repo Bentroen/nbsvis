@@ -36,6 +36,8 @@
     "release:dry": "semantic-release --dry-run"
   },
   "dependencies": {
+    "@opennbs/nbsvis-audio-api": "workspace:*",
+    "@opennbs/nbsvis-web-audio": "workspace:*",
     "@encode42/nbs.js": "^5.0.2",
     "@nbsjs/core": "^6.0.0",
     "avl": "^1.6.0",

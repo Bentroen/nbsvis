@@ -12,11 +12,11 @@ Viewer classes are exported directly, and `pixi.js` is provided by the consuming
 ## Configurable worker/worklet URL base
 
 The audio engine no longer derives worker/worklet URLs from `document.baseURI`.
-Pass `urlBase`, or explicit `workerUrl` / `workletUrl`, via `Player` options:
+Pass `urlBase`, or explicit `workerUrl` / `workletUrl`, via `webAudio` when using the default Web Audio backend, or inject a custom `audioBackend` that implements `NbsvisAudioBackend`:
 
 ```ts
 const player = new Player(viewer, {
-  audioEngine: {
+  webAudio: {
     urlBase: import.meta.env.BASE_URL,
   },
 });
