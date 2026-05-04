@@ -9,9 +9,6 @@ export default defineConfig(({ mode }: UserConfig) => {
       dts({
         insertTypesEntry: true,
       }),
-      // inline assets in dev mode, use lib-assets in production mode
-      // libAssetsPlugin currently does not regenerate assets in --watch mode:
-      // https://github.com/laynezh/vite-plugin-lib-assets/issues/62
       mode == 'production' && libAssetsPlugin(),
     ],
     build: {
@@ -20,9 +17,9 @@ export default defineConfig(({ mode }: UserConfig) => {
       minify: mode === 'production' ? 'esbuild' : false,
       lib: {
         entry: resolve(__dirname, 'src/index.ts'),
-        name: 'nbsvis',
+        name: 'nbsvisWebAudio',
         fileName: 'index',
-        formats: ['es'], // TODO: umd, cjs (remove top-level await)
+        formats: ['es'],
       },
       rollupOptions: {},
     },

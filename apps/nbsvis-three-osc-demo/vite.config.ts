@@ -10,12 +10,6 @@ export default defineConfig({
       targets: [
         {
           src: normalizePath(
-            path.resolve(__dirname, '../../packages/nbsvis-web-audio/dist/assets/*.js'),
-          ),
-          dest: 'assets',
-        },
-        {
-          src: normalizePath(
             path.resolve(__dirname, 'node_modules/coi-serviceworker/coi-serviceworker.js'),
           ),
           dest: '',
@@ -25,12 +19,11 @@ export default defineConfig({
   ],
   server: {
     headers: {
-      // for SharedArrayBuffer support
       'Cross-Origin-Embedder-Policy': 'require-corp',
       'Cross-Origin-Opener-Policy': 'same-origin',
     },
     fs: {
-      allow: ['..'], // allow serving from parent dirs (monorepo)
+      allow: ['..'],
     },
   },
   build: {
@@ -38,7 +31,6 @@ export default defineConfig({
   },
   preview: {
     headers: {
-      // for SharedArrayBuffer support
       'Cross-Origin-Embedder-Policy': 'require-corp',
       'Cross-Origin-Opener-Policy': 'same-origin',
     },

@@ -10,9 +10,5 @@
     "outDir": "./dist",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "references": [
-    { "path": "../nbsvis-audio-api/tsconfig.typecheck.json" },
-    { "path": "../nbsvis-viewer-api/tsconfig.typecheck.json" },
-    { "path": "../nbsvis-web-audio/tsconfig.typecheck.json" }
-  ]
+  "references": [{ "path": "../nbsvis-viewer-api/tsconfig.typecheck.json" }]
 }

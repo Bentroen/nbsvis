@@ -1,7 +1,3 @@
-# Songs
-*.nbs
-*.zip
-
 # Logs
 logs
 *.log
@@ -26,5 +22,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-.pnpm-store/*

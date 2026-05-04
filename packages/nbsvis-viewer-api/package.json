@@ -1,0 +1,31 @@
+{
+  "name": "@opennbs/nbsvis-viewer-api",
+  "version": "1.0.0",
+  "description": "Viewer rendering contract for nbsvis",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vite build --mode production",
+    "dev": "vite build --watch --mode development --emptyOutDir=false"
+  },
+  "devDependencies": {
+    "pathe": "^2.0.3",
+    "typescript": "5.8.2",
+    "vite": "^6.3.0",
+    "vite-plugin-dts": "^4.5.3"
+  }
+}
