@@ -1,7 +1,11 @@
-import { Song, fromArrayBuffer } from '@encode42/nbs.js';
+// Sourced from:
+// https://github.com/OpenNBS/NoteBlockWorld/blob/6e7e740bff85367bbeddf0308bacf5bff3480900/packages/song/src/nbsCompat.ts
+
+import { Song } from '@encode42/nbs.js';
 import JSZIP from 'jszip';
 
 import { NoteBuffer } from './note';
+import { loadNbsFromBuffer } from './util/nbsCompat';
 
 function isZipFile(buffer: ArrayBuffer) {
   const view = new Uint8Array(buffer);
@@ -65,7 +69,7 @@ async function loadZipFile(arrayBuffer: ArrayBuffer): Promise<[Song, ExtraSounds
 }
 
 async function loadNbsFile(arrayBuffer: ArrayBuffer): Promise<Song> {
-  const song = await fromArrayBuffer(arrayBuffer);
+  const song = await loadNbsFromBuffer(arrayBuffer);
   return song;
 }
 
