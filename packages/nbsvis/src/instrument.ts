@@ -3,6 +3,22 @@ import { Song } from '@encode42/nbs.js';
 import assetPaths from './assets';
 import { ExtraSounds } from './song';
 
+export class MissingAudioFileError extends Error {
+  constructor(
+    readonly instrumentId: number,
+    readonly instrumentName: string,
+    readonly soundFile?: string,
+  ) {
+    const label = `${instrumentId} (${instrumentName})`;
+    super(
+      soundFile
+        ? `Missing audio file "${soundFile}" for instrument ${label}`
+        : `Missing audio file for instrument ${label}`,
+    );
+    this.name = 'MissingAudioFileError';
+  }
+}
+
 export const defaultInstrumentData = [
   { name: 'Harp', audioSource: assetPaths['sounds/harp.ogg'] },
   { name: 'Double Bass', audioSource: assetPaths['sounds/dbass.ogg'] },

@@ -11,7 +11,7 @@ import { AudioWorkerInitOptions } from './audio/worker/audio-worker';
 import audioWorkerUrl from './audio/worker/audio-worker?worker&url';
 import workletUrl from './audio/worklet/audio-sink-processor?worker&url';
 import { PlaybackState } from './audio/worklet/state';
-import PlayerInstrument, { defaultInstruments } from './instrument';
+import PlayerInstrument, { defaultInstruments, MissingAudioFileError } from './instrument';
 import { NoteBuffer } from './note';
 import { getTempoChangeEvents, getTempoSegments } from './song';
 
@@ -43,22 +43,32 @@ function decodeAudioData(ctx: AudioContext, buffer: ArrayBuffer): Promise<AudioB
   return ctx.decodeAudioData(buffer);
 }
 
-async function loadAudio(
-  ctx: AudioContext,
-  audioSource: string | ArrayBuffer,
-): Promise<AudioBuffer | null> {
-  if (!audioSource) return null;
+async function loadAudio(ctx: AudioContext, ins: PlayerInstrument): Promise<AudioBuffer | null> {
+  const { audioSource } = ins;
+  if (!audioSource) {
+    if (ins.isBuiltIn) {
+      throw new MissingAudioFileError(ins.id, ins.name);
+    }
+    return null;
+  }
 
   let arrayBuffer: ArrayBuffer;
   if (typeof audioSource === 'string') {
     const response = await fetch(audioSource);
+    if (!response.ok) {
+      throw new MissingAudioFileError(ins.id, ins.name, audioSource);
+    }
     arrayBuffer = await response.arrayBuffer();
   } else {
     // decodeAudioData detaches the buffer; clone so callers can reuse the original
     arrayBuffer = audioSource.slice(0);
   }
 
-  return decodeAudioData(ctx, arrayBuffer);
+  try {
+    return await decodeAudioData(ctx, arrayBuffer);
+  } catch {
+    throw new MissingAudioFileError(ins.id, ins.name);
+  }
 }
 
 export class AudioEngine {
@@ -242,8 +252,19 @@ export class AudioEngine {
   private async loadSounds() {
     const ctx = this.nativeCtx!;
 
-    for (const [index, ins] of this.instruments.entries()) {
-      const audioBuffer = await loadAudio(ctx, ins.audioSource);
+    for (const ins of this.instruments) {
+      if (!ins) continue;
+
+      let audioBuffer: AudioBuffer | null;
+      try {
+        audioBuffer = await loadAudio(ctx, ins);
+      } catch (err) {
+        if (err instanceof MissingAudioFileError) {
+          console.error(err);
+          continue;
+        }
+        throw err;
+      }
       if (!audioBuffer) continue;
 
       const channels: Float32Array[] = [];
