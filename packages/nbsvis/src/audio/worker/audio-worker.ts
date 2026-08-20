@@ -74,6 +74,7 @@ export class AudioWorker {
         break;
 
       case 'song':
+        this.clearSamples();
         this.noteData = new NoteBuffer(data.noteData);
         this.transport.setTempoMap(new TempoMapView(data.tempoChanges, data.initialTempo));
         this.transport.seekToTick(0);
@@ -101,6 +102,11 @@ export class AudioWorker {
         this.transport.setLoop(data.loop);
         break;
     }
+  }
+
+  private clearSamples() {
+    this.voiceManager.clearSamples();
+    this.cachedResampler.clearAll();
   }
 
   private resetRender() {

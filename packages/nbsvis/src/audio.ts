@@ -274,7 +274,7 @@ export class AudioEngine {
 
       this.dispatch({
         type: 'sample',
-        sampleId: index,
+        sampleId: ins.id,
         channels,
       });
     }
@@ -282,8 +282,7 @@ export class AudioEngine {
     console.debug('All instruments loaded into worker.');
   }
 
-  private async resetSounds() {
-    // Drop any previously added custom instruments
+  private resetSounds() {
     this.instruments = [...defaultInstruments];
   }
 
@@ -291,9 +290,10 @@ export class AudioEngine {
     await this.init();
     this.playbackEnded = false;
 
-    await this.resetSounds();
-    this.instruments = defaultInstruments.concat(instruments);
-    await this.loadSounds();
+    this.resetSounds();
+    for (const ins of instruments) {
+      this.instruments[ins.id] = ins;
+    }
 
     this.tempoSegments = getTempoSegments(song);
     const noteEvents = noteData.getBuffer();
@@ -305,6 +305,8 @@ export class AudioEngine {
       song.length,
       song.loop.startTick,
     );
+
+    await this.loadSounds();
 
     this.dispatch({ type: 'start' });
   }

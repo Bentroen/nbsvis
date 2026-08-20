@@ -1,7 +1,7 @@
 import { Song } from '@encode42/nbs.js';
 
 import assetPaths from './assets';
-import { ExtraSounds } from './song';
+import { ExtraSounds, resolveExtraSound } from './song';
 
 export class MissingAudioFileError extends Error {
   constructor(
@@ -43,6 +43,7 @@ export const defaultInstrumentData = [
 ];
 
 export default class PlayerInstrument {
+  id: number;
   name: string;
   baseKey: number;
   audioSource: string | ArrayBuffer;
@@ -50,11 +51,13 @@ export default class PlayerInstrument {
   isBuiltIn: boolean;
 
   constructor(
+    id: number,
     name: string,
     baseKey: number,
     audioSource: string | ArrayBuffer = '',
     isBuiltIn: boolean = false,
   ) {
+    this.id = id;
     this.name = name;
     this.baseKey = baseKey;
     this.audioSource = audioSource;
@@ -63,15 +66,25 @@ export default class PlayerInstrument {
 }
 
 export const defaultInstruments: readonly PlayerInstrument[] = defaultInstrumentData.map(
-  (data) => new PlayerInstrument(data.name, 45, data.audioSource, true),
+  (data, id) => new PlayerInstrument(id, data.name, 45, data.audioSource, true),
 );
 
 export function loadCustomInstruments(song: Song, extraSounds: ExtraSounds) {
-  const customInstruments = song.instruments.loaded
-    .filter((ins) => !ins.builtIn)
-    .map(
-      (ins) =>
-        new PlayerInstrument(ins.meta.name, ins.key, extraSounds[ins.meta.soundFile] || '', false),
+  const customInstruments: PlayerInstrument[] = [];
+
+  song.instruments.loaded.forEach((ins, id) => {
+    if (!ins || ins.builtIn) return;
+
+    customInstruments.push(
+      new PlayerInstrument(
+        id,
+        ins.meta.name,
+        ins.key,
+        resolveExtraSound(extraSounds, ins.meta.soundFile) || '',
+        false,
+      ),
     );
+  });
+
   return customInstruments;
 }

@@ -182,11 +182,20 @@ export class CachedResampler {
     this.cache = new BlockCache(cacheSizeBytes, options.blockSize);
   }
 
+  /**
+   * Registers a decoded sample for playback/resampling.
+   *
+   * Call {@link clearAll} before loading a new instrument set (e.g. on song load).
+   * Cache keys use `sampleId` only, not buffer identity — replacing a sample at the
+   * same ID without clearing first would keep serving resampled blocks from the
+   * previous sound.
+   */
   loadSample(sampleId: number, channels: Float32Array[]) {
     if (!channels.length) return;
     this.samples.set(sampleId, channels[0]);
   }
 
+  /** Clears all samples and the resampling cache. Required before a fresh load. */
   clearAll() {
     this.samples.clear();
     this.cache.reset();
