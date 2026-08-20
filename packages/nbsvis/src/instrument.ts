@@ -20,6 +20,10 @@ export const defaultInstrumentData = [
   { name: 'Bit', audioSource: assetPaths['sounds/bit.ogg'] },
   { name: 'Banjo', audioSource: assetPaths['sounds/banjo.ogg'] },
   { name: 'Pling', audioSource: assetPaths['sounds/pling.ogg'] },
+  { name: 'Trumpet', audioSource: assetPaths['sounds/trumpet.ogg'] },
+  { name: 'Exposed Trumpet', audioSource: assetPaths['sounds/trumpet_exposed.ogg'] },
+  { name: 'Weathered Trumpet', audioSource: assetPaths['sounds/trumpet_weathered.ogg'] },
+  { name: 'Oxidized Trumpet', audioSource: assetPaths['sounds/trumpet_oxidized.ogg'] },
 ];
 
 export default class PlayerInstrument {
