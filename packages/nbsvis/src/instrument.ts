@@ -75,15 +75,13 @@ export function loadCustomInstruments(song: Song, extraSounds: ExtraSounds) {
   song.instruments.loaded.forEach((ins, id) => {
     if (!ins || ins.builtIn) return;
 
-    customInstruments.push(
-      new PlayerInstrument(
-        id,
-        ins.meta.name,
-        ins.key,
-        resolveExtraSound(extraSounds, ins.meta.soundFile) || '',
-        false,
-      ),
-    );
+    const soundFile = ins.meta.soundFile;
+    const sound = resolveExtraSound(extraSounds, soundFile);
+    if (soundFile && !sound) {
+      console.warn(new MissingAudioFileError(id, ins.meta.name, soundFile));
+    }
+
+    customInstruments.push(new PlayerInstrument(id, ins.meta.name, ins.key, sound || '', false));
   });
 
   return customInstruments;
