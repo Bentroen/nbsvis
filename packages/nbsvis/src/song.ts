@@ -12,11 +12,46 @@ function isZipFile(buffer: ArrayBuffer) {
   return view[0] === 0x50 && view[1] === 0x4b && view[2] === 0x03 && view[3] === 0x04;
 }
 
-function getBaseName(url: string) {
-  return new URL(url, 'file://').pathname.split('/').pop() || '';
+/**
+ * Extra custom-instrument samples, keyed by path relative to the sounds root.
+ *
+ * Sound file resolution cases:
+ *
+ * - **Default instruments:** only the base path is loaded in `defaultInstruments`
+ *   (e.g. `"pling.ogg"`; resolved from the root; loaded from the default set of
+ *   sounds bundled in the package).
+ * - **Custom instruments in non-zipped files:** resolve exactly the same way as default instruments
+ *   (e.g. `"custom1.ogg"` would look for a file colocated with `"pling.ogg"` in
+ *   the root; `"foo/bar.ogg"` would look for `"bar.ogg"` inside `"foo/"`). We
+ *   don't handle this case specifically yet as there's nowhere to source the
+ *   files from if the loaded song is not a ZIP.
+ * - **Custom instruments in ZIP files:** sound files are stored inside the `sounds/` folder in the ZIP.
+ *   Sounds are resolved relative to `sounds/` (i.e. the `"sounds/"` prefix
+ *   should never be part of the instrument's prefix; instead, `"sounds/"` is
+ *   our root to resolve from).
+ */
+export type ExtraSounds = Record<string, ArrayBuffer>;
+
+/** Path relative to the sounds root (never includes a leading `sounds/`). */
+function normalizeSoundFile(path: string): string {
+  const normalized = path.replace(/\\/g, '/');
+  return normalized.startsWith('sounds/') ? normalized.slice('sounds/'.length) : normalized;
 }
 
-export type ExtraSounds = Record<string, ArrayBuffer>;
+export function addExtraSound(extraSounds: ExtraSounds, zipPath: string, data: ArrayBuffer) {
+  const key = normalizeSoundFile(zipPath);
+  if (!key) return;
+  extraSounds[key] = data;
+}
+
+export function resolveExtraSound(
+  extraSounds: ExtraSounds,
+  soundFile: string,
+): ArrayBuffer | undefined {
+  const key = normalizeSoundFile(soundFile);
+  if (!key) return undefined;
+  return extraSounds[key];
+}
 
 export async function loadSongFromUrl(url: string): Promise<{
   song: Song;
@@ -56,13 +91,14 @@ async function loadZipFile(arrayBuffer: ArrayBuffer): Promise<[Song, ExtraSounds
   const song = await loadNbsFile(arrayBuffer);
 
   // Load sound files from the 'sounds' directory
-  const soundFiles = Object.keys(zip.files).filter((file) => file.startsWith('sounds/'));
   const extraSounds: ExtraSounds = {};
-  for (const file of soundFiles) {
-    const soundData = await zip.file(file)?.async('arraybuffer');
-    if (!soundData) continue;
-    const fileName = getBaseName(file);
-    extraSounds[fileName] = soundData;
+  for (const [path, zipEntry] of Object.entries(zip.files)) {
+    if (zipEntry.dir) continue;
+    if (!path.replace(/\\/g, '/').startsWith('sounds/')) continue;
+
+    const soundData = await zipEntry.async('arraybuffer');
+    if (!soundData || soundData.byteLength === 0) continue;
+    addExtraSound(extraSounds, path, soundData);
   }
 
   return [song, extraSounds];
