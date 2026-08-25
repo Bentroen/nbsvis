@@ -1,5 +1,6 @@
 const allowedScopes = [
   'player', // playback orchestration/public player API
+  'song', // song/instrument management
   'audio', // engine, messaging, buffers, transport, scheduling, resampling, workers/worklets, balancing
   'viewer', // renderer/view abstraction
   'view', // specific view implementations

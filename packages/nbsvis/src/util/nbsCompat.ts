@@ -27,19 +27,19 @@ const NBS_V6_BUILTIN_INSTRUMENTS: Instrument[] = [
   }),
   new Instrument(17, {
     name: 'Exposed Trumpet',
-    soundFile: 'exposed_trumpet.ogg',
+    soundFile: 'trumpet_exposed.ogg',
     builtIn: true,
     key: 45,
   }),
   new Instrument(18, {
     name: 'Weathered Trumpet',
-    soundFile: 'weathered_trumpet.ogg',
+    soundFile: 'trumpet_weathered.ogg',
     builtIn: true,
     key: 45,
   }),
   new Instrument(19, {
     name: 'Oxidized Trumpet',
-    soundFile: 'oxidized_trumpet.ogg',
+    soundFile: 'trumpet_oxidized.ogg',
     builtIn: true,
     key: 45,
   }),

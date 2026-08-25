@@ -51,6 +51,11 @@ export class VoiceManager {
     this.samples[id] = channels;
   }
 
+  clearSamples() {
+    this.samples = {};
+    this.resetVoices();
+  }
+
   spawn(sampleId: number, pitch: number, gain: number, pan: number) {
     // TODO: we can remove this check by filtering out notes with missing samples beforehand (e.g. in Scheduler)
     if (!this.samples[sampleId]) return;
