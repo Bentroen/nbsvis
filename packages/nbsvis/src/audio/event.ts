@@ -10,6 +10,10 @@ type SongEvent = {
   loopStartTick: number;
 };
 
+type PrepareSongEvent = {
+  type: 'prepare-song';
+};
+
 type SampleEvent = {
   type: 'sample';
   sampleId: number;
@@ -65,6 +69,7 @@ type EngineToWorkletMessage =
 
 type EngineToWorkerMessage =
   | SongEvent
+  | PrepareSongEvent
   | SampleEvent
   | StopEvent
   | SeekEvent

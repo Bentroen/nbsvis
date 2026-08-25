@@ -38,6 +38,9 @@ export class AudioWorker {
   balancer: AdaptiveLoadBalancer;
   renderFrame = 0;
   lastDispatchedTick = -1;
+  /** When false, the render loop exits and does not reschedule itself. */
+  private rendering = false;
+  private renderLoopActive = false;
 
   outL = new Float32Array(BLOCK_SIZE);
   outR = new Float32Array(BLOCK_SIZE);
@@ -69,12 +72,10 @@ export class AudioWorker {
     const { data } = event;
     switch (data.type) {
       case 'start':
-        // Start the render loop
-        this.renderLoop();
+        this.beginRendering();
         break;
 
       case 'song':
-        this.clearSamples();
         this.noteData = new NoteBuffer(data.noteData);
         this.transport.setTempoMap(new TempoMapView(data.tempoChanges, data.initialTempo));
         this.transport.seekToTick(0);
@@ -86,6 +87,13 @@ export class AudioWorker {
       case 'sample':
         this.voiceManager.loadSample(data.sampleId, data.channels);
         this.cachedResampler.loadSample(data.sampleId, data.channels);
+        break;
+
+      case 'prepare-song':
+        this.suspendRendering();
+        this.clearSamples();
+        this.noteData = null;
+        this.resetRender();
         break;
 
       case 'stop':
@@ -109,6 +117,18 @@ export class AudioWorker {
     this.cachedResampler.clearAll();
   }
 
+  private beginRendering() {
+    this.rendering = true;
+    if (!this.renderLoopActive) {
+      this.renderLoopActive = true;
+      this.renderLoop();
+    }
+  }
+
+  private suspendRendering() {
+    this.rendering = false;
+  }
+
   private resetRender() {
     this.voiceManager.resetVoices();
     resetRingBuffer(this.rbState);
@@ -117,7 +137,12 @@ export class AudioWorker {
   }
 
   renderLoop = () => {
-    while (ringBufferHasSpace(this.rbState, BLOCK_SIZE)) {
+    if (!this.rendering) {
+      this.renderLoopActive = false;
+      return;
+    }
+
+    while (ringBufferHasSpace(this.rbState, BLOCK_SIZE) && this.rendering) {
       const block = this.renderBlock();
       const hasAudio = block.voiceCount > 0;
       writeToRingBuffer(this.rbAudio, this.rbMeta, this.rbState, block.outL, block.outR, hasAudio);
@@ -126,8 +151,11 @@ export class AudioWorker {
       this.writeStats();
     }
 
-    // Schedule next iteration
-    setTimeout(this.renderLoop, 0);
+    if (this.rendering) {
+      setTimeout(this.renderLoop, 0);
+    } else {
+      this.renderLoopActive = false;
+    }
   };
 
   handleNote = (instrument: number, pitch: number, volume: number, panning: number) => {

@@ -235,6 +235,11 @@ export class AudioEngine {
         break;
       }
 
+      case 'prepare-song': {
+        this.postToWorker(msg);
+        break;
+      }
+
       case 'seek':
       case 'stop':
       case 'loop':
@@ -298,6 +303,11 @@ export class AudioEngine {
     this.tempoSegments = getTempoSegments(song);
     const noteEvents = noteData.getBuffer();
     const tempoChangeEvents = getTempoChangeEvents(song);
+
+    // Suspend worker rendering while samples are reloaded and the new song is
+    // scheduled. scheduleSong must run only after loadSounds completes.
+    this.dispatch({ type: 'prepare-song' });
+    await this.loadSounds();
     this.scheduleSong(
       noteEvents,
       tempoChangeEvents,
@@ -305,8 +315,6 @@ export class AudioEngine {
       song.length,
       song.loop.startTick,
     );
-
-    await this.loadSounds();
 
     this.dispatch({ type: 'start' });
   }
