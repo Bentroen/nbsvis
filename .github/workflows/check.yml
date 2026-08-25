@@ -32,6 +32,9 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Validate commit messages
         run: >
           pnpm exec commitlint --from "${{ github.event.pull_request.base.sha }}"
